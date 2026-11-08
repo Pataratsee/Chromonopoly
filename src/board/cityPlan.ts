@@ -94,29 +94,41 @@ export function isParkRect(rect: Rect): boolean {
   return PARK_RECTS.some((park) => park.x === rect.x && park.z === rect.z);
 }
 
+/** Fixed-seed RNG: the city looks hand-placed but is identical every load. */
+function seeded(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
 export const BUILDING_SLOTS: BuildingSlot[] = (() => {
   const out: BuildingSlot[] = [];
+  const rng = seeded(0x7a11c0de);
   let index = 0;
   for (const rect of BLOCK_RECTS) {
     if (isParkRect(rect)) continue;
     const outer = Math.max(Math.abs(rect.x), Math.abs(rect.z)) > 31;
-    const halfW = rect.w / 2 - 0.35;
-    const halfD = rect.d / 2 - 0.35;
+    const halfW = rect.w / 2 - 0.3;
+    const halfD = rect.d / 2 - 0.3;
     if (halfW <= 1 || halfD <= 1) continue;
-    // Fill the block edge to edge: three rows downtown, two in the outer
-    // district. Shoulder to shoulder, no empty block interiors.
-    const size = outer ? 3.0 : 2.3;
-    const nx = outer ? 2 : 3;
-    const nz = outer ? 2 : 3;
-    const dx = (halfW * 2 - size) / (nx - 1);
-    const dz = (halfD * 2 - size) / (nz - 1);
+    // Fill every block edge to edge. More, smaller plots on the four sides
+    // keeps them as dense as the corners with no repeating grid.
+    const size = outer ? 2.35 : 2.25;
+    const gap = 0.14;
+    const nx = Math.max(1, Math.floor((halfW * 2 + gap) / (size + gap)));
+    const nz = Math.max(1, Math.floor((halfD * 2 + gap) / (size + gap)));
+    const dx = nx > 1 ? (halfW * 2 - size) / (nx - 1) : 0;
+    const dz = nz > 1 ? (halfD * 2 - size) / (nz - 1) : 0;
     for (let ix = 0; ix < nx; ix += 1) {
       for (let iz = 0; iz < nz; iz += 1) {
-        const x = rect.x - halfW + size / 2 + ix * dx;
-        const z = rect.z - halfD + size / 2 + iz * dz;
+        const x = rect.x - halfW + size / 2 + ix * dx + (rng() - 0.5) * 0.24;
+        const z = rect.z - halfD + size / 2 + iz * dz + (rng() - 0.5) * 0.24;
         if (!pointOutsideBoardZone(x, z, size * 0.5)) continue;
-        const height = outer ? 0.95 + ((index * 11) % 5) * 0.12 : 0.82 + ((index * 13) % 5) * 0.13;
-        out.push({ x, z, size, rotY: 0, height, outer, index });
+        // `height` is a deterministic style variant, never a vertical scale.
+        const height = 0.65 + rng() * 0.9;
+        out.push({ x, z, size: size * (0.92 + rng() * 0.12), rotY: (rng() - 0.5) * 0.14, height, outer, index });
         index += 1;
       }
     }

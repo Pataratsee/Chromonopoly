@@ -82,7 +82,7 @@ describe('jail cascade', () => {
     world.tiles[3]!.ownerId = a.player.id;
     const cashBefore = a.player.cash;
 
-    const result = world.intent(a.player.id, { t: 'theft', target: 'bank', key: 'heist' });
+    const result = world.intent(a.player.id, { t: 'robbery', amount: 50_000, key: 'heist' });
     expect(result.ok).toBe(true);
     expect(a.player.inJail).toBe(true);
     expect(a.player.position).toBe(10);
@@ -328,16 +328,16 @@ describe('chance meters', () => {
     expect(actor.player.cash).toBe(1880);
   });
 
-  it('returns bank theft odds and a server roll', () => {
-    const { world, events } = makeWorld([0.2, 0.4]);
+  it('returns bank robbery odds and a server roll at the chosen amount', () => {
+    const { world, events } = makeWorld([0.1, 0.4]);
     const actor = world.join('Ada', 'dog');
     botless(world);
-    expect(world.intent(actor.player.id, { t: 'theft', target: 'bank', key: 'heist' }).ok).toBe(true);
+    expect(world.intent(actor.player.id, { t: 'robbery', amount: 50_000, key: 'heist' }).ok).toBe(true);
     const theft = events.find((e) => e.kind === 'theft')!;
-    expect(theft.chance!.percent).toBe(53);
-    expect(theft.chance!.rollPercent).toBe(20);
+    expect(theft.chance!.percent).toBe(20);
+    expect(theft.chance!.rollPercent).toBe(10);
     expect(theft.chance!.success).toBe(true);
-    expect(actor.player.cash).toBeGreaterThan(1500);
+    expect(actor.player.cash).toBe(51_500);
   });
 
   it('returns the three jail sale zones and lands on the server outcome', () => {
@@ -347,7 +347,7 @@ describe('chance meters', () => {
     world.tiles[1]!.ownerId = actor.player.id;
     world.tiles[1]!.building = 'house';
 
-    expect(world.intent(actor.player.id, { t: 'theft', target: 'bank', key: 'caught' }).ok).toBe(true);
+    expect(world.intent(actor.player.id, { t: 'robbery', amount: 50_000, key: 'caught' }).ok).toBe(true);
     const jail = events.find((e) => e.kind === 'jail')!;
     expect(jail.chance!.percent).toBe(100);
     expect(jail.chance!.rollPercent).toBe(10);
@@ -385,7 +385,7 @@ describe('chance meters', () => {
     world.tiles[1]!.ownerId = actor.player.id;
     world.tiles[3]!.ownerId = actor.player.id;
 
-    world.intent(actor.player.id, { t: 'theft', target: 'bank', key: 'caught-some' });
+    world.intent(actor.player.id, { t: 'robbery', amount: 50_000, key: 'caught-some' });
     const jail = events.find((e) => e.kind === 'jail')!;
     expect(jail.chance!.rollPercent).toBe(50);
     expect(jail.chance!.result).toContain('Some sold');

@@ -1,0 +1,23 @@
+# Dependencies and generated output
+node_modules/
+dist/
+dist-server/
+test-results/
+playwright-report/
+.vite/
+*.tsbuildinfo
+
+# Local game state and databases
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Local tooling and secrets
+.freebuff/
+.remote-update/
+.tools/
+.env
+.env.*
+!.env.example
+.DS_Store

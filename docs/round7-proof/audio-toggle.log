@@ -1,0 +1,4 @@
+buffers created by roll: 1
+stops while toggling off in flight: 1
+SFX switch off: false
+stats before={"oscillators":0,"buffers":0,"stops":0} during={"oscillators":2,"buffers":1,"stops":2} after={"oscillators":2,"buffers":1,"stops":3}

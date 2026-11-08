@@ -1,7 +1,8 @@
 import { PALETTE, money, QUALITY, type QualityKey } from '../config';
 import { SPACES, spaceAt } from '../game/board';
-import { BUILDING_TYPES, BUILDING_META, bankTheftChance, buildingCost, buildingRent, canBuild, evadeChance, mortgageValue, rentFor, unmortgageCost, RULES } from '../game/rules';
-import type { BuildingType, ChanceRoll, GameEvent, GameMode, PrivateState, PublicState, Settings, Suit, TradeOffer } from '../game/types';
+import { BUILDING_CATEGORIES, BUILDING_META, buildingCost, buildingRent, buildingTypesForMode, canBuild, evadeChance, mortgageValue, rentFor, robberyAmountIssues, robberyChance, unmortgageCost, RULES } from '../game/rules';
+import type { ChanceRoll, CrimeOutcome, GameEvent, GameMode, PrivateState, PublicState, Settings, Suit, TradeOffer } from '../game/types';
+import { setAuthToken } from '../net/client';
 import type { ModelAsset } from '../render/models';
 import type { ThumbnailStudio } from '../render/thumbnails';
 import { audio } from '../audio/audio';
@@ -47,6 +48,7 @@ const ICONS: Record<string, string> = {
   rotateR: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
   home: '<path d="M3 10l9-7 9 7"/><path d="M5 9v11h14V9"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 8h.01"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/>',
 };
 
 function icon(name: string, size = 20): SVGSVGElement {
@@ -113,6 +115,8 @@ export class UI {
   private tutorialStep = 0;
   private tutorialPending = false;
   private promptsBlocked = false;
+  private logTab: 'main' | 'players' | 'market' = 'main';
+  private logPlayer: string | null = null;
 
   constructor(private readonly deps: UIDeps) {
     this.root = document.getElementById('ui') as HTMLElement;
@@ -201,6 +205,7 @@ export class UI {
       tab('Market', 'chart', () => this.openMarket()),
       tab('Bank', 'bank', () => this.openBank()),
       tab('Underworld', 'mask', () => this.openCrime()),
+      tab('Detective', 'search', () => this.openDetective()),
       tab('Properties', 'home', () => this.openProperties()),
       tab('Reputation', 'scroll', () => this.openReputation()),
     );
@@ -234,6 +239,26 @@ export class UI {
     audio.play('click');
   }
 
+  // --------------------------------------------------------------- accounts
+
+  private showOutcome(outcome: CrimeOutcome): void {
+    document.getElementById('crime-result')?.remove();
+    const layer = h(
+      'div',
+      { class: `crime-result ${outcome.success ? 'good' : 'bad'}`, id: 'crime-result', role: 'dialog', 'aria-live': 'assertive' },
+      h('div', { class: 'crime-result-card glass-strong' },
+        h('div', { class: 'crime-result-kicker' }, outcome.kind === 'robbery' ? 'Bank robbery' : outcome.kind === 'murder' ? 'Murder attempt' : outcome.kind === 'detective' ? 'Detective report' : 'Underworld job'),
+        h('h3', {}, outcome.success ? 'Success' : 'Failure'),
+        h('p', { class: 'crime-result-detail' }, outcome.detail),
+        outcome.amount !== 0 ? h('div', { class: 'stat-row' }, h('span', {}, outcome.amount > 0 ? 'Gained' : 'Lost'), h('b', {}, money(Math.abs(outcome.amount)))) : null,
+        outcome.targetName ? h('div', { class: 'stat-row' }, h('span', {}, 'Target'), h('b', {}, outcome.targetName)) : null,
+        outcome.reputationDelta ? h('div', { class: 'stat-row' }, h('span', {}, 'Reputation'), h('b', {}, `${outcome.reputationDelta > 0 ? '+' : ''}${outcome.reputationDelta}`)) : null,
+        h('button', { class: 'btn btn-gold btn-block', onclick: () => layer.remove() }, 'Continue'),
+      ),
+    );
+    document.body.append(layer);
+  }
+
   private renderMenu(): void {
     const existing = document.querySelector('.menu');
     existing?.remove();
@@ -244,30 +269,73 @@ export class UI {
     left.append(
       h('div', { class: 'menu-kicker' }, 'Property · power · a little larceny'),
       h('h1', { class: 'menu-logo' }, 'Chromo', h('span', {}, 'nopoly')),
-      h('p', { class: 'menu-sub' }, 'Buy streets, build skylines, and outlast everyone. Play a proper turn-based table against three AI, or drop straight onto the one shared board.'),
+      h('p', { class: 'menu-sub' }, 'Buy streets, build skylines, and outlast everyone. Log in for the one shared board, or play a proper turn-based table against three AI.'),
     );
-    const input = h('input', { class: 'field', id: 'name-input', maxlength: '18', placeholder: 'Your name', autocomplete: 'nickname' }) as HTMLInputElement;
-    input.value = name;
+
+    // Accounts are username + password only. The glass panel is the door to
+    // multiplayer; solo never asks for one.
+    let authMode: 'login' | 'create' = 'login';
+    const error = h('p', { class: 'auth-error', role: 'alert' });
+    const tabs = h('div', { class: 'segmented auth-tabs' });
+    const loginTab = h('button', { 'aria-pressed': 'true', onclick: () => setMode('login') }, 'Log in');
+    const createTab = h('button', { 'aria-pressed': 'false', onclick: () => setMode('create') }, 'Create account');
+    tabs.append(loginTab, createTab);
+    const username = h('input', { class: 'field', id: 'auth-username', maxlength: '16', placeholder: 'Username', autocomplete: 'username' }) as HTMLInputElement;
+    username.value = localStorage.getItem('chromonopoly.username') ?? '';
+    const password = h('input', { class: 'field', id: 'auth-password', type: 'password', maxlength: '128', placeholder: 'Password', autocomplete: 'current-password' }) as HTMLInputElement;
+    const submit = h('button', { class: 'btn btn-gold btn-block', id: 'auth-submit' }, 'Log in');
+    const hint = h('p', { class: 'note auth-hint' }, 'Username: 3–16 letters, numbers or underscores · password: 6+ characters');
+    const setMode = (next: 'login' | 'create'): void => {
+      authMode = next;
+      loginTab.setAttribute('aria-pressed', String(next === 'login'));
+      createTab.setAttribute('aria-pressed', String(next === 'create'));
+      submit.textContent = next === 'login' ? 'Log in' : 'Create account';
+      password.autocomplete = next === 'login' ? 'current-password' : 'new-password';
+      error.textContent = '';
+    };
+    const fail = (message: string): void => {
+      error.textContent = message;
+      this.toast(message, 'bad');
+    };
+    const runAuth = async (): Promise<void> => {
+      const user = username.value.trim();
+      const pass = password.value;
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(user)) { fail('Username must be 3–16 letters, numbers or underscores.'); username.focus(); return; }
+      if (pass.length < 6) { fail('Password must be at least 6 characters.'); password.focus(); return; }
+      submit.disabled = true;
+      try {
+        const res = await fetch(`/api/auth/${authMode === 'login' ? 'login' : 'register'}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass }),
+        });
+        const data = (await res.json()) as { token?: string; account?: { username?: string }; error?: string };
+        if (!res.ok || !data.token) throw new Error(data.error ?? 'Could not sign in.');
+        setAuthToken(data.token);
+        const confirmed = data.account?.username ?? user;
+        localStorage.setItem('chromonopoly.username', confirmed);
+        this.join(confirmed, 'multi');
+      } catch (err) {
+        fail(err instanceof Error ? err.message : 'Could not sign in.');
+      } finally {
+        submit.disabled = false;
+      }
+    };
+    submit.addEventListener('click', () => void runAuth());
+    password.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') void runAuth(); });
+    const authCard = h('div', { class: 'auth-card liquid' }, error, tabs, username, password, submit, hint);
+
+    const soloName = h('input', { class: 'field', id: 'name-input', maxlength: '24', placeholder: 'Your name (solo)', autocomplete: 'nickname' }) as HTMLInputElement;
+    soloName.value = name;
     const solo = h(
       'button',
       { class: 'mode-btn solo', id: 'solo-btn' },
-      h('span', { class: 'mode-eyebrow' }, 'Turn based · 3 AI'),
+      h('span', { class: 'mode-eyebrow' }, 'No account · 3 AI'),
       h('b', {}, 'Single Player'),
       h('span', { class: 'mode-note' }, 'A proper table. One player acts at a time.'),
     );
-    const multi = h(
-      'button',
-      { class: 'mode-btn multi', id: 'multi-btn' },
-      h('span', { class: 'mode-eyebrow' }, 'One shared board'),
-      h('b', {}, 'Multiplayer'),
-      h('span', { class: 'mode-note' }, 'Everyone plays at once. No rooms or codes.'),
-    );
-    solo.addEventListener('click', () => this.join(input.value.trim() || 'Tycoon', 'solo'));
-    multi.addEventListener('click', () => this.join(input.value.trim() || 'Tycoon', 'multi'));
-    input.addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Enter') multi.click();
-    });
-    const form = h('div', { class: 'menu-form' }, input, h('div', { class: 'mode-grid' }, solo, multi));
+    solo.addEventListener('click', () => this.join(soloName.value.trim() || 'Tycoon', 'solo'));
+    const form = h('div', { class: 'menu-form' }, authCard, h('div', { class: 'solo-row' }, soloName, solo));
     form.append(
       h(
         'div',
@@ -523,11 +591,12 @@ export class UI {
     );
     if (pending.kind === 'buy') {
       box.append(
+        this.propertyCard(pending.tile),
         h(
           'div',
           { class: 'inline' },
           h('button', { class: 'btn btn-gold', onclick: () => this.send({ t: 'buy', tile: pending.tile, key: intentKey('buy') }) }, `Buy ${money(pending.amount)}`),
-          h('button', { class: 'btn btn-ghost', onclick: () => this.send({ t: 'decline', tile: pending.tile, key: intentKey('decline') }) }, 'Pass'),
+          h('button', { class: 'btn btn-ghost', onclick: () => this.send({ t: 'decline', tile: pending.tile, key: intentKey('decline') }) }, 'Decline'),
         ),
       );
     } else {
@@ -601,25 +670,32 @@ export class UI {
     const space = spaceAt(index);
     const tile = this.state?.tiles[index];
     const owner = tile?.ownerId ? this.state?.players[tile.ownerId] : null;
-    const mine = tile?.ownerId === this.deps.net.playerId;
     const body = h('div', {});
-    const chip = h('div', { class: 'band-chip', style: `background:${space.group ? PALETTE.groups[space.group] : PALETTE.ink}` });
-    body.append(
-      h(
-        'div',
-        { class: 'tile-hero' },
-        chip,
-        h(
-          'div',
-          { class: 'grow' },
-          h('div', { class: 'row-title', style: 'font-size:20px' }, GROUP_LABEL[space.group ?? 'corner']),
-        ),
-        space.price ? h('div', { class: 'chip gold' }, money(space.price)) : null,
-      ),
-    );
+    body.append(this.propertyCard(index));
+    const actions = this.propertyActions(index);
+    if (actions) body.append(actions);
+    if (tile?.building) {
+      body.append(h('p', { class: 'note' }, `${BUILDING_META[tile.building].blurb} Buildings cap at ${RULES.maxBuildings} city-wide; ${this.state?.buildingCount ?? 0} built.`));
+    }
+    if (tile?.lockedBy) body.append(h('p', { class: 'note bad' }, 'These deeds are locked while a lawsuit is pending.'));
+    this.openSheet('tile', space.name, owner ? `Owned by ${owner.name}${tile?.mortgaged ? ' · mortgaged' : ''}` : 'Available to buy', body);
+  }
 
+  /** One title-deed card, shared by the buy prompt, tile sheet and Properties tab. */
+  private propertyCard(index: number): HTMLElement {
+    const space = spaceAt(index);
+    const tile = this.state?.tiles[index];
+    const owner = tile?.ownerId ? this.state?.players[tile.ownerId] : null;
+    const bandColor = space.group ? PALETTE.groups[space.group] : PALETTE.ink;
+    const card = h('div', { class: 'deed-card glass-strong' });
+    card.append(h('div', { class: 'deed-band', style: `background:${bandColor}` }));
+    const body = h('div', { class: 'deed-body' });
+    body.append(
+      h('div', { class: 'deed-title' }, space.name),
+      h('div', { class: 'deed-sub' }, `${GROUP_LABEL[space.group ?? 'corner']}${owner ? ` · ${owner.name}` : ' · unowned'}${tile?.mortgaged ? ' · mortgaged' : ''}`),
+    );
     if (space.rents.length) {
-      const table = h('table', { class: 'rent-table' });
+      const table = h('table', { class: 'rent-table deed-rents' });
       const labels = space.type === 'railroad'
         ? ['1 railroad', '2 railroads', '3 railroads', '4 railroads']
         : space.type === 'property'
@@ -631,14 +707,14 @@ export class UI {
           table.append(h('tr', {}, h('td', {}, label), h('td', {}, money(space.rents[i]!))));
         });
       } else {
-        table.append(h('tr', {}, h('td', {}, 'Rent'), h('td', {}, '4x dice'), h('tr', {}, h('td', {}, 'With both utilities'), h('td', {}, '10x dice'))));
+        table.append(h('tr', {}, h('td', {}, 'Rent'), h('td', {}, '4x dice')));
+        table.append(h('tr', {}, h('td', {}, 'Both utilities'), h('td', {}, '10x dice')));
       }
       if (tile?.building) {
         table.append(h('tr', { class: 'highlight' }, h('td', {}, `${BUILDING_META[tile.building].name} rent`), h('td', {}, money(buildingRent(space, tile.building, this.state!.tiles)))));
       }
       body.append(table);
     }
-
     if (space.buildCost) {
       body.append(
         h('div', { class: 'stat-row' }, h('span', {}, 'Build cost'), h('b', {}, money(space.buildCost))),
@@ -647,7 +723,20 @@ export class UI {
       );
     }
     if (space.tax) body.append(h('div', { class: 'stat-row' }, h('span', {}, 'Tax'), h('b', {}, money(space.tax))));
+    body.append(
+      h('div', { class: 'deed-foot' },
+        h('span', { class: 'deed-kind' }, tile?.building ? BUILDING_META[tile.building].name : tile?.mortgaged ? 'Mortgaged' : 'Open lot'),
+        h('b', { class: 'deed-price' }, money(space.price)),
+      ),
+    );
+    card.append(body);
+    return card;
+  }
 
+  private propertyActions(index: number): HTMLElement | null {
+    const space = spaceAt(index);
+    const tile = this.state?.tiles[index];
+    const mine = tile?.ownerId === this.deps.net.playerId;
     const actions = h('div', { class: 'actions' });
     if (mine && tile) {
       if (!tile.building) {
@@ -665,7 +754,7 @@ export class UI {
       }
       actions.append(h('button', { class: 'btn btn-ghost', onclick: () => this.openMarket(index) }, 'Trade stock'));
     }
-    if (!owner && space.price) {
+    if (!tile?.ownerId && space.price) {
       const canAfford = (this.priv?.you.cash ?? 0) >= space.price;
       actions.append(
         h(
@@ -675,66 +764,57 @@ export class UI {
         ),
       );
     }
-    if (actions.children.length) body.append(actions);
-
-    if (tile?.building) {
-      const synergy = canBuild(index, this.state!.tiles, this.deps.net.playerId ?? '', this.state!.buildingCount);
-      body.append(h('p', { class: 'note' }, `${BUILDING_META[tile.building].blurb}. ${synergy.ok ? 'Full group held.' : synergy.reason}`));
-    }
-    if (owner && tile?.building && space.group) {
-      body.append(h('p', { class: 'note' }, `${tile.building === 'shop' || tile.building === 'restaurant' ? 'Matching types across the group add a synergy bonus. ' : ''}Buildings cap at ${RULES.maxBuildings} city-wide; ${this.state?.buildingCount ?? 0} built.`));
-    }
-    if (tile?.lockedBy) body.append(h('p', { class: 'note bad' }, 'These deeds are locked while a lawsuit is pending.'));
-
-    this.openSheet('tile', space.name, owner ? `Owned by ${owner.name}${tile?.mortgaged ? ' · mortgaged' : ''}` : 'Available to buy', body);
+    return actions.children.length ? actions : null;
   }
 
   private openBuild(index: number): void {
     const space = spaceAt(index);
     const tile = this.state?.tiles[index];
+    const mode = this.state?.mode ?? 'multi';
     const body = h('div', {});
-    body.append(h('p', { class: 'note' }, `One building per property. Replacing refunds half. City cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
-    for (const type of BUILDING_TYPES) {
-      const meta = BUILDING_META[type];
-      const cost = buildingCost(space, type);
-      const check = this.state ? canBuild(index, this.state.tiles, this.deps.net.playerId ?? '', this.state.buildingCount) : { ok: false as const, reason: '…' };
-      const affordable = (this.priv?.you.cash ?? 0) >= cost;
-      const row = h('div', { class: 'building-row' });
-      const img = h('img', { alt: meta.name }) as HTMLImageElement;
-      void this.deps.studio.thumb(this.buildingAsset(type), 'building').then((src) => {
-        img.src = src;
-      });
-      row.append(
-        img,
-        h(
+    const check = this.state ? canBuild(index, this.state.tiles, this.deps.net.playerId ?? '', this.state.buildingCount, mode) : { ok: false as const, reason: '…' };
+    body.append(h('p', { class: 'note' }, `One building per tile. Replacing refunds 50%. ${mode === 'solo' ? 'Solo needs the full colour group and uses houses and hotels.' : 'Multiplayer can build on any owned street.'} City cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
+    if (!check.ok) body.append(h('p', { class: 'note warn' }, check.reason));
+    for (const category of BUILDING_CATEGORIES) {
+      const types = buildingTypesForMode(mode).filter((type) => BUILDING_META[type].category === category.id);
+      if (!types.length) continue;
+      body.append(h('div', { class: 'group-label', style: 'margin-top:16px' }, `${category.icon} ${category.label}`));
+      const grid = h('div', { class: 'build-grid' });
+      for (const type of types) {
+        const meta = BUILDING_META[type];
+        const cost = buildingCost(space, type);
+        const refund = tile?.building ? Math.round(buildingCost(space, tile.building) * RULES.sellRefund) : 0;
+        const affordable = (this.priv?.you.cash ?? 0) + refund >= cost;
+        const income = this.state ? buildingRent(space, type, this.state.tiles) : 0;
+        const img = h('img', { alt: meta.name, loading: 'lazy' }) as HTMLImageElement;
+        void this.deps.studio.thumb(meta.model, 'building').then((src) => { img.src = src; });
+        const card = h(
           'div',
-          { class: 'grow' },
-          h('div', { class: 'row-title' }, meta.name),
-          h('div', { class: 'row-sub' }, `${meta.rentLabel} · ${meta.blurb}`),
-        ),
-        h('div', { class: 'market-price' }, money(cost)),
-        h(
-          'button',
-          {
-            class: 'btn btn-sm btn-primary',
-            disabled: !check.ok || !affordable || Boolean(tile?.building),
-            onclick: () => {
-              this.send({ t: 'build', tile: index, type, key: intentKey('build') });
-              this.closeSheet();
+          { class: 'build-card' },
+          img,
+          h('div', { class: 'build-name' }, meta.name),
+          h('p', { class: 'build-blurb' }, meta.blurb),
+          h('div', { class: 'build-stats' }, h('span', {}, `Cost ${money(cost)}`), h('span', {}, `Income ${money(income)}`)),
+          h(
+            'button',
+            {
+              class: 'btn btn-sm btn-primary',
+              disabled: !check.ok || !affordable,
+              onclick: () => {
+                this.send({ t: 'build', tile: index, type, key: intentKey('build') });
+                this.closeSheet();
+              },
             },
-          },
-          tile?.building ? 'Occupied' : affordable ? 'Build' : 'Too dear',
-        ),
-      );
-      body.append(row);
-      if (!check.ok) body.append(h('p', { class: 'note warn', style: 'margin:2px 0 10px 56px' }, check.reason));
+            tile?.building === type ? 'Built' : affordable ? (tile?.building ? 'Replace' : 'Build') : 'Too dear',
+          ),
+        );
+        grid.append(card);
+      }
+      body.append(grid);
     }
-    this.openSheet('build', `Build on ${space.name}`, `Build cost basis ${money(space.buildCost)}`, body);
+    this.openSheet('build', `Build on ${space.name}`, `Build cost basis ${money(space.buildCost)}`, body, { wide: true, tall: true });
   }
 
-  private buildingAsset(type: BuildingType): string {
-    return type;
-  }
 
   // ------------------------------------------------------------ token sheet
 
@@ -1089,15 +1169,13 @@ export class UI {
         const group = h('div', { class: 'group' });
         for (const space of visible.filter((s) => this.state!.tiles[s.index]!.ownerId === ownerId)) {
           const tile = this.state!.tiles[space.index]!;
-          const isMine = tile.ownerId === me;
-          const row = h('div', { class: 'row deed-row', role: 'button', tabindex: '0', onclick: () => this.openTile(space.index) });
-          row.append(
-            h('div', { class: 'band-chip', style: `background:${space.group ? PALETTE.groups[space.group] : PALETTE.ink}` }),
-            h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, space.name), h('div', { class: 'row-sub' }, `${tile.mortgaged ? 'Mortgaged' : tile.building ? BUILDING_META[tile.building].name : 'Open lot'} · ${money(tile.mortgaged ? mortgageValue(space) : space.price)}`)),
-            h('span', { class: 'chip' }, money(space.price)),
-            ...(isMine ? [h('button', { class: 'btn btn-sm btn-ghost', onclick: (e: Event) => { e.stopPropagation(); this.openTile(space.index); } }, 'Manage')] : []),
+          group.append(
+            h('div', { class: 'deed-wrap', 'data-tile': String(space.index) },
+              h('div', { class: 'deed-owner' }, h('span', { class: 'dot', style: `background:${this.state?.players[tile.ownerId!]?.color ?? PALETTE.ink}` }), `${this.state?.players[tile.ownerId!]?.name ?? 'Unknown'} · ${tile.mortgaged ? 'mortgaged' : tile.building ? BUILDING_META[tile.building].name : 'open lot'}`),
+              this.propertyCard(space.index),
+              this.propertyActions(space.index),
+            ),
           );
-          group.append(row);
         }
         content.append(group);
       }
@@ -1260,10 +1338,9 @@ export class UI {
       h(
         'p',
         { class: 'note' },
-        'Every chance below is rolled by the server. A failed job means jail, a property-sale roll and a reputation hit. Your own actions are recorded privately.',
+        'Every chance below is rolled by the server. A failed job means jail, a property-sale roll and a reputation hit. Successful jobs are private; only a jail publishes the record.',
       ),
     );
-    const bankChance = Math.round(bankTheftChance(this.priv?.you.reputation ?? 50) * 100);
     body.append(
       h(
         'div',
@@ -1271,19 +1348,17 @@ export class UI {
         h(
           'div',
           { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Rob the bank'), h('div', { class: 'row-sub' }, `${bankChance}% chance · $150–$600 · jail on failure`)),
-          h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.send({ t: 'theft', target: 'bank', key: intentKey('theft') }) }, 'Rob'),
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Rob the bank'), h('div', { class: 'row-sub' }, `${money(RULES.robberyMin)}–${money(RULES.robberyMax)} · 20% down to 5% · jail on failure`)),
+          h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.openRobbery() }, 'Plan heist'),
         ),
       ),
     );
     const players = Object.values(this.state?.players ?? {}).filter((p) => p.id !== this.deps.net.playerId && !p.bankrupt);
     const group = h('div', { class: 'group' });
     for (const p of players) {
-      const dossier = this.priv?.you.dossier[p.id];
       const row = h('div', { class: 'row' });
       row.append(
-        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, p.name), h('div', { class: 'row-sub' }, `${money(p.cash)} cash · ${dossier ? `dossier: reputation ${dossier.reputation}, evidence ${dossier.evidence}` : 'no dossier'}`)),
-        h('button', { class: 'btn btn-sm btn-ghost', disabled: (this.priv?.you.cash ?? 0) < RULES.detectiveFee, onclick: () => this.send({ t: 'hireDetective', target: p.id, key: intentKey('detective') }) }, `Detective ${money(RULES.detectiveFee)}`),
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, p.name), h('div', { class: 'row-sub' }, `${money(p.cash)} cash`)),
         h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.send({ t: 'theft', target: p.id, key: intentKey('theft') }) }, 'Rob'),
         h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.openMurderWarning(p.id) }, 'Murder'),
       );
@@ -1295,6 +1370,106 @@ export class UI {
       body.append(h('p', { class: 'note' }, `Your reputation: ${this.priv.you.reputation}/100. It is secret — only a detective can reveal it. Murder is never advisable, but it is possible.`));
     }
     this.openSheet('crime', 'Underworld', 'Reputation is private until someone investigates you', body, { tall: true });
+  }
+
+  private openRobbery(): void {
+    const body = h('div', {});
+    const slider = h('input', { type: 'range', min: String(RULES.robberyMin), max: String(RULES.robberyMax), step: '1000', value: String(RULES.robberyMin), 'aria-label': 'Heist amount' }) as HTMLInputElement;
+    const field = h('input', { class: 'field', type: 'number', min: String(RULES.robberyMin), max: String(RULES.robberyMax), step: '1000', value: String(RULES.robberyMin), 'aria-label': 'Heist amount in dollars' }) as HTMLInputElement;
+    const odds = h('b', { class: 'heist-odds' }, '20.0%');
+    const take = h('span', { class: 'heist-take' }, money(RULES.robberyMin));
+    const sync = (raw: number, from: 'slider' | 'field'): void => {
+      const clamped = Math.max(RULES.robberyMin, Math.min(RULES.robberyMax, Math.round(raw / 1000) * 1000));
+      if (from === 'slider') field.value = String(clamped);
+      else slider.value = String(clamped);
+      odds.textContent = `${(robberyChance(clamped) * 100).toFixed(1)}%`;
+      take.textContent = money(clamped);
+    };
+    slider.addEventListener('input', () => sync(Number(slider.value), 'slider'));
+    field.addEventListener('input', () => sync(Number(field.value) || RULES.robberyMin, 'field'));
+    body.append(
+      h('p', { class: 'note' }, `Choose the haul. Minimum ${money(RULES.robberyMin)} at 20%, maximum ${money(RULES.robberyMax)} at 5%; the odds fall smoothly in between and the server rolls exactly what you see.`),
+      h('div', { class: 'group' },
+        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Haul'), h('div', { class: 'row-sub' }, `${money(RULES.robberyMin)} – ${money(RULES.robberyMax)}`)), h('b', { class: 'heist-take' }, money(RULES.robberyMin))),
+        h('div', { class: 'row heist-slider' }, slider, field),
+        h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Success chance'), h('div', { class: 'row-sub' }, 'Live odds, exactly as rolled server-side')), odds),
+      ),
+      h('p', { class: 'note warn' }, 'Failure sends you to jail, costs reputation, and the jail roll can sell every deed and building you own.'),
+    );
+    body.append(
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn btn-danger', onclick: () => this.openRobberyWarning(Math.max(RULES.robberyMin, Math.min(RULES.robberyMax, Number(field.value) || RULES.robberyMin))) }, 'Review heist'),
+        h('button', { class: 'btn btn-ghost', onclick: () => this.closeSheet() }, 'Cancel'),
+      ),
+    );
+    sync(RULES.robberyMin, 'slider');
+    this.openSheet('robbery', 'Rob the bank', 'High risk, high reward', body);
+  }
+
+  private openRobberyWarning(amount: number): void {
+    const issue = robberyAmountIssues(amount);
+    const body = h('div', {});
+    if (issue) {
+      body.append(h('p', { class: 'note bad' }, issue));
+    } else {
+      const chance = robberyChance(amount);
+      body.append(
+        h('div', { class: 'warning-banner' }, h('b', {}, 'This is a serious crime.'), h('span', {}, `You are attempting to steal ${money(amount)}.`)),
+        h('div', { class: 'stat-row' }, h('span', {}, 'Success chance'), h('b', {}, `${(chance * 100).toFixed(1)}%`)),
+        h('div', { class: 'stat-row' }, h('span', {}, 'If it succeeds'), h('b', {}, `${money(amount)} stolen`)),
+        h('div', { class: 'stat-row' }, h('span', {}, 'If it fails'), h('b', {}, 'Jail · reputation loss · property-sale roll')),
+      );
+    }
+    body.append(
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn btn-danger', disabled: Boolean(issue), onclick: () => {
+          this.send({ t: 'robbery', amount, key: intentKey('robbery') });
+          this.closeSheet();
+        } }, 'Yes — attempt the robbery'),
+        h('button', { class: 'btn btn-ghost', onclick: () => this.closeSheet() }, 'Cancel'),
+      ),
+    );
+    this.openSheet('robbery-warning', 'Confirm the heist', 'The server will roll exactly these odds', body);
+  }
+
+  openDetective(): void {
+    const body = h('div', {});
+    const me = this.priv?.you;
+    body.append(
+      h('p', { class: 'note' }, `Hire a private detective for ${money(RULES.detectiveFee)}. A finding gives evidence for court; the target is never told.`),
+      h('div', { class: 'stat-row' }, h('span', {}, 'Cost'), h('b', {}, money(RULES.detectiveFee))),
+      h('div', { class: 'stat-row' }, h('span', {}, 'Chance of a usable finding'), h('b', {}, `${Math.round(RULES.detectiveChance * 100)}%`)),
+    );
+    const group = h('div', { class: 'group' });
+    const players = Object.values(this.state?.players ?? {}).filter((p) => p.id !== this.deps.net.playerId && !p.bankrupt);
+    if (!players.length) group.append(h('p', { class: 'note' }, 'No other players to investigate.'));
+    for (const p of players) {
+      const dossier = me?.dossier[p.id];
+      const row = h('div', { class: 'row' });
+      row.append(
+        h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, p.name), h('div', { class: 'row-sub' }, dossier ? `Evidence ${dossier.evidence} · ${dossier.acts.length} finding(s) · reputation ${dossier.reputation}/100` : 'No findings yet')),
+        h('button', { class: 'btn btn-sm btn-primary', disabled: (me?.cash ?? 0) < RULES.detectiveFee, onclick: () => { this.send({ t: 'hireDetective', target: p.id, key: intentKey('detective') }); this.closeSheet(); } }, `Hire ${money(RULES.detectiveFee)}`),
+      );
+      group.append(row);
+    }
+    body.append(h('div', { class: 'group-label', style: 'margin-top:16px' }, 'Targets'), group);
+    const found = Object.entries(me?.dossier ?? {});
+    body.append(h('div', { class: 'group-label', style: 'margin-top:16px' }, 'Your findings'));
+    const list = h('div', { class: 'group' });
+    if (!found.length) list.append(h('p', { class: 'note' }, 'No findings yet. Hire a detective above.'));
+    for (const [target, report] of found) {
+      list.append(
+        h('div', { class: 'row' },
+          h('div', { class: 'row-main' },
+            h('div', { class: 'row-title' }, this.state?.players[target]?.name ?? target),
+            h('div', { class: 'row-sub' }, `Evidence ${report.evidence} · reputation ${report.reputation}/100 · ${new Date(report.at).toLocaleString()}`),
+          ),
+          h('span', { class: 'chip' }, `${report.acts.length} notes`),
+        ),
+      );
+    }
+    body.append(list);
+    this.openSheet('detective', 'Detective', 'Private findings, usable as evidence in court', body, { tall: true });
   }
 
   private openMurderWarning(targetId: string): void {
@@ -1429,18 +1604,85 @@ export class UI {
   // -------------------------------------------------------------------- log
 
   openLog(): void {
-    const body = h('div', { class: 'log-list' });
-    this.logBody = body;
+    const body = h('div', {});
+    const tabs = h('div', { class: 'segmented log-tabs' });
+    const content = h('div', { class: 'log-list' });
+    this.logBody = content;
+    const tab = (label: string, key: typeof this.logTab): HTMLElement =>
+      h('button', { 'aria-pressed': String(this.logTab === key), onclick: () => { this.logTab = key; this.logPlayer = null; for (const b of tabs.querySelectorAll('button')) b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.log === key)); this.renderLog(); } }, label);
+    const main = tab('Main log', 'main'); main.dataset.log = 'main';
+    const players = tab('Player logs', 'players'); players.dataset.log = 'players';
+    const market = tab('Market feed', 'market'); market.dataset.log = 'market';
+    tabs.append(main, players, market);
+    body.append(tabs, content);
     this.renderLog();
-    this.openSheet('log', 'Event log', 'Server-appended, newest first · updates live', body, { tall: true });
+    this.openSheet('log', 'Logs', 'Server-filtered for you · updates live', body, { tall: true });
   }
 
   private renderLog(): void {
     if (!this.logBody || this.currentSheet !== 'log') return;
+    const root = this.logBody;
+    root.innerHTML = '';
+    if (this.logTab === 'market') {
+      const feed = [...(this.state?.marketFeed ?? [])].reverse();
+      root.append(h('p', { class: 'note' }, 'Live stock moves. Every player’s own trades also appear in their player log.'));
+      for (const move of feed.slice(0, 80)) {
+        const up = move.newPrice >= move.oldPrice;
+        root.append(
+          h('div', { class: 'log-item market-line' },
+            h('span', { class: 'log-time' }, new Date(move.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+            h('span', { class: 'grow' }, move.name),
+            h('span', { class: 'muted' }, `${money(move.oldPrice)} → ${money(move.newPrice)}`),
+            h('span', { class: up ? 'up' : 'down' }, `${up ? '▲' : '▼'} ${up ? '+' : ''}${move.percent.toFixed(1)}%`),
+          ),
+        );
+      }
+      if (!feed.length) root.append(h('p', { class: 'note' }, 'No price moves recorded yet.'));
+      return;
+    }
+    if (this.logTab === 'players') {
+      const players = Object.values(this.state?.players ?? {});
+      if (this.logPlayer) {
+        const player = this.state?.players[this.logPlayer];
+        const entries = this.logPlayer === this.deps.net.playerId ? (this.priv?.playerLog ?? []) : (this.state?.playerLogs[this.logPlayer] ?? []);
+        root.append(
+          h('div', { class: 'inline', style: 'justify-content:space-between;margin-bottom:10px' },
+            h('b', {}, 'Player log'),
+            h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { this.logPlayer = null; this.renderLog(); } }, '← All players'),
+          ),
+        );
+        const heading = root.firstElementChild?.querySelector('b');
+        if (heading) heading.textContent = `${player?.name ?? 'Player'} · ${entries.length} entries`;
+        for (const entry of [...entries].reverse().slice(0, 100)) {
+          root.append(
+            h('div', { class: 'log-item' },
+              h('span', { class: 'log-time' }, new Date(entry.at).toLocaleString()),
+              h('span', { class: `log-${entry.kind}` }, entry.text),
+            ),
+          );
+        }
+        if (!entries.length) root.append(h('p', { class: 'note' }, 'Nothing visible on this player’s record yet.'));
+        return;
+      }
+      root.append(h('p', { class: 'note' }, 'Select a player to read their server-filtered log. Private reputation and detective findings never appear here.'));
+      for (const player of players) {
+        const img = h('img', { alt: player.name }) as HTMLImageElement;
+        void this.deps.studio.thumb(player.tokenId, 'token').then((src) => { img.src = src; });
+        const owned = Object.values(this.state?.tiles ?? {}).filter((t) => t.ownerId === player.id).length;
+        root.append(
+          h('button', { class: 'player-log-row', onclick: () => { this.logPlayer = player.id; this.renderLog(); } },
+            img,
+            h('span', { class: 'dot', style: `background:${player.color}` }),
+            h('span', { class: 'grow' }, h('b', {}, player.name), h('span', { class: 'row-sub' }, `${owned} deeds · ${player.inJail ? 'jailed' : 'active'}`)),
+            h('span', { class: 'muted' }, 'Open →'),
+          ),
+        );
+      }
+      return;
+    }
     const entries = [...(this.state?.log ?? [])].reverse();
-    this.logBody.innerHTML = '';
     for (const entry of entries.slice(0, 60)) {
-      this.logBody.append(
+      root.append(
         h(
           'div',
           { class: 'log-item' },
@@ -1449,7 +1691,7 @@ export class UI {
         ),
       );
     }
-    if (!entries.length) this.logBody.append(h('p', { class: 'note' }, 'Nothing has happened yet. Roll the dice.'));
+    if (!entries.length) root.append(h('p', { class: 'note' }, 'Nothing has happened yet. Roll the dice.'));
   }
 
   openJailRecord(playerId: string): void {
@@ -1489,7 +1731,8 @@ export class UI {
     audioGroup.append(
       this.sliderRow('Master volume', s.master, (v) => update({ master: v }), () => audio.play('click')),
       this.sliderRow('Music volume', s.music, (v) => update({ music: v }), () => audio.play('click')),
-      this.sliderRow('Sound effects', s.sfx, (v) => update({ sfx: v }), () => audio.play('cash')),
+      this.sliderRow('Sound effects volume', s.sfx, (v) => update({ sfx: v }), () => audio.play('cash')),
+      this.toggleRow('Sound effects', s.sfxOn, (v) => { update({ sfxOn: v }); audio.setSfxOn(v); }),
       this.toggleRow('Music', s.musicOn, (v) => { update({ musicOn: v }); audio.setMusicOn(v); }),
     );
     body.append(audioGroup);
@@ -1684,7 +1927,7 @@ export class UI {
     const steps: Array<{ title: string; text: string; target?: string; action?: string }> = [
       { title: 'Welcome to Chromonopoly', text: 'This is a normal solo table. You and three bots each start with $1,500. Take your time — the tutorial will not time you out.', target: '#roll-btn' },
       { title: '1 · Roll the dice', text: 'Press the highlighted Roll button, Space, or click it. The camera frames the dice, then your piece moves around the board.', target: '#roll-btn', action: 'roll' },
-      { title: '2 · Land and decide', text: 'When you land on an unowned street, a centred Offer panel appears. Buy it or pass. Buy a whole colour group to unlock building.', target: '#dock' },
+      { title: '2 · Land and decide', text: 'When you land on an unowned street, a centred Offer panel appears. Buy it or pass. In solo, a full colour group unlocks building; multiplayer allows building on any owned street.', target: '#dock' },
       { title: '3 · Manage property', text: 'Open Properties to see your deeds. Open a deed to build, upgrade, mortgage, unmortgage or sell. Mortgaged deeds show a 3D MORTGAGED sign above the tile.', target: '[data-dock="Properties"]' },
       { title: '4 · Rent, jail and cards', text: 'Landing on another player rent opens a payment offer. Evading is a chance roll. Jail mortgages your deeds until you pay release or serve the sentence. Chance and Chest cards flip at the centre.', target: '.rail' },
       { title: '5 · Trade', text: 'In Properties → Trade, offer cash and properties. Both sides lock while the offer is open. The other side can accept, decline or counter; an accepted swap is atomic.', target: '[data-dock="Properties"]' },
@@ -1759,6 +2002,7 @@ export class UI {
     const me = this.deps.net.playerId;
     const actor = ev.playerId ? this.state?.players[ev.playerId] : null;
     const local = Boolean(ev.playerId && ev.playerId === me) || Boolean(ev.targetId && ev.targetId === me) || ev.kind === 'win';
+    if (ev.outcome && ev.playerId === me) this.showOutcome(ev.outcome);
     if (ev.chance && local) this.queueChance(ev.chance);
     switch (ev.kind) {
       case 'roll':
@@ -2080,8 +2324,8 @@ function heap(space: ReturnType<typeof spaceAt>): string {
 function helpRows(): HTMLElement[] {
   const rows: Array<[string, string]> = [
     ['Roll', 'Press Space, click ROLL. No turns — roll whenever the dice are ready.'],
-    ['Buy', 'Land on an unowned street and buy it, or pass. Own a full colour group to build.'],
-    ['Build', 'Seven building types, one per property. Matching types across a group add a bonus.'],
+    ['Buy', 'Land on an unowned street and buy it, or pass. Multiplayer lets you build on any owned street; solo needs the full colour group.'],
+    ['Build', '32 building types across seven categories. One structure per street; a matching full group adds synergy.'],
     ['Rent', 'Pay, or try to evade. Evading is risky: reputation and a penalty if caught.'],
     ['Mortgage', 'Half the price, no rent while mortgaged. Unmortgaging adds 10%.'],
     ['Loans', 'Borrow up to three times net worth. Interest is deducted every roll.'],

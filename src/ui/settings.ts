@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: Settings = {
   master: 0.8,
   music: 0.5,
   sfx: 0.8,
+  sfxOn: true,
   musicOn: true,
   cameraSpeed: 1,
   invertOrbit: false,

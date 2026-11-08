@@ -101,6 +101,15 @@ SHA-256 for every file are stored beside each `id` in
 | suburb-b | Townhouse B | [building-type-f.glb](https://github.com/shorepine/kenney/tree/main/3d/city-suburban/building-type-f.glb) | CC0-1.0 |
 | suburb-c | Townhouse C | [building-type-h.glb](https://github.com/shorepine/kenney/tree/main/3d/city-suburban/building-type-h.glb) | CC0-1.0 |
 | suburb-d | Townhouse D | [building-type-k.glb](https://github.com/shorepine/kenney/tree/main/3d/city-suburban/building-type-k.glb) | CC0-1.0 |
+| colormap.png | Kenney city colour map | [city-commercial/Textures/colormap.png](https://github.com/shorepine/kenney/blob/main/3d/city-commercial/Textures/colormap.png) | CC0-1.0 |
+| building-e | City Block E | [building-e.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-e.glb) | CC0-1.0 |
+| building-g | City Block G | [building-g.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-g.glb) | CC0-1.0 |
+| building-i | City Block I | [building-i.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-i.glb) | CC0-1.0 |
+| building-j | City Block J | [building-j.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-j.glb) | CC0-1.0 |
+| building-l | City Block L | [building-l.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-l.glb) | CC0-1.0 |
+| skyscraper-a | Skyscraper A | [building-skyscraper-a.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-skyscraper-a.glb) | CC0-1.0 |
+| type-c | Mid-rise C | [building-type-c.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-type-c.glb) | CC0-1.0 |
+| type-d | Mid-rise D | [building-type-d.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/building-type-d.glb) | CC0-1.0 |
 | city-far-a | Distant Block A | [low-detail-building-a.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/low-detail-building-a.glb) | CC0-1.0 |
 | city-far-b | Distant Block B | [low-detail-building-b.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/low-detail-building-b.glb) | CC0-1.0 |
 | city-far-c | Distant Block C | [low-detail-building-c.glb](https://github.com/shorepine/kenney/tree/main/3d/city-commercial/low-detail-building-c.glb) | CC0-1.0 |

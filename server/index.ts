@@ -1,15 +1,19 @@
-import { createServer } from 'node:http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import bcrypt from 'bcryptjs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { World, type TestSetup } from './world.ts';
-import { Store } from './db.ts';
+import { Store, type Account } from './db.ts';
 import type { GameEvent, GameMode, Intent, ServerMessage } from '../src/game/types.ts';
 
 // Hosts such as Render inject PORT; CHROMONOPOLY_PORT keeps local/test ports explicit.
 const PORT = Number(process.env.CHROMONOPOLY_PORT ?? process.env.PORT ?? 8787) || 8787;
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
+const BCRYPT_COST = 11;
+const LOGIN_WINDOW_MS = 5 * 60 * 1000;
+const LOGIN_MAX = 10;
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -39,6 +43,7 @@ interface Client {
 const clients = new Map<WebSocket, Client>();
 const events: GameEvent[] = [];
 const soloWorlds = new Map<string, { world: World; touched: number }>();
+const loginAttempts = new Map<string, number[]>();
 
 function clientsIn(world: World): Client[] {
   return [...clients.values()].filter((c) => c.world === world);
@@ -73,7 +78,10 @@ const saved = store.loadWorld();
 if (saved) {
   publicWorld.restore(saved);
   publicWorld.purgeBots();
-  console.log(`restored public world with ${publicWorld.players.size} real players, seq ${publicWorld.seq}`);
+  // A multiplayer seat must map to a surviving password account. This is the
+  // second line of defence after the one-time database purge.
+  publicWorld.purgeUnauthenticated(store.accountIds());
+  console.log(`restored public world with ${publicWorld.players.size} account players, seq ${publicWorld.seq}`);
 }
 
 const BOT_TOKENS = ['dog', 'taxi', 'penguin', 'chest', 'locomotive', 'panda'];
@@ -88,24 +96,146 @@ function send(ws: WebSocket, message: ServerMessage): void {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
 }
 
+function cors(req: IncomingMessage, res: ServerResponse): void {
+  res.setHeader('access-control-allow-origin', req.headers.origin ?? '*');
+  res.setHeader('vary', 'Origin');
+  res.setHeader('access-control-allow-headers', 'content-type, authorization');
+  res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+}
+
+function json(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+  res.end(JSON.stringify(body));
+}
+
+async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
+  let raw = '';
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > 10_000) throw new Error('Request too large');
+  }
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    throw new Error('Invalid JSON');
+  }
+}
+
+function bearer(req: IncomingMessage): string {
+  const value = String(req.headers.authorization ?? '');
+  return value.startsWith('Bearer ') ? value.slice(7) : '';
+}
+
+function publicAccount(account: Account): { id: string; username: string } {
+  return { id: account.id, username: account.username };
+}
+
+function validUsername(username: string): boolean {
+  return /^[A-Za-z0-9_]{3,16}$/.test(username);
+}
+
+function loginLimit(key: string): boolean {
+  const now = Date.now();
+  const recent = (loginAttempts.get(key) ?? []).filter((at) => now - at < LOGIN_WINDOW_MS);
+  if (recent.length >= LOGIN_MAX) {
+    loginAttempts.set(key, recent);
+    return false;
+  }
+  recent.push(now);
+  loginAttempts.set(key, recent);
+  return true;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+  cors(req, res);
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204).end();
+    return;
+  }
+
   if (url.pathname === '/api/health') {
-    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    res.end(JSON.stringify({
+    json(res, 200, {
       ok: true,
       players: publicWorld.players.size,
       seq: publicWorld.seq,
       soloTables: soloWorlds.size,
       uptime: process.uptime(),
-    }));
+      accounts: store.topAccounts(1000).length,
+    });
     return;
   }
+
+  if (url.pathname === '/api/auth/register' && req.method === 'POST') {
+    try {
+      const data = await body(req);
+      const username = String(data.username ?? '').trim();
+      const password = String(data.password ?? '');
+      if (!validUsername(username)) {
+        json(res, 400, { error: 'Username must be 3–16 letters, numbers or underscores.' });
+        return;
+      }
+      if (password.length < 6 || password.length > 128) {
+        json(res, 400, { error: 'Password must be at least 6 characters.' });
+        return;
+      }
+      const hash = await bcrypt.hash(password, BCRYPT_COST);
+      const account = store.createAccount(username, hash);
+      const token = store.createSession(account.id);
+      json(res, 201, { account: publicAccount(account), token });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not create the account.';
+      json(res, /UNIQUE/i.test(message) ? 409 : 400, {
+        error: /UNIQUE/i.test(message) ? 'That username is already taken.' : message,
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+    try {
+      const data = await body(req);
+      const username = String(data.username ?? '').trim();
+      const password = String(data.password ?? '');
+      const ip = String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? 'unknown').split(',')[0]!.trim();
+      if (!loginLimit(`${ip}:${username.toLowerCase()}`)) {
+        json(res, 429, { error: 'Too many login attempts. Wait a few minutes and try again.' });
+        return;
+      }
+      const account = store.findAuthAccount(username);
+      const valid = account ? await bcrypt.compare(password, account.password_hash) : false;
+      if (!account || !valid) {
+        json(res, 401, { error: 'Wrong username or password.' });
+        return;
+      }
+      json(res, 200, { account: publicAccount(account), token: store.createSession(account.id) });
+    } catch (error) {
+      json(res, 400, { error: error instanceof Error ? error.message : 'Login failed.' });
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/auth/session' && req.method === 'GET') {
+    const account = store.sessionAccount(bearer(req));
+    if (!account) {
+      json(res, 401, { error: 'Sign in again.' });
+      return;
+    }
+    json(res, 200, { account: publicAccount(account) });
+    return;
+  }
+
+  if (url.pathname === '/api/auth/logout' && req.method === 'POST') {
+    store.revokeSession(bearer(req));
+    json(res, 200, { ok: true });
+    return;
+  }
+
   if (url.pathname === '/api/leaderboard') {
-    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(store.topAccounts(10)));
+    json(res, 200, store.topAccounts(10));
     return;
   }
+
   if (url.pathname === '/api/test/reset') {
     const loopback = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
     if (process.env.CHROMONOPOLY_TEST !== '1' || !loopback || req.method !== 'POST') {
@@ -117,8 +247,7 @@ const server = createServer(async (req, res) => {
     soloWorlds.clear();
     events.length = 0;
     publicWorld = newWorld('multi');
-    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    res.end(JSON.stringify({ ok: true }));
+    json(res, 200, { ok: true });
     return;
   }
   if (url.pathname === '/api/test/scenario') {
@@ -130,16 +259,14 @@ const server = createServer(async (req, res) => {
     let raw = '';
     for await (const chunk of req) raw += chunk;
     try {
-      const body = JSON.parse(raw) as { session?: string; setup?: TestSetup; mode?: GameMode };
-      if (!body.session || !body.setup) throw new Error('session and setup are required');
-      const targetWorld = body.mode === 'solo' ? soloWorlds.get(body.session)?.world : publicWorld;
+      const parsed = JSON.parse(raw) as { session?: string; setup?: TestSetup; mode?: GameMode };
+      if (!parsed.session || !parsed.setup) throw new Error('session and setup are required');
+      const targetWorld = parsed.mode === 'solo' ? soloWorlds.get(parsed.session)?.world : publicWorld;
       if (!targetWorld) throw new Error('no world for that session');
-      const result = targetWorld.testSetup(body.session, body.setup);
-      res.writeHead(result.ok ? 200 : 400, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify(result));
+      const result = targetWorld.testSetup(parsed.session, parsed.setup);
+      json(res, result.ok ? 200 : 400, result);
     } catch (err) {
-      res.writeHead(400, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({ ok: false, reason: err instanceof Error ? err.message : 'bad request' }));
+      json(res, 400, { ok: false, reason: err instanceof Error ? err.message : 'bad request' });
     }
     return;
   }
@@ -175,7 +302,16 @@ wss.on('connection', (ws) => {
   let client: Client | null = null;
 
   ws.on('message', (raw) => {
-    let msg: { type?: string; intent?: Intent; name?: string; tokenId?: string; session?: string; mode?: GameMode };
+    let msg: {
+      type?: string;
+      intent?: Intent;
+      name?: string;
+      tokenId?: string;
+      session?: string;
+      mode?: GameMode;
+      authToken?: string;
+      color?: string;
+    };
     try {
       msg = JSON.parse(String(raw));
     } catch {
@@ -185,8 +321,14 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'hello') {
       const mode: GameMode = msg.mode === 'solo' ? 'solo' : 'multi';
-      const name = String(msg.name ?? '').trim() || 'Tycoon';
+      const account = mode === 'multi' ? store.sessionAccount(String(msg.authToken ?? '')) : null;
+      if (mode === 'multi' && !account) {
+        send(ws, { type: 'rejected', reason: 'Sign in to join multiplayer.' });
+        ws.close(4001, 'authentication required');
+        return;
+      }
       const tokenId = String(msg.tokenId ?? 'cat');
+      const color = typeof msg.color === 'string' ? msg.color : undefined;
       let world = publicWorld;
       let known: { world: World; touched: number } | undefined;
       if (mode === 'solo') {
@@ -198,7 +340,8 @@ wss.on('connection', (ws) => {
           world = newWorld('solo');
         }
       }
-      const { player, session } = world.join(name, tokenId, msg.session);
+      const name = account?.username ?? (String(msg.name ?? '').trim() || 'Tycoon');
+      const { player, session } = world.join(name, tokenId, msg.session, account?.id, color);
       if (mode === 'solo') {
         if (!known) fillSoloBots(world);
         const entry = soloWorlds.get(session) ?? { world, touched: Date.now() };
@@ -274,18 +417,6 @@ setInterval(() => {
   if (publicWorld.dirty) {
     publicWorld.dirty = false;
     store.saveWorld(publicWorld.snapshot());
-    for (const p of publicWorld.players.values()) {
-      store.upsertAccount({
-        id: p.id,
-        name: p.name,
-        token_id: p.tokenId,
-        session: p.session,
-        cash: p.cash,
-        position: p.position,
-        reputation: p.reputation,
-        updated_at: Date.now(),
-      });
-    }
   }
 }, 80);
 
@@ -301,4 +432,3 @@ function shutdown(): void {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-

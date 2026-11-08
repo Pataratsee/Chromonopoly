@@ -1,0 +1,5 @@
+music toggle proof 2026-11-08T19:58:46.087Z
+oscillators before toggle=20
+music off, oscillator delta over 5s=0 (expected 0)
+sfx buffers=0 (expected 0, untouched)
+page open and no reload during measurement

@@ -1,0 +1,19 @@
+{
+  "viewport": "1920x1080",
+  "city": {
+    "requested": 990,
+    "loaded": 990,
+    "failed": 0,
+    "buildings": 812,
+    "props": 178,
+    "visible": 560,
+    "ok": true
+  },
+  "samples": 1,
+  "averageMs": 1083.3,
+  "fps": 0.9,
+  "p95Ms": 1083.3,
+  "longFrames": 1,
+  "over33ms": 1,
+  "errors": []
+}

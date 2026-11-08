@@ -1,0 +1,25 @@
+login round7_mw86itaa
+bank_limit_line $10,000
+toast {"count":1,"texts":["Loan limit is 10,000. You asked for 999,999."],"layerZ":"600","layerTop":"16px","sheetZ":"60"}
+shot r7-bank-error-on-top
+robbery_min 20.0%
+shot r7-robbery-min
+robbery_max 5.0%
+shot r7-robbery-max
+warning "Confirm the heist\n\nThe server will roll exactly these odds\n\nThis is a serious crime.\nYou are attempting to steal $100,000.\nSuccess chance\n5.0%\nIf it succeeds\n$100,000 stolen\nIf it fails\nJail · reputation loss · property-sale roll\nYes — attempt the robbery\nCancel"
+shot r7-robbery-warning
+detective_text "Detective\n\nPrivate findings, usable as evidence in court\n\nHire a private detective for $10,000. A finding gives evidence for court; the target is never told.\n\nCost\n$10,000\nChance of a usable finding\n60%\nTARGETS\n\nNo other players to investigate.\n\nYOUR"
+shot r7-detective
+shot r7-log-main
+player_rows 1
+shot r7-log-players
+player_detail "Logs\n\nServer-filtered for you · updates live\n\nMain log\nPlayer logs\nMarket feed\nround7_mw86itaa · 28 entries\n← All players\n11/8/2026, 1:53:49 PM\nround7_mw86itaa buys Illinois Ave for 240.\n11/8/2026, 1:53:39 PM\nround7_mw86itaa rolls 3 + 6.\n11/8/2026, 1:53:25 PM\nround7_mw86itaa rolls 3 + 1.\n11/8/2026, "
+shot r7-log-player-detail
+market_text "Logs\n\nServer-filtered for you · updates live\n\nMain log\nPlayer logs\nMarket feed\n\nLive stock moves. Every player’s own trades also appear in their player log.\n\n01:57 PM\nBoardwalk\n$882 → $873\n▼ -1.0%\n01:57 PM\nPark Place\n$694 → $690\n▼ -0.5%\n01:57 PM\nShort Line RR\n$430 → $438\n▲ +1.9%\n01:57 PM\nPennsylvani"
+shot r7-log-market
+owned_tile null
+shot r7-sky-sunrise
+shot r7-sky-noon
+shot r7-sky-sunset
+shot r7-sky-night
+errors []

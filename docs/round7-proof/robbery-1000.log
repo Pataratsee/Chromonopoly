@@ -1,0 +1,3 @@
+robberyChance(50000)=0.2 -> 220/1000 = 22%
+robberyChance(100000)=0.04999999999999999 -> 52/1000 = 5.2%
+expected 200 and 50 successes; tolerance ±3 sigma

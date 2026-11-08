@@ -1,0 +1,12 @@
+login round7_mw86itaa
+chance_overlay_on_load 0
+chance_overlay_after 0
+log_has_jail_record false
+log_mentions_robbery false
+log_after_robbery "Logs\n\nServer-filtered for you · updates live\n\nMain log\nPlayer logs\nMarket feed"
+shot r7-log-after-robbery
+properties_tile 11
+properties_card "St. Charles Place\nPink · round7_mw86itaa · mortgaged\nBase rent\t$10\n1 house\t$50\n2 houses\t$150\n3 houses\t$450\n4 houses\t$625\nHotel\t$750\nBuild cost\n$100\nMortgage value\n$70\nUnmortgage cost\n$77\nMORTGAGED\n$140"
+tile_sheet_card "St. Charles Place\nPink · round7_mw86itaa · mortgaged\nBase rent\t$10\n1 house\t$50\n2 houses\t$150\n3 houses\t$450\n4 houses\t$625\nHotel\t$750\nBuild cost\n$100\nMortgage value\n$70\nUnmortgage cost\n$77\nMORTGAGED\n$140"
+cards_identical true
+errors []

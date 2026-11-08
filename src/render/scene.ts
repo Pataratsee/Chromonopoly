@@ -1,12 +1,7 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CAMERA, QUALITY, RENDER, type QualityKey } from '../config';
 import { createWebGLRenderer } from './webgl';
-import type { SkyState } from '../board/sky';
 
 export class CameraRig {
   yaw: number = CAMERA.yaw;
@@ -34,8 +29,10 @@ export class CameraRig {
     this.manualUntil = performance.now() + CAMERA.followResumeMs;
   }
 
-  zoom(delta: number): void {
+  /** Zoom toward the point under the cursor, not toward the screen centre. */
+  zoom(delta: number, toward?: THREE.Vector3): void {
     this.wantRadius = THREE.MathUtils.clamp(this.wantRadius * (1 + delta * 0.0012), CAMERA.minRadius, CAMERA.maxRadius);
+    if (toward) this.wantTarget.lerp(new THREE.Vector3(toward.x, 0.1, toward.z), 0.34);
     this.manualUntil = performance.now() + CAMERA.followResumeMs;
   }
 
@@ -49,7 +46,9 @@ export class CameraRig {
   }
 
   focus(point: THREE.Vector3, radius?: number): void {
-    this.wantTarget.set(point.x, point.y + CAMERA.framingY, point.z);
+    // Keep the subject in the middle: the old framingY deliberately pushed a
+    // followed piece above centre, which is the complaint this fixes.
+    this.wantTarget.set(point.x, point.y + 0.12, point.z);
     if (radius) this.wantRadius = THREE.MathUtils.clamp(radius, CAMERA.minRadius, CAMERA.maxRadius);
     this.manualUntil = performance.now() + CAMERA.followResumeMs * 2;
   }
@@ -58,7 +57,7 @@ export class CameraRig {
   focusDice(): void {
     this.wantTarget.set(0, 0.25, 0.62);
     this.wantPitch = 0.76;
-    this.wantRadius = 11.2;
+    this.wantRadius = 8.4;
     this.manualUntil = performance.now() + 3800;
   }
 
@@ -72,7 +71,7 @@ export class CameraRig {
 
   /** Explicitly follow a moving token without the manual-camera cooldown. */
   track(point: THREE.Vector3): void {
-    this.wantTarget.set(point.x, point.y + CAMERA.framingY, point.z);
+    this.wantTarget.set(point.x, point.y + 0.12, point.z);
   }
 
   /** Resolves after the camera has really reached its requested framing. */
@@ -95,7 +94,10 @@ export class CameraRig {
   /** Camera follows a point unless the player just orbited manually. */
   follow(point: THREE.Vector3, dt: number): void {
     if (performance.now() < this.manualUntil) return;
-    this.wantTarget.lerp(new THREE.Vector3(point.x, point.y + CAMERA.framingY, point.z), Math.min(1, dt * CAMERA.followLerp));
+    this.wantTarget.lerp(new THREE.Vector3(point.x, point.y + 0.12, point.z), Math.min(1, dt * CAMERA.followLerp));
+    // Follow is a close three-quarter shot: damp toward the tight radius so a
+    // piece is large and centred, never a dot in the middle of the board.
+    this.wantRadius = THREE.MathUtils.damp(this.wantRadius, CAMERA.followRadius, CAMERA.followLerp, dt);
   }
 
   update(dt: number): void {
@@ -129,11 +131,7 @@ export class Stage {
   readonly camera: THREE.PerspectiveCamera;
   readonly rig: CameraRig;
   private readonly renderer: THREE.WebGLRenderer;
-  private composer: EffectComposer | null = null;
-  private bloom: UnrealBloomPass | null = null;
   private quality: QualityKey;
-  private citySun: THREE.DirectionalLight | null = null;
-  private cityFill: THREE.HemisphereLight | null = null;
   private width = 1;
   private height = 1;
 
@@ -166,7 +164,6 @@ export class Stage {
     pmrem.dispose();
 
     this.addLights();
-    this.buildComposer();
   }
 
   private addLights(): void {
@@ -200,51 +197,9 @@ export class Stage {
     front.position.set(-3, 6, 16);
     this.scene.add(front);
 
-    // The city lives on layer 2 with its own independent light rig. The board
-    // stays on layer 0, so sunset and night never dim the playing surface.
-    this.citySun = new THREE.DirectionalLight(0xffe0b0, 1.7);
-    this.citySun.layers.set(2);
-    this.scene.add(this.citySun);
-    this.cityFill = new THREE.HemisphereLight(0xbfe2ff, 0x38402e, 0.56);
-    this.cityFill.layers.set(2);
-    this.scene.add(this.cityFill);
-  }
-
-  setSky(sky: SkyState): void {
-    if (this.citySun) {
-      const angle = (sky.time - 0.25) * Math.PI * 2;
-      this.citySun.position.set(Math.cos(angle) * 45, Math.max(4, Math.sin(angle) * 45), -20);
-      this.citySun.color.copy(sky.sunColor);
-      this.citySun.intensity = 0.12 + sky.daylight * 1.58;
-    }
-    if (this.cityFill) {
-      this.cityFill.color.copy(sky.top);
-      this.cityFill.groundColor.set('#3c4932');
-      this.cityFill.intensity = 0.28 + sky.daylight * 0.48;
-    }
-    if (this.scene.fog instanceof THREE.FogExp2) {
-      this.scene.fog.color.copy(sky.fog);
-      this.scene.fog.density = 0.0027 + sky.night * 0.0012;
-    }
-  }
-
-  private buildComposer(): void {
-    const samples = QUALITY[this.quality].msaa;
-    const target = new THREE.WebGLRenderTarget(this.width, this.height, {
-      type: THREE.HalfFloatType,
-      samples,
-    });
-    this.composer = new EffectComposer(this.renderer, target);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(
-      new THREE.Vector2(this.width, this.height),
-      RENDER.bloomStrength,
-      RENDER.bloomRadius,
-      RENDER.bloomThreshold,
-    );
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(new OutputPass());
-    this.composer.setSize(this.width, this.height);
+    // City time-of-day variation lives in CityLayer's materials. A second
+    // "city-only" light rig cannot work: real-time lights are scene-global,
+    // so changing them also relit the board (the Round 7 U11 failure).
   }
 
   setQuality(quality: QualityKey): void {
@@ -252,9 +207,6 @@ export class Stage {
     const q = QUALITY[quality];
     this.renderer.shadowMap.enabled = q.shadows;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q.pixelRatio, RENDER.maxPixelRatio));
-    this.composer?.dispose();
-    this.composer = null;
-    this.buildComposer();
     this.resize(this.width, this.height);
   }
 
@@ -266,10 +218,6 @@ export class Stage {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    if (this.composer) {
-      this.composer.setSize(width, height);
-      this.bloom?.setSize(width, height);
-    }
   }
 
   /** Distance the camera must sit at to frame the board with the 6% margin. */
@@ -278,8 +226,9 @@ export class Stage {
   }
 
   render(): void {
-    if (QUALITY[this.quality].bloom && this.composer) this.composer.render();
-    else this.renderer.render(this.scene, this.camera);
+    // No composer and no bloom pass: the board is rendered directly so no
+    // post-processing halo can touch tiles, frame or pieces at any hour.
+    this.renderer.render(this.scene, this.camera);
   }
 
   get domElement(): HTMLCanvasElement {
@@ -296,7 +245,6 @@ export class Stage {
   }
 
   dispose(): void {
-    this.composer?.dispose();
     this.renderer.dispose();
   }
 }

@@ -1,0 +1,38 @@
+npm notice run chromonopoly@3.0.0 test
+npm notice run node scripts/check-no-handmade-models.js && vitest run
+NO-HANDMADE-MODELS CHECK PASSED — 30 source files scanned, 72 licensed token models, 32 licensed building models, 0 primitive objects outside src/board and src/ui.
+
+ RUN  v3.2.7 /home/christian/Desktop/LittleProjects/Chromonopoly 3.0
+
+ ✓ tests/chanceWheel.test.ts (3 tests) 14ms
+ ✓ tests/cityPlan.test.ts (4 tests) 12ms
+ ✓ tests/rules.test.ts (25 tests) 14ms
+ ✓ tests/r7-robbery-sim.test.ts (1 test) 3ms
+ ✓ tests/positions.test.ts (4 tests) 22ms
+ ✓ tests/world.test.ts (28 tests) 27ms
+ ✓ tests/fit.test.ts (161 tests) 93ms
+
+ Test Files  7 passed (7)
+      Tests  226 passed (226)
+   Start at  14:59:05
+   Duration  470ms (transform 386ms, setup 0ms, collect 768ms, tests 185ms, environment 1ms, prepare 410ms)
+
+TEST_EXIT=0
+npm notice run chromonopoly@3.0.0 build
+npm notice run node scripts/check-no-handmade-models.js && tsc --noEmit && vite build && node scripts/build-server.mjs
+NO-HANDMADE-MODELS CHECK PASSED — 30 source files scanned, 72 licensed token models, 32 licensed building models, 0 primitive objects outside src/board and src/ui.
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 45 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.92 kB │ gzip:   0.45 kB
+dist/assets/index-Cb496aqK.css     45.83 kB │ gzip:  10.52 kB
+dist/assets/index-CUSJt87s.js   1,084.73 kB │ gzip: 313.98 kB
+✓ built in 1.50s
+
+  dist-server/index.js  264.5kb
+
+⚡ Done in 11ms
+server bundled to dist-server/index.js
+BUILD_EXIT=0

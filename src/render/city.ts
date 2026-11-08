@@ -13,10 +13,25 @@ import {
 } from '../board/cityPlan';
 import { loadModel } from './models';
 
-const BUILDING_IDS = ['city-a', 'city-b', 'city-c', 'city-d', 'city-e', 'city-f', 'office', 'shop', 'apartments', 'restaurant'];
-const OUTER_IDS = ['city-b', 'city-d', 'city-f', 'office', 'apartments'];
-const TALL_IDS = ['city-g', 'city-h', 'city-i', 'hotel', 'landmark'];
-const SKYLINE_IDS = ['city-g', 'city-h', 'city-i', 'hotel', 'landmark'];
+// All 32 city models, each used at its own proportions. Height comes from
+// choosing a different model, never from scaling one model taller.
+const BUILDING_IDS = [
+  'city-a', 'city-b', 'city-c', 'city-d', 'city-e', 'city-f', 'city-g', 'city-h', 'city-i',
+  'suburb-a', 'suburb-b', 'suburb-c', 'suburb-d', 'city-far-a', 'city-far-b', 'city-far-c', 'city-far-d',
+  'house', 'apartments', 'shop', 'restaurant', 'office', 'hotel', 'landmark',
+  'building-e', 'building-g', 'building-i', 'building-j', 'building-l', 'skyscraper-a', 'type-c', 'type-d',
+];
+const OUTER_IDS = ['city-b', 'city-d', 'city-f', 'city-far-b', 'suburb-a', 'suburb-c', 'house', 'suburb-d', 'city-e', 'city-far-d'];
+const SKYLINE_IDS = ['city-g', 'city-h', 'city-i', 'skyscraper-a', 'type-c', 'type-d', 'building-i', 'building-j', 'building-l', 'hotel', 'landmark'];
+const ROOF_COLORS = ['#B4503F', '#4E6E7A', '#8A6A45', '#5C7A55', '#7A5A7E', '#C08A3E'];
+
+function seeded(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
 const CARS = ['sedan', 'taxi', 'van', 'police', 'delivery', 'luxurysuv'];
 const WALKERS = ['character-a', 'character-b', 'character-c', 'character-d', 'character-e', 'character-f', 'character-g', 'character-h', 'dog', 'cat', 'panda', 'fox'];
 
@@ -185,14 +200,81 @@ export class CityLayer {
     });
   }
 
+  /**
+   * Roof colour, wall tint and rooftop clutter: varied but deterministic.
+   * Only loaded models may become 3D objects in this file, so rooftop props
+   * are small manifest models, never primitive geometry.
+   */
+  private decorate(model: THREE.Group, seed: number, detailed: boolean): void {
+    const rng = seeded(seed * 2654435761);
+    if (detailed) {
+      model.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        const source = Array.isArray(node.material) ? node.material : [node.material];
+        const tinted = source.map((material) => {
+          if (!(material instanceof THREE.MeshStandardMaterial)) return material;
+          const clone = material.clone();
+          clone.color.offsetHSL((rng() - 0.5) * 0.02, (rng() - 0.5) * 0.1, (rng() - 0.5) * 0.12);
+          return clone;
+        });
+        node.material = Array.isArray(node.material) ? tinted : tinted[0]!;
+      });
+    }
+    // Tint the highest mesh as the roof (whole model when the kit is one mesh).
+    let topMesh: THREE.Mesh | null = null;
+    let topY = -Infinity;
+    model.traverse((node) => {
+      if (!(node instanceof THREE.Mesh)) return;
+      const box = new THREE.Box3().setFromObject(node);
+      if (box.max.y > topY) {
+        topY = box.max.y;
+        topMesh = node;
+      }
+    });
+    if (topMesh) {
+      const mesh = topMesh as THREE.Mesh;
+      const source = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const roofColor = new THREE.Color(ROOF_COLORS[Math.floor(rng() * ROOF_COLORS.length)]!);
+      const tinted = source.map((material) => {
+        const clone = material.clone();
+        if ('color' in clone) (clone as THREE.MeshStandardMaterial).color.lerp(roofColor, 0.55);
+        return clone;
+      });
+      mesh.material = Array.isArray(mesh.material) ? tinted : tinted[0]!;
+    }
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    if (!Number.isFinite(size.x) || size.x <= 0 || size.y <= 0) return;
+    const props = ['barrel', 'crate', 'satellite', 'tree-small'];
+    const pick = props[Math.floor(rng() * props.length)]!;
+    const propSize = Math.min(size.x, size.z) * (pick === 'tree-small' ? 0.28 : 0.16);
+    if (propSize < 0.18) return;
+    void loadModel(pick, propSize)
+      .then((prop) => {
+        prop.position.set(
+          (rng() - 0.5) * size.x * 0.45,
+          box.max.y,
+          (rng() - 0.5) * size.z * 0.45,
+        );
+        prop.rotation.y = rng() * Math.PI * 2;
+        model.add(prop);
+        this.setLayer(prop);
+      })
+      .catch(() => {
+        // A missing rooftop prop must not break the building itself.
+      });
+  }
+
   private placeBuilding(
     id: string,
     x: number,
     z: number,
     size: number,
     rotY: number,
-    heightScale: number,
+    variant: number,
     withPads: boolean,
+    seed: number,
   ): void {
     const holder = new THREE.Group();
     holder.position.set(x, -0.228, z);
@@ -200,62 +282,52 @@ export class CityLayer {
     this.group.add(holder);
     this.buildingGroups.push(holder);
     if (withPads) {
-      const pad = new THREE.Mesh(new THREE.PlaneGeometry(size * 1.15, size * 1.15), this.padMaterial);
+      const pad = new THREE.Mesh(new THREE.PlaneGeometry(size * 1.1, size * 1.1), this.padMaterial);
       pad.rotation.x = -Math.PI / 2;
       pad.position.y = 0.005;
       pad.receiveShadow = true;
       holder.add(pad);
       this.setLayer(pad);
     }
+    // Uniform scale only: loadModel already normalises the model's largest
+    // dimension to `size`. Different heights come from different models.
     this.requestModel(id, size, holder, 'building', (model) => {
-      model.scale.y *= heightScale;
-      if (TALL_IDS.includes(id)) {
-        model.scale.x *= 1.7;
-        model.scale.z *= 1.7;
-      }
-      // The back wall is one continuous range: widen the thin low-detail
-      // blocks until neighbouring towers overlap.
-      if (!withPads) {
-        model.scale.x *= 2.2;
-        model.scale.z *= 2.2;
-      }
+      this.decorate(model, seed + Math.round(variant * 100), withPads);
     });
   }
 
   private populateBuildings(): void {
     for (const slot of BUILDING_SLOTS) {
-      const id =
-        slot.index % 5 === 0
-          ? TALL_IDS[slot.index % TALL_IDS.length]!
-          : slot.outer
-            ? OUTER_IDS[slot.index % OUTER_IDS.length]!
-            : BUILDING_IDS[slot.index % BUILDING_IDS.length]!;
-      this.placeBuilding(id, slot.x, slot.z, slot.size, slot.rotY, slot.height, true);
+      const pool = slot.outer ? [...OUTER_IDS, ...BUILDING_IDS] : BUILDING_IDS;
+      const id = pool[(slot.index * 7 + (slot.outer ? 3 : 0)) % pool.length]!;
+      this.placeBuilding(id, slot.x, slot.z, slot.size, slot.rotY, slot.height, true, slot.index);
     }
   }
 
   private populateSkyline(): void {
-    // Three overlapping ranks make a continuous wall. Keep the towers low
-    // enough that their tops fit above the horizon when the camera is tilted
-    // down to its minimum pitch; otherwise the wall is permanently off-screen.
+    // Three overlapping ranks make a continuous wall. Uniform size per rank:
+    // height variety comes from the model mix, never from a vertical stretch.
     const rows = [
-      { radius: 66, count: 96, size: 7, height: 0.7, ids: SKYLINE_IDS },
-      { radius: 82, count: 84, size: 10, height: 0.85, ids: SKYLINE_IDS },
-      { radius: 98, count: 72, size: 13, height: 1.0, ids: SKYLINE_IDS },
+      { radius: 66, count: 96, size: 7, ids: SKYLINE_IDS },
+      { radius: 82, count: 84, size: 10, ids: SKYLINE_IDS },
+      { radius: 98, count: 72, size: 13, ids: SKYLINE_IDS },
     ];
+    let seed = 9000;
     for (const row of rows) {
       for (let i = 0; i < row.count; i += 1) {
         const a = (i / row.count) * Math.PI * 2 + 0.03;
         const x = Math.cos(a) * row.radius;
         const z = Math.sin(a) * row.radius;
+        seed += 1;
         this.placeBuilding(
-          row.ids[i % row.ids.length]!,
+          row.ids[(i * 3 + row.radius) % row.ids.length]!,
           x,
           z,
-          row.size + (i % 5) * 0.55,
+          row.size,
           Math.atan2(x, z),
-          row.height + (i % 7) * 0.02,
+          1 + (i % 4) * 0.1,
           false,
+          seed,
         );
       }
     }

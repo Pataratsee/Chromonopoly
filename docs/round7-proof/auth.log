@@ -1,0 +1,11 @@
+username round7_mw86itaa
+register 201 {"account":{"id":"28f78bdd-b3f7-46bb-b112-e588a54e751e","username":"round7_mw86itaa"},"token":"[REDACTED]"}
+token_length 43
+duplicate_case_insensitive 409 {"error":"That username is already taken."}
+wrong_password 401 {"error":"Wrong username or password."}
+login_second_client 200 {"account":{"id":"28f78bdd-b3f7-46bb-b112-e588a54e751e","username":"round7_mw86itaa"},"token":"[REDACTED]"}
+same_account_id true
+second_client_session 200 {"account":{"id":"28f78bdd-b3f7-46bb-b112-e588a54e751e","username":"round7_mw86itaa"}}
+no_token_session 401 {"error":"Sign in again."}
+leaks_password_field false
+health {"ok":true,"players":0,"seq":15899,"soloTables":0,"uptime":17.962163531,"accounts":1}

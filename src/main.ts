@@ -37,6 +37,7 @@ interface TurnLogEntry {
 declare global {
   interface Window {
     __tileScreen?: (index: number) => { x: number; y: number };
+    __tilePoint?: (index: number) => { x: number; y: number; z: number };
     __turnLog?: TurnLogEntry[];
     __flowState?: TurnState;
     __stage?: Stage;
@@ -50,6 +51,10 @@ const boot = document.getElementById('boot') as HTMLElement;
 async function start(): Promise<void> {
   const settings = loadSettings();
   applySettings(settings);
+  // Apply the saved switches before the first gesture unlocks the bus.
+  audio.setVolumes(settings.master, settings.music, settings.sfx);
+  audio.setSfxOn(settings.sfxOn);
+  audio.setMusicOn(settings.musicOn);
 
   const manifest = await loadManifest();
   const assets = manifest.assets as ModelAsset[];
@@ -88,6 +93,7 @@ async function start(): Promise<void> {
       stage.setQuality(next.quality);
       stage.rig.speed = next.cameraSpeed;
       audio.setVolumes(next.master, next.music, next.sfx);
+      audio.setSfxOn(next.sfxOn);
       audio.setMusicOn(next.musicOn);
       audio.duck(false);
       sky.setRunning(next.skyRunning);
@@ -204,7 +210,7 @@ async function start(): Promise<void> {
       const target = changed ?? state?.players[local]?.position ?? moveTile ?? from;
       const piece = tokens.positionOf(local) ?? board.tilePoint(from);
       setFlowState('CAMERA_ZOOM_IN', `tile ${target}`);
-      stage.rig.focus(new THREE.Vector3(piece.x, 0.2, piece.z), CAMERA.minRadius + 4);
+      stage.rig.focus(new THREE.Vector3(piece.x, 0.2, piece.z), CAMERA.followRadius);
       await stage.rig.whenSettled(1700);
       if (run !== turnRun) return;
 
@@ -348,7 +354,7 @@ async function start(): Promise<void> {
   const ndc = new THREE.Vector2();
   let hover: number | null = null;
 
-  const worldFromPointer = (e: PointerEvent): THREE.Vector3 => {
+  const worldFromPointer = (e: { clientX: number; clientY: number }): THREE.Vector3 => {
     ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
     return stage.worldPoint(ndc);
   };
@@ -411,7 +417,8 @@ async function start(): Promise<void> {
     'wheel',
     (e) => {
       e.preventDefault();
-      stage.rig.zoom(e.deltaY);
+      // Zoom toward the tile under the cursor, not the screen centre.
+      stage.rig.zoom(e.deltaY, worldFromPointer(e));
     },
     { passive: false },
   );
@@ -444,7 +451,7 @@ async function start(): Promise<void> {
     const p = state.players[activeId];
     if (!p) return;
     const t = p.inJail ? board.tilePoint(10) : board.tilePoint(p.position);
-    stage.rig.focus(new THREE.Vector3(t.x * 0.55, 0.2, t.z * 0.55), CAMERA.minRadius + 9);
+    stage.rig.focus(new THREE.Vector3(t.x * 0.55, 0.2, t.z * 0.55), CAMERA.followRadius);
   });
 
   window.addEventListener('chromonopoly:dice', (e) => {
@@ -480,7 +487,6 @@ async function start(): Promise<void> {
     last = now;
     stage.rig.update(dt);
     const skyState = sky.update(dt);
-    stage.setSky(skyState);
     city?.setSky(skyState);
     city?.update(dt, now / 1000);
     dice.update(dt, now);
@@ -516,6 +522,10 @@ async function start(): Promise<void> {
       stage.camera.updateMatrixWorld();
       const p = board.tilePoint(index).clone().project(stage.camera);
       return { x: ((p.x + 1) / 2) * window.innerWidth, y: ((-p.y + 1) / 2) * window.innerHeight };
+    };
+    window.__tilePoint = (index: number) => {
+      const p = board.tilePoint(index);
+      return { x: p.x, y: p.y, z: p.z };
     };
   }
 

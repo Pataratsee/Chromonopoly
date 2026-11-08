@@ -1,0 +1,20 @@
+{
+  "viewport": "1280x800",
+  "visibility": "visible",
+  "city": {
+    "requested": 990,
+    "loaded": 990,
+    "failed": 0,
+    "buildings": 812,
+    "props": 178,
+    "visible": 560,
+    "ok": true
+  },
+  "samples": 174,
+  "averageMs": 17.16,
+  "fps": 58.3,
+  "p95Ms": 26.7,
+  "longFrames": 45,
+  "over33ms": 3,
+  "errors": []
+}

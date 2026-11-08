@@ -35,15 +35,17 @@ export type GroupKey = keyof typeof PALETTE.groups;
 
 export const CAMERA = {
   fov: 46,
-  near: 0.1,
+  near: 0.06,
   far: 400,
   yaw: Math.PI / 4,
-  pitch: 40 * (Math.PI / 180),
+  pitch: 46 * (Math.PI / 180),
   /** Default framing keeps all four corners above the bottom dock. */
   radius: 22.5,
+  /** Tight follow framing: the acting piece is large and centred. */
+  followRadius: 8.8,
   framingY: -2.2,
-  minRadius: 14.5,
-  maxRadius: 42,
+  minRadius: 7.2,
+  maxRadius: 40,
   minPitch: 6 * (Math.PI / 180),
   maxPitch: 65 * (Math.PI / 180),
   damping: 0.9,

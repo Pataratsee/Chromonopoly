@@ -1,20 +1,25 @@
 import { DatabaseSync } from 'node:sqlite';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import type { WorldSnapshot } from './world';
 
 const DATA_DIR = path.resolve(import.meta.dirname, '..', 'data');
 const DB_PATH = process.env.CHROMONOPOLY_DB ?? path.join(DATA_DIR, 'chromonopoly.db');
+const SESSION_DAYS = 30;
 
 export interface Account {
   id: string;
-  name: string;
-  token_id: string;
-  session: string;
-  cash: number;
-  position: number;
-  reputation: number;
-  updated_at: number;
+  username: string;
+  created_at: number;
+}
+
+export interface AuthAccount extends Account {
+  password_hash: string;
+}
+
+function tokenHash(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 export class Store {
@@ -26,20 +31,43 @@ export class Store {
     this.db = new DatabaseSync(file);
     this.db.exec(`
       PRAGMA journal_mode = WAL;
-      CREATE TABLE IF NOT EXISTS accounts (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        token_id TEXT NOT NULL,
-        session TEXT NOT NULL UNIQUE,
-        cash INTEGER NOT NULL,
-        position INTEGER NOT NULL,
-        reputation INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
       CREATE TABLE IF NOT EXISTS world (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         snapshot TEXT NOT NULL,
         updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+
+    // One-time Round 7 migration: remove every guest/test account and the old
+    // world that contained them. New password accounts are untouched from the
+    // second boot onward.
+    const migrated = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('round7-auth-purge');
+    if (!migrated) {
+      this.db.exec(`
+        DROP TABLE IF EXISTS accounts;
+        DELETE FROM world;
+        INSERT INTO meta (key, value) VALUES ('round7-auth-purge', '1')
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+      `);
+    }
+
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS auth_accounts (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL,
+        username_lower TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS auth_sessions (
+        token_hash TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL
       );
     `);
   }
@@ -67,22 +95,67 @@ export class Store {
     }
   }
 
-  upsertAccount(a: Account): void {
+  createAccount(username: string, passwordHash: string): Account {
+    const account: Account = { id: randomUUID(), username, created_at: Date.now() };
     this.db
+      .prepare('INSERT INTO auth_accounts (id, username, username_lower, password_hash, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(account.id, username, username.toLowerCase(), passwordHash, account.created_at);
+    return account;
+  }
+
+  findAuthAccount(username: string): AuthAccount | null {
+    const row = this.db
+      .prepare('SELECT id, username, password_hash, created_at FROM auth_accounts WHERE username_lower = ?')
+      .get(username.toLowerCase()) as AuthAccount | undefined;
+    return row ?? null;
+  }
+
+  accountById(id: string): Account | null {
+    const row = this.db
+      .prepare('SELECT id, username, created_at FROM auth_accounts WHERE id = ?')
+      .get(id) as Account | undefined;
+    return row ?? null;
+  }
+
+  createSession(accountId: string): string {
+    const token = randomBytes(32).toString('base64url');
+    const now = Date.now();
+    this.db
+      .prepare('INSERT INTO auth_sessions (token_hash, account_id, created_at, last_seen) VALUES (?, ?, ?, ?)')
+      .run(tokenHash(token), accountId, now, now);
+    this.db
+      .prepare('DELETE FROM auth_sessions WHERE created_at < ?')
+      .run(now - SESSION_DAYS * 24 * 60 * 60 * 1000);
+    return token;
+  }
+
+  sessionAccount(token: string): Account | null {
+    if (!token) return null;
+    const row = this.db
       .prepare(
-        `INSERT INTO accounts (id, name, token_id, session, cash, position, reputation, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           name = excluded.name, token_id = excluded.token_id, session = excluded.session,
-           cash = excluded.cash, position = excluded.position,
-           reputation = excluded.reputation, updated_at = excluded.updated_at`,
+        `SELECT a.id, a.username, a.created_at
+         FROM auth_sessions s JOIN auth_accounts a ON a.id = s.account_id
+         WHERE s.token_hash = ?`,
       )
-      .run(a.id, a.name, a.token_id, a.session, a.cash, a.position, a.reputation, a.updated_at);
+      .get(tokenHash(token)) as Account | undefined;
+    if (!row) return null;
+    this.db.prepare('UPDATE auth_sessions SET last_seen = ? WHERE token_hash = ?').run(Date.now(), tokenHash(token));
+    return row;
+  }
+
+  revokeSession(token: string): void {
+    if (!token) return;
+    this.db.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash(token));
+  }
+
+  accountIds(): Set<string> {
+    const rows = this.db.prepare('SELECT id FROM auth_accounts').all() as Array<{ id: string }>;
+    return new Set(rows.map((row) => row.id));
   }
 
   topAccounts(limit = 10): Account[] {
     return this.db
-      .prepare('SELECT * FROM accounts ORDER BY cash DESC LIMIT ?')
+      .prepare('SELECT id, username, created_at FROM auth_accounts ORDER BY created_at ASC LIMIT ?')
       .all(limit) as unknown as Account[];
   }
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MODEL, MOTION } from '../config';
+import { BUILDING_META } from '../game/buildings';
 import type { BuildingType, PublicState } from '../game/types';
 import { loadModel } from './models';
 import { tilePose } from '../board/layout';
@@ -54,10 +55,11 @@ export class BuildingLayer {
 
   private async populate(visual: BuildingVisual): Promise<void> {
     try {
-      const model = await loadModel(visual.type, MODEL.buildingMaxDimension);
+      const model = await loadModel(BUILDING_META[visual.type].model, MODEL.buildingMaxDimension);
       if (this.visuals.get(visual.tile) !== visual) return;
       visual.group.add(model);
-    } catch {
+    } catch (error) {
+      console.error('[building] model failed', visual.type, error);
       this.root.remove(visual.group);
       this.visuals.delete(visual.tile);
     }

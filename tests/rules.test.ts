@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SPACES, spaceAt } from '../src/game/board';
+import { BUILDING_META, BUILDING_TYPES } from '../src/game/buildings';
 import {
   RULES,
-  bankTheftChance,
   buildingCost,
   buildingRent,
+  canBuild,
   clampPrice,
   dividendSplit,
   emptyTile,
@@ -21,8 +22,8 @@ import {
   nextPrice,
   playerTheftChance,
   rentFor,
+  robberyChance,
   suitChance,
-  theftAmount,
   unmortgageCost,
 } from '../src/game/rules';
 import type { PlayerPrivate, TileState } from '../src/game/types';
@@ -93,39 +94,53 @@ describe('rent', () => {
     const t = tiles([[1, { ownerId: 'a', building: 'house' }]]);
     expect(rentFor(1, t, 7)).toBe(10);
     t[1]!.building = 'apartments';
-    expect(rentFor(1, t, 7)).toBe(6);
+    expect(rentFor(1, t, 7)).toBe(4);
     t[1]!.building = 'office';
-    expect(rentFor(1, t, 7)).toBe(7);
+    expect(rentFor(1, t, 7)).toBe(8);
     t[1]!.building = 'hotel';
     expect(rentFor(1, t, 7)).toBe(250);
     t[1]!.building = 'landmark';
-    expect(rentFor(1, t, 7)).toBe(313);
+    expect(rentFor(1, t, 7)).toBe(26);
   });
 
   it('adds the shop and restaurant synergy only across the full group', () => {
-    const base = tiles([[1, { ownerId: 'a', building: 'shop' }]]);
-    expect(buildingRent(spaceAt(1), 'shop', base)).toBe(4);
+    const base = tiles([[1, { ownerId: 'a', building: 'corner_shop' }]]);
+    expect(buildingRent(spaceAt(1), 'corner_shop', base)).toBe(4);
     const syn = tiles([
-      [1, { ownerId: 'a', building: 'shop' }],
-      [3, { ownerId: 'a', building: 'shop' }],
+      [1, { ownerId: 'a', building: 'corner_shop' }],
+      [3, { ownerId: 'a', building: 'corner_shop' }],
     ]);
-    expect(hasTypeSynergy(1, 'shop', syn)).toBe(true);
-    expect(buildingRent(spaceAt(1), 'shop', syn)).toBe(4);
+    expect(hasTypeSynergy(1, 'corner_shop', syn)).toBe(true);
+    expect(buildingRent(spaceAt(1), 'corner_shop', syn)).toBe(4);
     const restaurant = tiles([
       [1, { ownerId: 'a', building: 'restaurant' }],
       [3, { ownerId: 'a', building: 'restaurant' }],
     ]);
-    expect(buildingRent(spaceAt(1), 'restaurant', restaurant)).toBe(Math.round(2 * 2.5 * 1.15));
+    expect(buildingRent(spaceAt(1), 'restaurant', restaurant)).toBe(Math.round(2 * 3 * 1.1));
   });
 
   it('charges build cost multiples exactly', () => {
     expect(buildingCost(spaceAt(1), 'house')).toBe(50);
-    expect(buildingCost(spaceAt(1), 'apartments')).toBe(100);
-    expect(buildingCost(spaceAt(1), 'shop')).toBe(75);
-    expect(buildingCost(spaceAt(1), 'restaurant')).toBe(100);
-    expect(buildingCost(spaceAt(1), 'office')).toBe(125);
+    expect(buildingCost(spaceAt(1), 'apartments')).toBe(90);
+    expect(buildingCost(spaceAt(1), 'corner_shop')).toBe(70);
+    expect(buildingCost(spaceAt(1), 'restaurant')).toBe(110);
+    expect(buildingCost(spaceAt(1), 'office')).toBe(150);
     expect(buildingCost(spaceAt(1), 'hotel')).toBe(250);
-    expect(buildingCost(spaceAt(1), 'landmark')).toBe(400);
+    expect(buildingCost(spaceAt(1), 'landmark')).toBe(450);
+  });
+
+  it('ships 32 unique building types and models', () => {
+    expect(BUILDING_TYPES).toHaveLength(32);
+    const models = BUILDING_TYPES.map((type) => BUILDING_META[type].model);
+    expect(new Set(models).size).toBe(BUILDING_TYPES.length);
+  });
+
+  it('lets multiplayer build any owned street but keeps solo group rules', () => {
+    const one = tiles([[1, { ownerId: 'a' }]]);
+    expect(canBuild(1, one, 'a', 0, 'multi', 'corner_shop').ok).toBe(true);
+    expect(canBuild(1, one, 'a', 0, 'solo', 'house').ok).toBe(false);
+    const group = tiles([[1, { ownerId: 'a' }], [3, { ownerId: 'a' }]]);
+    expect(canBuild(1, group, 'a', 0, 'solo', 'house').ok).toBe(true);
   });
 });
 
@@ -143,9 +158,11 @@ describe('mortgage and loans', () => {
     expect(loanInterest(1)).toBe(1);
   });
 
-  it('caps loans at three times net worth', () => {
-    expect(loanCap(1000)).toBe(3000);
-    expect(loanCap(1499)).toBe(4450);
+  it('floors the loan cap at $10,000 and then follows net worth', () => {
+    expect(loanCap(0)).toBe(10_000);
+    expect(loanCap(1000)).toBe(10_000);
+    expect(loanCap(10_000)).toBe(30_000);
+    expect(loanCap(14_999)).toBe(44_950);
   });
 
   it('counts cash, deeds, buildings and shares in net worth', () => {
@@ -194,16 +211,19 @@ describe('stock market', () => {
 });
 
 describe('crime and justice', () => {
-  it('sets theft odds from the brief', () => {
-    expect(bankTheftChance(50)).toBe(0.45);
-    expect(bankTheftChance(0)).toBeCloseTo(0.7, 5);
-    expect(bankTheftChance(100)).toBe(0.45);
-    expect(playerTheftChance()).toBe(0.55);
-    for (let i = 0; i < 100; i += 1) {
-      const amount = theftAmount(() => i / 100);
-      expect(amount).toBeGreaterThanOrEqual(150);
-      expect(amount).toBeLessThanOrEqual(600);
+  it('sets robbery odds from 20% at $50k down to 5% at $100k', () => {
+    expect(robberyChance(50_000)).toBeCloseTo(0.2, 6);
+    expect(robberyChance(100_000)).toBeCloseTo(0.05, 6);
+    expect(robberyChance(75_000)).toBeCloseTo(0.125, 6);
+    let previous = robberyChance(50_000);
+    for (let amount = 51_000; amount <= 100_000; amount += 1000) {
+      const next = robberyChance(amount);
+      expect(next).toBeLessThan(previous);
+      previous = next;
     }
+    expect(robberyChance(10_000)).toBeCloseTo(0.2, 6);
+    expect(robberyChance(200_000)).toBeCloseTo(0.05, 6);
+    expect(playerTheftChance()).toBe(0.55);
   });
 
   it('reduces evasion odds by 15% per building', () => {
@@ -232,7 +252,7 @@ describe('board consistency', () => {
   it('counts buildings for the 60 plot cap', () => {
     const t = tiles([
       [1, { ownerId: 'a', building: 'house' }],
-      [3, { ownerId: 'a', building: 'shop' }],
+      [3, { ownerId: 'a', building: 'corner_shop' }],
     ]);
     expect(groupBuildingCount(t)).toBe(2);
   });

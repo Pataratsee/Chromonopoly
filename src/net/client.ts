@@ -8,7 +8,18 @@ type StatusHandler = (status: 'connecting' | 'online' | 'offline', reason?: stri
 const SESSION_KEY = 'chromonopoly.session';
 const NAME_KEY = 'chromonopoly.name';
 const TOKEN_KEY = 'chromonopoly.token';
+const AUTH_KEY = 'chromonopoly.auth';
 const sessionKey = (mode: GameMode): string => `${SESSION_KEY}.${mode}`;
+
+/** The bearer token for the signed-in password account. */
+export function authToken(): string {
+  return localStorage.getItem(AUTH_KEY) ?? '';
+}
+
+export function setAuthToken(token: string): void {
+  if (token) localStorage.setItem(AUTH_KEY, token);
+  else localStorage.removeItem(AUTH_KEY);
+}
 
 export class NetClient {
   private ws: WebSocket | null = null;
@@ -42,6 +53,7 @@ export class NetClient {
           tokenId: storedToken,
           mode,
           session: localStorage.getItem(sessionKey(mode)) ?? localStorage.getItem(SESSION_KEY) ?? undefined,
+          authToken: mode === 'multi' ? authToken() : undefined,
         }),
       );
       for (const intent of this.queue.splice(0)) ws.send(JSON.stringify({ type: 'intent', intent }));

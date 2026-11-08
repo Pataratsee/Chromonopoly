@@ -5,7 +5,6 @@ import {
   CARDS,
   RULES,
   applyReputation,
-  bankTheftChance,
   buildingCost,
   canBuild,
   clampPrice,
@@ -23,8 +22,9 @@ import {
   ownsGroup,
   playerTheftChance,
   rentFor,
+  robberyAmountIssues,
+  robberyChance,
   suitChance,
-  theftAmount,
   unmortgageCost,
 } from '../src/game/rules';
 import type {
@@ -34,6 +34,7 @@ import type {
   GameMode,
   Intent,
   LogEntry,
+  MarketFeedEntry,
   Pending,
   PlayerPrivate,
   PlayerPublic,
@@ -76,6 +77,8 @@ export interface WorldSnapshot {
   activePlayerId?: string | null;
   turnNumber?: number;
   trades?: TradeOffer[];
+  marketFeed?: MarketFeedEntry[];
+  marketSeq?: number;
 }
 
 export interface WorldOptions {
@@ -113,6 +116,8 @@ export class World {
   tiles: Record<number, TileState> = {};
   prices: Record<number, number> = {};
   log: LogEntry[] = [];
+  marketFeed: MarketFeedEntry[] = [];
+  marketSeq = 0;
   suits = new Map<string, Suit>();
   trades = new Map<string, TradeOffer>();
   seq = 0;
@@ -149,22 +154,35 @@ export class World {
 
   // ---------------------------------------------------------------- players
 
-  join(name: string, tokenId: string, session?: string): { player: ServerPlayer; session: string } {
-    if (session) {
-      for (const p of this.players.values()) {
-        if (p.session === session) {
-          p.lastSeen = this.now();
-          if (tokenId && p.tokenId !== tokenId) p.tokenId = tokenId;
-          return { player: p, session };
-        }
-      }
+  join(
+    name: string,
+    tokenId: string,
+    session?: string,
+    accountId?: string,
+    requestedColor?: string,
+  ): { player: ServerPlayer; session: string } {
+    // A password account owns exactly one persistent seat. A second computer
+    // with the same account arrives without the old session and still gets it.
+    const existing = accountId
+      ? this.players.get(accountId)
+      : session
+        ? [...this.players.values()].find((p) => p.session === session)
+        : undefined;
+    if (existing) {
+      existing.lastSeen = this.now();
+      if (accountId) existing.name = name.slice(0, 16) || existing.name;
+      if (tokenId) existing.tokenId = tokenId;
+      if (requestedColor && TOKEN_COLORS.includes(requestedColor)) existing.color = requestedColor;
+      return { player: existing, session: existing.session };
     }
-    const id = uid('p');
+    const id = accountId ?? uid('p');
     const player: ServerPlayer = {
       id,
-      name: name.slice(0, 24) || 'Tycoon',
+      name: accountId ? name.slice(0, 16) : name.slice(0, 24) || 'Tycoon',
       tokenId: tokenId || 'cat',
-      color: TOKEN_COLORS[this.players.size % TOKEN_COLORS.length]!,
+      color: requestedColor && TOKEN_COLORS.includes(requestedColor)
+        ? requestedColor
+        : TOKEN_COLORS[this.players.size % TOKEN_COLORS.length]!,
       cash: 1500,
       position: 0,
       inJail: false,
@@ -256,6 +274,13 @@ export class World {
       tiles: this.tiles,
       prices: this.prices,
       log: this.log.slice(-60),
+      playerLogs: Object.fromEntries(
+        [...this.players.values()].map((p) => [
+          p.id,
+          this.log.filter((entry) => entry.text.includes(p.name)).slice(-80),
+        ]),
+      ),
+      marketFeed: this.marketFeed.slice(-40),
       buildingCount: this.buildingCount,
       gameOver: this.gameOver,
     };
@@ -293,6 +318,13 @@ export class World {
       .filter((t) => t.fromId === playerId || t.toId === playerId)
       .slice(-24);
     const net = netWorth(privatePlayer, this.tiles, this.prices);
+    const ownActs: LogEntry[] = p.acts.map((act, index) => ({
+      id: -1 - index,
+      at: act.at,
+      text: act.text,
+      kind: 'crime',
+    }));
+    const ownPublic = this.log.filter((entry) => entry.text.includes(p.name));
     return {
       you: privatePlayer,
       offers,
@@ -301,6 +333,7 @@ export class World {
       pending: p.pending,
       netWorth: net,
       loanCap: loanCap(net),
+      playerLog: [...ownActs, ...ownPublic].sort((a, b) => a.at - b.at).slice(-100),
     };
   }
 
@@ -363,6 +396,8 @@ export class World {
         return this.tradeStock(p, intent.tile, intent.qty);
       case 'theft':
         return this.theft(p, intent.target);
+      case 'robbery':
+        return this.robbery(p, intent.amount);
       case 'murder':
         return this.murder(p, intent.target);
       case 'hireDetective':
@@ -377,6 +412,10 @@ export class World {
         return this.payJail(p);
       case 'selectToken':
         p.tokenId = intent.tokenId.slice(0, 24);
+        return { ok: true };
+      case 'selectColor':
+        if (!TOKEN_COLORS.includes(intent.color)) return { ok: false, reason: 'Pick one of the board colours.' };
+        p.color = intent.color;
         return { ok: true };
       case 'tradeOffer':
         return this.offerTrade(p, intent.targetId, intent.giveCash, intent.giveTiles, intent.wantCash, intent.wantTiles);
@@ -656,7 +695,8 @@ export class World {
         { key: 'none', label: 'None sold', percent: 35 },
       ],
     };
-    this.logLine(`${p.name} is jailed for ${reason}. Sale outcome: ${soldLabel}.`, 'crime');
+    const fullRecord = p.acts.map((act) => act.text).join(' ') || 'no prior record';
+    this.logLine(`${p.name} is jailed for ${reason}. Public record: ${fullRecord} Sale outcome: ${soldLabel}.`, 'crime');
     this.emit({ kind: 'jail', playerId: p.id, text: `${reason} · ${soldLabel}`, chance });
     this.seq += 1;
   }
@@ -830,18 +870,24 @@ export class World {
   // ------------------------------------------------------------------ build
 
   private build(p: ServerPlayer, tile: number, type: BuildingType): { ok: boolean; reason?: string } {
-    const check = canBuild(tile, this.tiles, p.id, this.buildingCount);
+    const check = canBuild(tile, this.tiles, p.id, this.buildingCount, this.mode, type);
     if (!check.ok) return check;
     const space = spaceAt(tile);
     const state = this.tiles[tile]!;
-    if (state.building) return { ok: false, reason: 'Sell the current building first.' };
     if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
     const cost = buildingCost(space, type);
-    if (p.cash < cost) return { ok: false, reason: `You need ${cost} to build a ${BUILDING_META[type].name}.` };
+    const refund = state.building ? Math.round(buildingCost(space, state.building) * RULES.sellRefund) : 0;
+    if (p.cash + refund < cost) {
+      return { ok: false, reason: `You need ${cost} to build a ${BUILDING_META[type].name}.` };
+    }
+    if (state.building) {
+      p.cash += refund;
+      this.buildingCount = Math.max(0, this.buildingCount - 1);
+    }
     p.cash -= cost;
     state.building = type;
     this.buildingCount += 1;
-    this.logLine(`${p.name} builds a ${BUILDING_META[type].name} on ${space.name}.`, 'build');
+    this.logLine(`${p.name} builds a ${BUILDING_META[type].name} on ${space.name}${refund ? ` (replaced, ${refund} refunded)` : ''}.`, 'build');
     this.emit({ kind: 'build', playerId: p.id, tile });
     this.seq += 1;
     return { ok: true };
@@ -1100,6 +1146,25 @@ export class World {
     }
   }
 
+  /** Drops any multiplayer seat that is not backed by a real account. */
+  purgeUnauthenticated(accountIds: Set<string>): void {
+    if (this.mode !== 'multi') return;
+    for (const p of [...this.players.values()]) {
+      if (accountIds.has(p.id)) continue;
+      this.cancelTradesFor(p.id);
+      for (const t of Object.values(this.tiles)) {
+        if (t.ownerId !== p.id) continue;
+        if (t.building) this.buildingCount = Math.max(0, this.buildingCount - 1);
+        t.ownerId = null;
+        t.building = null;
+        t.mortgaged = false;
+        t.shares = {};
+        t.lockedBy = null;
+      }
+      this.players.delete(p.id);
+    }
+  }
+
   /** Removes any legacy bot seats and returns their deeds to the bank. */
   purgeBots(): void {
     for (const p of [...this.players.values()]) {
@@ -1127,7 +1192,12 @@ export class World {
     const privatePlayer = this.privateState(p.id).you;
     const cap = loanCap(netWorth(privatePlayer, this.tiles, this.prices));
     if (amount < 200) return { ok: false, reason: 'Minimum loan is $200.' };
-    if (p.loan + amount > cap) return { ok: false, reason: `Your loan limit is ${cap}.` };
+    if (p.loan + amount > cap) {
+      return {
+        ok: false,
+        reason: `Loan limit is ${cap.toLocaleString('en-US')}. You asked for ${(p.loan + amount).toLocaleString('en-US')}.`,
+      };
+    }
     p.loan += amount;
     p.cash += amount;
     this.logLine(`${p.name} borrows ${amount} from the bank.`, 'money');
@@ -1189,7 +1259,10 @@ export class World {
     }
     const fund = fundamental(tile, this.tiles);
     const impact = Math.max(-0.04, Math.min(0.04, qty / 2500));
-    this.prices[tile] = clampPrice(this.prices[tile]! * (1 + impact), fund);
+    const before = this.prices[tile]!;
+    const after = clampPrice(before * (1 + impact), fund);
+    this.prices[tile] = after;
+    this.recordPrice(tile, before, after);
     this.emit({ kind: 'stock', playerId: p.id, tile, amount: qty });
     this.seq += 1;
     return { ok: true };
@@ -1199,35 +1272,11 @@ export class World {
 
   private theft(p: ServerPlayer, target: string): { ok: boolean; reason?: string } {
     if (this.now() - p.lastTheftAt < 4000) return { ok: false, reason: 'The heat is still on — wait a moment.' };
-    p.lastTheftAt = this.now();
-    p.reputation = applyReputation(p.reputation, -RULES.theftAttemptRep);
-    if (target === 'bank') {
-      const percent = bankTheftChance(p.reputation) * 100;
-      const rollPercent = (this.rollTest() ?? this.rng()) * 100;
-      const success = rollPercent < percent;
-      const chance: ChanceRoll = {
-        label: 'Bank heist',
-        percent: Math.round(percent),
-        success,
-        rollPercent,
-        result: success ? 'Score' : 'Caught',
-      };
-      if (success) {
-        const amount = theftAmount(this.rng);
-        p.cash += amount;
-        this.recordAct(p, `Robbed the bank for ${amount}.`);
-        this.logLine(`${p.name} robs the bank for ${amount}.`, 'crime');
-        this.emit({ kind: 'theft', playerId: p.id, amount, text: 'bank success', chance });
-      } else {
-        p.reputation = applyReputation(p.reputation, -RULES.theftRepLoss);
-        this.recordAct(p, 'Failed bank heist and was jailed.');
-        this.emit({ kind: 'theft', playerId: p.id, amount: 0, text: 'bank fail', chance });
-        this.sendToJail(p, 'a failed bank heist');
-      }
-      return { ok: true };
-    }
     const victim = this.players.get(target);
     if (!victim || victim.bankrupt) return { ok: false, reason: 'That player is not on the board.' };
+    p.lastTheftAt = this.now();
+    const repBefore = p.reputation;
+    p.reputation = applyReputation(p.reputation, -RULES.theftAttemptRep);
     const percent = playerTheftChance() * 100;
     const rollPercent = (this.rollTest() ?? this.rng()) * 100;
     const success = rollPercent < percent;
@@ -1244,15 +1293,106 @@ export class World {
       p.cash += amount;
       p.reputation = applyReputation(p.reputation, -Math.round(amount / 100));
       this.recordAct(p, `Stole ${amount} from ${victim.name}.`);
-      this.logLine(`${p.name} steals ${amount} from ${victim.name}.`, 'crime');
-      this.emit({ kind: 'theft', playerId: p.id, amount, text: 'player success', chance });
-      this.emit({ kind: 'cash', playerId: victim.id, amount: -amount });
+      // Successful underworld actions never reach the public log.
+      this.emit({
+        kind: 'theft',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id, victim.id],
+        amount,
+        text: 'player success',
+        chance,
+        outcome: {
+          success: true,
+          kind: 'theft',
+          amount,
+          targetName: victim.name,
+          reputationDelta: p.reputation - repBefore,
+          detail: `You lifted ${amount} from ${victim.name}.`,
+        },
+      });
+      this.emit({ kind: 'cash', playerId: victim.id, amount: -amount, audience: [victim.id] });
     } else {
       p.reputation = applyReputation(p.reputation, -RULES.theftRepLoss);
       this.recordAct(p, `Failed robbery of ${victim.name} and was jailed.`);
-      this.logLine(`${p.name} fails to rob ${victim.name} and is jailed.`, 'crime');
-      this.emit({ kind: 'theft', playerId: p.id, amount: 0, text: 'attempted', chance });
+      this.emit({
+        kind: 'theft',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id],
+        amount: 0,
+        text: 'attempted',
+        chance,
+        outcome: {
+          success: false,
+          kind: 'theft',
+          amount: 0,
+          targetName: victim.name,
+          reputationDelta: p.reputation - repBefore,
+          detail: `The robbery of ${victim.name} failed. You are going to jail.`,
+        },
+      });
       this.sendToJail(p, 'a failed robbery');
+    }
+    this.seq += 1;
+    return { ok: true };
+  }
+
+  private robbery(p: ServerPlayer, amount: number): { ok: boolean; reason?: string } {
+    const chosen = Math.round(amount);
+    const issue = robberyAmountIssues(chosen);
+    if (issue) return { ok: false, reason: issue };
+    if (this.now() - p.lastTheftAt < 4000) return { ok: false, reason: 'The heat is still on — wait a moment.' };
+    p.lastTheftAt = this.now();
+    const repBefore = p.reputation;
+    p.reputation = applyReputation(p.reputation, -RULES.theftAttemptRep);
+    const percent = robberyChance(chosen) * 100;
+    const rollPercent = (this.rollTest() ?? this.rng()) * 100;
+    const success = rollPercent < percent;
+    const chance: ChanceRoll = {
+      label: `Bank robbery · ${chosen.toLocaleString('en-US')}`,
+      percent: Math.round(percent * 10) / 10,
+      success,
+      rollPercent,
+      result: success ? `Got away with ${chosen.toLocaleString('en-US')}` : 'Caught',
+    };
+    if (success) {
+      p.cash += chosen;
+      this.recordAct(p, `Robbed the bank for ${chosen}.`);
+      this.emit({
+        kind: 'theft',
+        playerId: p.id,
+        audience: [p.id],
+        amount: chosen,
+        text: 'bank success',
+        chance,
+        outcome: {
+          success: true,
+          kind: 'robbery',
+          amount: chosen,
+          reputationDelta: p.reputation - repBefore,
+          detail: `You walked out with exactly ${chosen}.`,
+        },
+      });
+    } else {
+      p.reputation = applyReputation(p.reputation, -RULES.theftRepLoss);
+      this.recordAct(p, `Failed ${chosen} bank robbery and was jailed.`);
+      this.emit({
+        kind: 'theft',
+        playerId: p.id,
+        audience: [p.id],
+        amount: 0,
+        text: 'bank fail',
+        chance,
+        outcome: {
+          success: false,
+          kind: 'robbery',
+          amount: 0,
+          reputationDelta: p.reputation - repBefore,
+          detail: `The vault door closed on you. You are going to jail.`,
+        },
+      });
+      this.sendToJail(p, 'a failed bank robbery');
     }
     this.seq += 1;
     return { ok: true };
@@ -1282,10 +1422,41 @@ export class World {
         record: victim.jailRecord.slice(-20),
         acts: victim.acts.slice(-20),
       };
-      this.logLine(`${p.name} hires a detective.`, 'crime');
-      this.emit({ kind: 'detective', playerId: p.id, audience: [p.id], text: 'success', chance });
+      this.recordAct(p, `Detective findings on ${victim.name}: evidence ${p.findings[target] ?? 1}.`);
+      this.emit({
+        kind: 'detective',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id],
+        text: 'success',
+        chance,
+        outcome: {
+          success: true,
+          kind: 'detective',
+          amount: -RULES.detectiveFee,
+          targetName: victim.name,
+          reputationDelta: 0,
+          detail: `Evidence ${evidenceStrength(victim.unpaidRent, p.findings[target] ?? 1)} against ${victim.name}.`,
+        },
+      });
     } else {
-      this.emit({ kind: 'detective', playerId: p.id, audience: [p.id], text: 'investigated', chance });
+      this.recordAct(p, `Detective found nothing on ${victim.name}.`);
+      this.emit({
+        kind: 'detective',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id],
+        text: 'investigated',
+        chance,
+        outcome: {
+          success: false,
+          kind: 'detective',
+          amount: -RULES.detectiveFee,
+          targetName: victim.name,
+          reputationDelta: 0,
+          detail: `The detective found nothing usable on ${victim.name}.`,
+        },
+      });
     }
     this.seq += 1;
     return { ok: true };
@@ -1311,6 +1482,7 @@ export class World {
     if (success) {
       p.reputation = applyReputation(p.reputation, -RULES.murderSuccessRep);
       this.recordAct(p, `Murdered ${victim.name}.`);
+      const repDelta = p.reputation - (p.reputation + RULES.murderSuccessRep);
       for (const [idx, t] of Object.entries(this.tiles)) {
         if (t.ownerId !== victim.id) continue;
         if (t.building) this.buildingCount = Math.max(0, this.buildingCount - 1);
@@ -1336,8 +1508,22 @@ export class World {
       victim.holdings = {};
       victim.costBasis = {};
       victim.extraRoll = false;
-      this.logLine(`${victim.name} is hospitalized.`, 'crime');
-      this.emit({ kind: 'murder', playerId: p.id, targetId: victim.id, audience: [p.id, victim.id], text: 'success', chance });
+      this.emit({
+        kind: 'murder',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id, victim.id],
+        text: 'success',
+        chance,
+        outcome: {
+          success: true,
+          kind: 'murder',
+          amount: 0,
+          targetName: victim.name,
+          reputationDelta: repDelta,
+          detail: `${victim.name} is hospitalized and their portfolio is gone.`,
+        },
+      });
       this.emit({ kind: 'hospital', playerId: victim.id, audience: [p.id, victim.id], text: 'You wake in the hospital. Your portfolio is gone.' });
       this.seq += 1;
       return { ok: true };
@@ -1349,11 +1535,41 @@ export class World {
     if (caught) {
       const fine = Math.min(p.cash, RULES.murderFine);
       p.cash -= fine;
-      this.logLine(`${p.name} is caught attempting murder and fined ${fine}.`, 'crime');
-      this.emit({ kind: 'murder', playerId: p.id, targetId: victim.id, audience: [p.id], text: `caught · fine ${fine}`, amount: -fine, chance });
+      this.emit({
+        kind: 'murder',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id],
+        text: `caught · fine ${fine}`,
+        amount: -fine,
+        chance,
+        outcome: {
+          success: false,
+          kind: 'murder',
+          amount: -fine,
+          targetName: victim.name,
+          reputationDelta: -(caught ? RULES.murderCaughtRep : 5),
+          detail: `You were caught trying to reach ${victim.name} and fined ${fine}.`,
+        },
+      });
       this.sendToJail(p, 'a failed murder attempt');
     } else {
-      this.emit({ kind: 'murder', playerId: p.id, targetId: victim.id, audience: [p.id], text: 'failed · escaped notice', chance });
+      this.emit({
+        kind: 'murder',
+        playerId: p.id,
+        targetId: victim.id,
+        audience: [p.id],
+        text: 'failed · escaped notice',
+        chance,
+        outcome: {
+          success: false,
+          kind: 'murder',
+          amount: 0,
+          targetName: victim.name,
+          reputationDelta: -5,
+          detail: `The attempt on ${victim.name} failed, but nobody can tie it to you.`,
+        },
+      });
     }
     this.seq += 1;
     return { ok: true };
@@ -1491,7 +1707,9 @@ export class World {
         this.prices[space.index]! * (1 + ((fund - this.prices[space.index]!) / Math.max(1, fund)) * 0.02 * 6 + (this.rng() * 2 - 1) * 0.015 + Math.max(-0.04, Math.min(0.04, (this.volumes[space.index] ?? 0) / 400))),
         fund,
       );
+      const before = this.prices[space.index]!;
       this.prices[space.index] = next;
+      this.recordPrice(space.index, before, next);
       this.volumes[space.index] = 0;
     }
     this.seq += 1;
@@ -1680,6 +1898,22 @@ export class World {
     if (this.log.length > 400) this.log = this.log.slice(-200);
   }
 
+  private recordPrice(tile: number, before: number, after: number): void {
+    if (Math.abs(after - before) < 0.005) return;
+    this.marketSeq += 1;
+    const percent = before > 0 ? ((after - before) / before) * 100 : 0;
+    this.marketFeed.push({
+      id: this.marketSeq,
+      at: this.now(),
+      tile,
+      name: spaceAt(tile).name,
+      oldPrice: before,
+      newPrice: after,
+      percent: Math.round(percent * 100) / 100,
+    });
+    if (this.marketFeed.length > 80) this.marketFeed = this.marketFeed.slice(-60);
+  }
+
   private emit(event: GameEvent): void {
     this.onEvent({ ...event, at: this.now() });
   }
@@ -1696,6 +1930,8 @@ export class World {
       activePlayerId: this.activePlayerId,
       turnNumber: this.turnNumber,
       trades: [...this.trades.values()],
+      marketFeed: this.marketFeed,
+      marketSeq: this.marketSeq,
     };
   }
 
@@ -1709,6 +1945,8 @@ export class World {
     this.activePlayerId = snap.activePlayerId ?? null;
     this.turnNumber = snap.turnNumber ?? 0;
     this.trades = new Map((snap.trades ?? []).map((t) => [t.id, t]));
+    this.marketFeed = snap.marketFeed ?? [];
+    this.marketSeq = snap.marketSeq ?? 0;
     this.buildingCount = groupBuildingCount(this.tiles);
     for (const raw of snap.players) {
       const p = raw as ServerPlayer;

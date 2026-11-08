@@ -31,7 +31,10 @@ export class AudioEngine {
   private step = 0;
   private volumes = { master: 0.8, music: 0.5, sfx: 0.8 };
   private musicOn = true;
+  private sfxOn = true;
   private ducked = false;
+  /** Every in-flight one-shot, so switching SFX off stops it immediately. */
+  private readonly sfxNodes = new Set<AudioScheduledSourceNode>();
 
   init(): void {
     if (this.ctx) return;
@@ -61,7 +64,26 @@ export class AudioEngine {
 
   setVolumes(master: number, music: number, sfx: number): void {
     this.volumes = { master, music, sfx };
+    // Volume is separate from the on/off switch. The switch stops in-flight
+    // nodes; this only changes the bus gain for sounds already allowed.
     this.applyVolumes();
+  }
+
+  setSfxOn(on: boolean): void {
+    this.sfxOn = on;
+    if (!on) this.stopSfx();
+    this.applyVolumes();
+  }
+
+  private stopSfx(): void {
+    for (const node of this.sfxNodes) {
+      try {
+        node.stop();
+      } catch {
+        // An already-ended node is a no-op.
+      }
+    }
+    this.sfxNodes.clear();
   }
 
   setMusicOn(on: boolean): void {
@@ -79,7 +101,7 @@ export class AudioEngine {
   private applyVolumes(): void {
     if (!this.ctx) return;
     this.master.gain.setTargetAtTime(this.volumes.master, this.ctx.currentTime, 0.05);
-    this.sfxBus.gain.setTargetAtTime(this.volumes.sfx, this.ctx.currentTime, 0.05);
+    this.sfxBus.gain.setTargetAtTime(this.sfxOn ? this.volumes.sfx : 0, this.ctx.currentTime, 0.05);
     const music = this.musicOn ? this.volumes.music * (this.ducked ? 0.4 : 1) : 0;
     this.musicBus.gain.setTargetAtTime(music, this.ctx.currentTime, 0.08);
   }
@@ -87,7 +109,8 @@ export class AudioEngine {
   // ------------------------------------------------------------------ SFX
 
   play(name: Sfx): void {
-    if (!this.ctx) return;
+    // Gate at the source. With SFX off, no oscillator or buffer is created.
+    if (!this.ctx || !this.sfxOn || this.volumes.sfx <= 0) return;
     const t = this.ctx.currentTime;
     switch (name) {
       case 'click':
@@ -154,7 +177,7 @@ export class AudioEngine {
     type: OscillatorType,
     toFreq?: number,
   ): void {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.sfxOn) return;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = type;
@@ -164,32 +187,43 @@ export class AudioEngine {
     g.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), at + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, at + duration);
     osc.connect(g).connect(this.sfxBus);
+    this.sfxNodes.add(osc);
+    osc.addEventListener('ended', () => this.sfxNodes.delete(osc), { once: true });
     osc.start(at);
     osc.stop(at + duration + 0.02);
   }
 
   private noise(at: number, duration: number, gain: number, cutoff: number): void {
-    if (!this.ctx) return;
-    const len = Math.floor(this.ctx.sampleRate * duration);
-    const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    if (!this.ctx || !this.sfxOn) return;
+    const src = this.createNoise(duration, gain, cutoff, this.sfxBus);
+    this.sfxNodes.add(src);
+    src.addEventListener('ended', () => this.sfxNodes.delete(src), { once: true });
+    src.start(at);
+  }
+
+  private createNoise(duration: number, gain: number, cutoff: number, bus: AudioNode): AudioBufferSourceNode {
+    const ctx = this.ctx!;
+    const len = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < len; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    const src = this.ctx.createBufferSource();
+    const src = ctx.createBufferSource();
     src.buffer = buffer;
-    const filter = this.ctx.createBiquadFilter();
+    const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = cutoff;
-    const g = this.ctx.createGain();
-    g.gain.value = gain;
-    src.connect(filter).connect(g).connect(this.sfxBus);
-    src.start(at);
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = gain;
+    src.connect(filter).connect(gainNode).connect(bus);
+    return src;
   }
 
   // ---------------------------------------------------------------- music
 
   /**
-   * I–vi–IV–V in C major, 120 BPM, 8-bar loop with plucked melody, bass and
-   * shaker. Synthesised so the loop is seamless and unlicensed.
+   * I–vi–IV–V in C major, 120 BPM, 8-bar loop of plucked melody and bass.
+   * Synthesised so the loop is seamless and unlicensed. There is deliberately
+   * no percussion: the old noise shaker read as a looping drum SFX.
    */
   startMusic(): void {
     if (!this.ctx || this.musicTimer !== null) return;
@@ -226,7 +260,6 @@ export class AudioEngine {
     if (beat % 4 === 0) this.pluck(chord[0]!, at, 0.32, 0.16, 'sine');
     if (beat % 4 === 2) this.pluck(roots[bar % 4]!, at, 0.3, 0.2, 'triangle');
     if (beat % 2 === 0) this.pluck(chord[(beat / 2) % chord.length]!, at, 0.22, 0.08, 'sine');
-    if (beat % 4 === 1 || beat % 4 === 3) this.noise(at, 0.05, 0.05, 7000);
     if (beat % 8 === 0 || beat % 8 === 6) {
       const note = chord[0]! * 2 ** (melody[(bar + beat) % melody.length]! / 12);
       this.pluck(note, at, 0.26, 0.11, 'triangle');

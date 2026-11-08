@@ -1,5 +1,8 @@
 import { SPACES, spaceAt, groupMembers } from './board';
-import type { BuildingType, PlayerPrivate, Space, TileState } from './types';
+import { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, type BuildingType } from './buildings';
+import type { GameMode, PlayerPrivate, Space, TileState } from './types';
+
+export { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode };
 
 /** Every economic number the brief fixes. Nothing else may hardcode these. */
 export const RULES = {
@@ -15,10 +18,10 @@ export const RULES = {
   stockFloor: 0.2,
   stockCeiling: 8,
   externalMax: 0.5,
-  bankTheftBase: 0.45,
-  bankTheftRepStep: 0.05,
-  bankTheftMin: 150,
-  bankTheftMax: 600,
+  robberyMin: 50_000,
+  robberyMax: 100_000,
+  robberyMinChance: 0.2,
+  robberyMaxChance: 0.05,
   playerTheftBase: 0.55,
   playerTheftCap: 800,
   jailAllChance: 0.25,
@@ -56,32 +59,16 @@ export const RULES = {
   jailRepOnEntry: 0,
 } as const;
 
-export const BUILDING_TYPES: BuildingType[] = [
-  'house',
-  'apartments',
-  'shop',
-  'restaurant',
-  'office',
-  'hotel',
-  'landmark',
-];
-
-export const BUILDING_META: Record<
-  BuildingType,
-  { name: string; costMultiple: number; rentLabel: string; blurb: string }
-> = {
-  house: { name: 'House', costMultiple: 1, rentLabel: '1–2 house rent', blurb: 'Small pitched-roof home' },
-  apartments: { name: 'Apartments', costMultiple: 2, rentLabel: '3x base rent', blurb: 'Three-storey block' },
-  shop: { name: 'Corner Shop', costMultiple: 1.5, rentLabel: '2x base rent, +10% synergy', blurb: 'Awning shopfront' },
-  restaurant: { name: 'Restaurant', costMultiple: 2, rentLabel: '2.5x base rent, +15% synergy', blurb: 'Cafe with seating' },
-  office: { name: 'Office', costMultiple: 2.5, rentLabel: '3.5x base rent', blurb: 'Glass mid-rise' },
-  hotel: { name: 'Hotel', costMultiple: 5, rentLabel: 'Hotel rent', blurb: 'Large landmark building' },
-  landmark: { name: 'Landmark', costMultiple: 8, rentLabel: '1.25x hotel rent', blurb: 'Unique tall silhouette' },
-};
-
 export function buildingCost(space: Space, type: BuildingType): number {
   if (space.buildCost <= 0) throw new Error(`${space.name} cannot be built on`);
   return Math.round(space.buildCost * BUILDING_META[type].costMultiple);
+}
+
+export function buildingRentLabel(type: BuildingType): string {
+  const meta = BUILDING_META[type];
+  if (type === 'house') return 'Printed 1-house rent';
+  if (type === 'hotel') return 'Printed hotel rent';
+  return `${meta.rentMultiple}x base rent · +10% full-group synergy`;
 }
 
 export function emptyTile(): TileState {
@@ -117,22 +104,10 @@ export function baseRent(space: Space, ownerId: string | null, tiles: Record<num
 export function buildingRent(space: Space, type: BuildingType, tiles: Record<number, TileState>): number {
   const base = space.rents[0] ?? 0;
   const hotel = space.rents[5] ?? 0;
-  switch (type) {
-    case 'house':
-      return space.rents[1] ?? base;
-    case 'apartments':
-      return base * 3;
-    case 'shop':
-      return Math.round(base * 2 * (hasTypeSynergy(space.index, type, tiles) ? 1.1 : 1));
-    case 'restaurant':
-      return Math.round(base * 2.5 * (hasTypeSynergy(space.index, type, tiles) ? 1.15 : 1));
-    case 'office':
-      return Math.round(base * 3.5);
-    case 'hotel':
-      return hotel;
-    case 'landmark':
-      return Math.round(hotel * 1.25);
-  }
+  if (type === 'house') return space.rents[1] ?? base;
+  if (type === 'hotel') return hotel;
+  const synergy = hasTypeSynergy(space.index, type, tiles) ? 1.1 : 1;
+  return Math.round(base * BUILDING_META[type].rentMultiple * synergy);
 }
 
 /**
@@ -171,15 +146,22 @@ export function canBuild(
   tiles: Record<number, TileState>,
   ownerId: string,
   totalBuildings: number,
+  mode: GameMode = 'multi',
+  type?: BuildingType,
 ): { ok: true } | { ok: false; reason: string } {
   const space = spaceAt(tile);
   const state = tiles[tile];
   if (!state || state.ownerId !== ownerId) return { ok: false, reason: 'You do not own this property.' };
   if (space.type !== 'property') return { ok: false, reason: 'Only streets can be built on.' };
   if (state.mortgaged) return { ok: false, reason: 'Unmortgage this property first.' };
-  if (!ownsGroup(space.group, ownerId, tiles)) return { ok: false, reason: 'You need the full colour group.' };
-  const mortgagedInGroup = groupMembers(space.group!).some((s) => tiles[s.index]?.mortgaged);
-  if (mortgagedInGroup) return { ok: false, reason: 'A property in this group is mortgaged.' };
+  if (mode === 'solo') {
+    if (type && type !== 'house' && type !== 'hotel') {
+      return { ok: false, reason: 'Solo uses standard Monopoly rules: houses and hotels only.' };
+    }
+    if (!ownsGroup(space.group, ownerId, tiles)) return { ok: false, reason: 'You need the full colour group.' };
+    const mortgagedInGroup = groupMembers(space.group!).some((s) => tiles[s.index]?.mortgaged);
+    if (mortgagedInGroup) return { ok: false, reason: 'A property in this group is mortgaged.' };
+  }
   if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
   if (totalBuildings >= RULES.maxBuildings) {
     return { ok: false, reason: `The city is full — all ${RULES.maxBuildings} building plots are taken.` };
@@ -210,7 +192,7 @@ export function netWorth(player: PlayerPrivate, tiles: Record<number, TileState>
 }
 
 export function loanCap(net: number): number {
-  return Math.floor((net * RULES.loanMaxMultiple) / 50) * 50;
+  return Math.max(10_000, Math.floor((net * RULES.loanMaxMultiple) / 50) * 50);
 }
 
 export function loanInterest(principal: number): number {
@@ -266,17 +248,22 @@ export function evadeChance(buildingsOnTile: number): number {
   return Math.max(0.05, RULES.evadeBase - RULES.evadePerBuilding * buildingsOnTile);
 }
 
-export function bankTheftChance(reputation: number): number {
-  const below = Math.max(0, (50 - reputation) / 10);
-  return Math.min(0.95, RULES.bankTheftBase + RULES.bankTheftRepStep * below);
-}
-
 export function playerTheftChance(): number {
   return RULES.playerTheftBase;
 }
 
-export function theftAmount(rng: () => number): number {
-  return Math.round((RULES.bankTheftMin + rng() * (RULES.bankTheftMax - RULES.bankTheftMin)) / 10) * 10;
+/** Clamp to the allowed heist, then interpolate 20% down to 5%. */
+export function robberyChance(amount: number): number {
+  const clamped = Math.min(RULES.robberyMax, Math.max(RULES.robberyMin, amount));
+  const t = (clamped - RULES.robberyMin) / (RULES.robberyMax - RULES.robberyMin);
+  return RULES.robberyMinChance + t * (RULES.robberyMaxChance - RULES.robberyMinChance);
+}
+
+export function robberyAmountIssues(amount: number): string | null {
+  if (!Number.isFinite(amount) || amount < RULES.robberyMin || amount > RULES.robberyMax) {
+    return `Choose between ${RULES.robberyMin.toLocaleString('en-US')} and ${RULES.robberyMax.toLocaleString('en-US')}.`;
+  }
+  return null;
 }
 
 export function evidenceStrength(unpaidRent: number, findings: number): number {

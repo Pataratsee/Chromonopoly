@@ -41,7 +41,6 @@ interface OwnerSign {
   plate: THREE.Mesh;
   label: THREE.Mesh;
   strip: THREE.Mesh;
-  piece: THREE.Group;
   texture: THREE.CanvasTexture | null;
 }
 
@@ -169,26 +168,60 @@ function cardTexture(deck: 'chance' | 'chest', text: string): THREE.CanvasTextur
 }
 
 function ownerTexture(name: string, color: string): THREE.CanvasTexture {
-  return canvasTexture(512, 256, (ctx) => {
+  return canvasTexture(784, 256, (ctx) => {
     ctx.fillStyle = '#2c2119';
-    ctx.fillRect(0, 0, 512, 256);
+    ctx.fillRect(0, 0, 784, 256);
     ctx.fillStyle = color;
-    ctx.fillRect(0, 0, 18, 256);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(18, 0, 494, 4);
-    ctx.fillStyle = '#d9c7a0';
-    ctx.font = '700 20px Outfit, sans-serif';
-    ctx.fillText('OWNER', 48, 62);
-    let fontSize = 48;
-    const label = name.length > 15 ? `${name.slice(0, 14)}…` : name;
-    do {
-      ctx.font = `700 ${fontSize}px Outfit, sans-serif`;
-      fontSize -= 2;
-    } while (ctx.measureText(label).width > 425 && fontSize > 26);
+    ctx.fillRect(0, 0, 28, 256);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 10;
+    roundedPath(ctx, 42, 18, 700, 220, 28);
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Auto-fit chooses between one and two lines. A long unbroken username
+    // wrapped in two lines gets a much taller glyph than shrinking it to a
+    // single line, while still using the full width and never clipping.
+    const maxWidth = 670;
+    const maxHeight = 204;
+    const font = (size: number): string => `900 ${size}px "Lilita One", Outfit, sans-serif`;
+    const widthAt = (text: string, size: number): number => {
+      ctx.font = font(size);
+      return ctx.measureText(text).width;
+    };
+    const fit = (lines: string[]): number => {
+      let size = maxHeight / (lines.length === 2 ? 2.04 : 1.04);
+      for (let pass = 0; pass < 4; pass += 1) {
+        ctx.font = font(size);
+        const width = Math.max(...lines.map((line) => ctx.measureText(line).width));
+        if (width <= maxWidth) break;
+        size *= maxWidth / width;
+      }
+      return Math.floor(size);
+    };
+
+    const one = [name];
+    const oneSize = fit(one);
+    let lines = one;
+    let size = oneSize;
+    if (name.length > 8) {
+      let split = Math.ceil(name.length / 2);
+      let best = Infinity;
+      for (let i = 2; i < name.length - 1; i += 1) {
+        const pair = [name.slice(0, i), name.slice(i)];
+        const widest = Math.max(widthAt(pair[0]!, 100), widthAt(pair[1]!, 100));
+        if (widest < best) { best = widest; split = i; }
+      }
+      const pair = [name.slice(0, split), name.slice(split)];
+      const pairSize = fit(pair);
+      if (pairSize > oneSize * 1.08) { lines = pair; size = pairSize; }
+    }
+
     ctx.fillStyle = '#fff6e4';
-    ctx.fillText(label, 48, 154);
-    ctx.fillStyle = 'rgba(255,246,228,0.34)';
-    ctx.fillRect(48, 190, 390, 2);
+    const gap = size * 1.04;
+    const start = 128 - ((lines.length - 1) * gap) / 2;
+    lines.forEach((line, index) => ctx.fillText(line, 392, start + index * gap));
   });
 }
 
@@ -242,7 +275,6 @@ export async function createBoard(): Promise<BoardView> {
     sign.userData.phase = index * 0.41;
     sign.userData.ownerId = null;
     sign.userData.born = 0;
-    sign.userData.pieceToken = '';
 
     const post = new THREE.Mesh(signPost, signWood);
     post.position.y = 0.15;
@@ -254,7 +286,7 @@ export async function createBoard(): Promise<BoardView> {
     plate.position.set(0, 0.37, 0.024);
     sign.add(plate);
     const label = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.44, 0.135),
+      new THREE.PlaneGeometry(0.46, 0.15),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true }),
     );
     label.position.set(-0.025, 0.37, 0.035);
@@ -262,11 +294,8 @@ export async function createBoard(): Promise<BoardView> {
     const strip = new THREE.Mesh(signStrip, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5 }));
     strip.position.set(0.245, 0.37, 0.041);
     sign.add(strip);
-    const piece = new THREE.Group();
-    piece.position.set(-0.205, 0.37, 0.038);
-    sign.add(piece);
     handle.group.add(sign);
-    ownerSigns.set(index, { group: sign, plate, label, strip, piece, texture: null });
+    ownerSigns.set(index, { group: sign, plate, label, strip, texture: null });
   };
 
   for (const space of SPACES) {
@@ -303,16 +332,17 @@ export async function createBoard(): Promise<BoardView> {
 
     const box = contentBox(space);
     const isCorner = space.index % 10 === 0;
+    const hasFlatIcon = space.type !== 'property';
     const isDeck = space.type === 'chance' || space.type === 'chest';
     const label = specialName(space);
     const nameSize = isCorner ? 0.27 : isDeck ? 0.19 : 0.23;
     const nameText = makeText(label, nameSize, '#1B1511', BOARD_FONT, 700);
-    const nameFit = fitText(font, label, { w: box.w, h: isDeck ? 0.24 : box.h }, nameSize);
+    const nameFit = fitText(font, label, { w: box.w, h: hasFlatIcon ? 0.22 : box.h }, nameSize);
     nameText.fontSize = nameFit.size;
     nameText.maxWidth = box.w;
-    nameText.text = isCorner ? label : nameFit.lines.join('\n');
+    nameText.text = isCorner || hasFlatIcon ? label : nameFit.lines.join('\n');
     nameText.textAlign = 'center';
-    nameText.position.set(0, SURFACE, isDeck ? -0.28 : isCorner ? -0.02 : space.group ? 0.0 : 0.04);
+    nameText.position.set(0, SURFACE, isCorner || hasFlatIcon ? -0.33 : space.group ? 0.0 : 0.04);
     nameText.rotation.x = -Math.PI / 2;
     tileGroup.add(nameText);
 
@@ -332,11 +362,10 @@ export async function createBoard(): Promise<BoardView> {
     }
 
     const icon = new THREE.Group();
-    icon.position.set(0, SURFACE, 0.06);
+    icon.position.set(0, SURFACE + 0.002, isCorner ? 0.12 : 0.1);
     tileGroup.add(icon);
+    if (hasFlatIcon) addFlatIcon(space, icon, isCorner);
     specialIcons.push(icon);
-
-    decorateSpecial(space, icon, isDeck);
 
     group.add(tileGroup);
     tiles.push({
@@ -450,7 +479,6 @@ export async function createBoard(): Promise<BoardView> {
   padLabel.letterSpacing = 0.14;
   group.add(padLabel);
 
-  addCenterFountain(group, centerY);
   addCenterProp(group, 'tree-large', 0.68, -2.7, 0.55, centerY);
   addCenterProp(group, 'tree-large', 0.68, 2.7, 0.55, centerY);
   addCenterProp(group, 'tree-small', 0.55, -2.95, 2.45, centerY);
@@ -475,7 +503,10 @@ export async function createBoard(): Promise<BoardView> {
     const owner = tile?.ownerId ? state.players[tile.ownerId] : null;
     const sign = ownerSigns.get(handle.index);
     if (!sign) return;
-    if (!owner) {
+    // The larger MORTGAGED plaque stands at the inner edge and would cover a
+    // low owner plaque. Show one sign at a time; unmortgaging restores the
+    // owner plaque with its pop-in.
+    if (!owner || tile?.mortgaged) {
       sign.group.visible = false;
       sign.group.userData.ownerId = null;
       return;
@@ -492,14 +523,8 @@ export async function createBoard(): Promise<BoardView> {
       material.map = texture;
       material.needsUpdate = true;
       (sign.strip.material as THREE.MeshStandardMaterial).color.set(owner.color);
-      sign.piece.clear();
-      void loadModel(owner.tokenId, 0.135)
-        .then((model) => {
-          if (sign.group.userData.ownerId !== owner.id) return;
-          sign.piece.add(model);
-        })
-        .catch((error: unknown) => console.error('[board] owner piece failed', owner.tokenId, error));
     }
+    sign.group.visible = true;
   };
 
   const update = (state: PublicState, showPrices: boolean): void => {
@@ -518,7 +543,10 @@ export async function createBoard(): Promise<BoardView> {
   const setHover = (index: number | null): void => {
     for (const handle of tiles) {
       const mat = handle.face.material as THREE.MeshStandardMaterial;
-      mat.emissive.setHex(handle.index === index ? 0x221a10 : 0x000000);
+      // Hover changes albedo only. Emissive is reserved for nothing on the
+      // board, so no bloom/glow can ever touch a tile.
+      mat.color.copy(handle.baseColor).lerp(new THREE.Color('#ffffff'), handle.index === index ? 0.08 : 0);
+      mat.emissive.setHex(0x000000);
     }
   };
 
@@ -549,10 +577,9 @@ export async function createBoard(): Promise<BoardView> {
       }
       sign.group.position.y = Number(sign.group.userData.baseY ?? 0.02) + Math.sin(time * 1.7 + Number(sign.group.userData.phase ?? 0)) * 0.004;
     }
-    for (const [i, icon] of specialIcons.entries()) {
-      icon.position.y = SURFACE + Math.sin(time * 1.5 + i * 0.8) * 0.006;
-      icon.rotation.y = Math.sin(time * 0.7 + i) * 0.06;
-    }
+    // Flat icon art stays printed on the tile: no bob, no spin, no stand-up.
+    void specialIcons;
+    void time;
     for (const animation of [...cardAnimations]) {
       const t = Math.min(1, (now - animation.started) / 1500);
       animation.card.position.y = centerY + 0.22 + Math.sin(t * Math.PI) * 1.1;
@@ -603,76 +630,235 @@ export async function createBoard(): Promise<BoardView> {
   };
 }
 
-function decorateSpecial(space: Space, icon: THREE.Group, isDeck: boolean): void {
-  const orange = new THREE.MeshStandardMaterial({ color: '#F08A24', roughness: 0.42, metalness: 0.1 });
-  const blue = new THREE.MeshStandardMaterial({ color: '#2F6FD0', roughness: 0.4, metalness: 0.12 });
-  const gold = new THREE.MeshStandardMaterial({ color: '#E0B04A', roughness: 0.35, metalness: 0.35 });
-  const dark = new THREE.MeshStandardMaterial({ color: '#3a2c22', roughness: 0.8 });
-  const addModel = (id: string, size: number, x = 0, z = 0.07, rot = 0): void => {
-    void loadModel(id, size)
-      .then((model) => {
-        model.position.set(x, 0, z);
-        model.rotation.y = rot;
-        icon.add(model);
-      })
-      .catch((error: unknown) => console.error('[board] special model failed', id, error));
-  };
-  if (isDeck) {
-    const plaque = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.034, 0.46, 2, 0.12), space.type === 'chance' ? orange : blue);
-    plaque.position.y = 0.012;
-    icon.add(plaque);
+/**
+ * All board artwork is a flat canvas texture laid on the tile. Nothing in this
+ * path loads a GLB, so a tile can never look like a standing player piece.
+ */
+function addFlatIcon(space: Space, icon: THREE.Group, corner: boolean): void {
+  const texture = flatIconTexture(space);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(corner ? 0.86 : 0.72, corner ? 0.56 : 0.46),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }),
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.renderOrder = 3;
+  icon.add(plane);
+}
+
+function flatIconTexture(space: Space): THREE.CanvasTexture {
+  return canvasTexture(512, 320, (ctx) => {
+    ctx.clearRect(0, 0, 512, 320);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    const ink = '#3a2c22';
+    const soft = 'rgba(255,255,255,0.32)';
+
     if (space.type === 'chance') {
-      const mark = makeText('?', 0.4, '#fff4df', BOARD_FONT, 700);
-      mark.position.set(0, 0.045, 0);
-      mark.rotation.x = -Math.PI / 2;
-      mark.renderOrder = 5;
-      icon.add(mark);
-    } else {
-      addModel('chest', 0.36, 0, 0.07);
+      ctx.fillStyle = '#F08A24';
+      roundedPath(ctx, 118, 114, 276, 176, 34);
+      ctx.fill();
+      ctx.strokeStyle = '#B85D0F';
+      ctx.lineWidth = 10;
+      ctx.stroke();
+      ctx.fillStyle = '#FFF6E4';
+      ctx.font = '900 178px "Lilita One", Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', 256, 210);
+      for (const [x, y, r] of [[90, 95, 10], [420, 82, 8], [435, 250, 11], [78, 255, 7]] as const) {
+        ctx.fillStyle = '#FFD05C';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
     }
-    return;
-  }
-  switch (space.type) {
-    case 'railroad':
-      addModel('locomotive', 0.34, 0, 0.12);
-      break;
-    case 'utility':
-      addModel('lantern-city', 0.3, 0, 0.12);
-      break;
-    case 'tax':
-      addModel(space.index === 4 ? 'cashregister' : 'chest', 0.3, 0, 0.12);
-      break;
-    case 'free':
-      addModel('sedan', 0.34, 0, 0.12);
-      break;
-    case 'jail':
-      addModel('jailbars', 0.32, 0, 0.12);
-      break;
-    case 'gotojail':
-      addModel('police', 0.32, 0, 0.12);
-      break;
-    case 'go': {
-      const arrow = new THREE.Group();
-      const shaft = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.045, 0.1, 2, 0.02), gold);
-      shaft.position.set(-0.08, 0.04, 0);
-      arrow.add(shaft);
-      const headA = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.045, 0.1, 2, 0.02), gold);
-      headA.position.set(0.13, 0.04, -0.06);
-      headA.rotation.y = Math.PI / 4;
-      arrow.add(headA);
-      const headB = headA.clone();
-      headB.position.z = 0.06;
-      headB.rotation.y = -Math.PI / 4;
-      arrow.add(headB);
-      icon.add(arrow);
-      break;
+
+    if (space.type === 'chest') {
+      ctx.fillStyle = '#2F6FD0';
+      roundedPath(ctx, 116, 142, 280, 126, 18);
+      ctx.fill();
+      ctx.strokeStyle = '#1B4D9A';
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.fillStyle = '#3C83DF';
+      roundedPath(ctx, 102, 92, 308, 82, 28);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#F3C14B';
+      ctx.fillRect(238, 132, 36, 76);
+      ctx.fillStyle = '#7B4B18';
+      roundedPath(ctx, 248, 160, 16, 22, 4);
+      ctx.fill();
+      ctx.strokeStyle = soft;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(132, 118);
+      ctx.lineTo(206, 118);
+      ctx.stroke();
+      return;
     }
-    default:
-      break;
-  }
-  void orange;
-  void blue;
-  void dark;
+
+    if (space.type === 'tax') {
+      const luxury = space.index === 38;
+      ctx.fillStyle = luxury ? '#7C5CBF' : '#E7B73F';
+      ctx.beginPath();
+      ctx.arc(256, 168, 112, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = luxury ? '#4F3687' : '#A97912';
+      ctx.lineWidth = 12;
+      ctx.stroke();
+      ctx.fillStyle = '#FFF6E4';
+      ctx.font = '900 132px "Lilita One", Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(luxury ? '♦' : '$', 256, 174);
+      if (luxury) {
+        ctx.strokeStyle = '#FFF6E4';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.arc(256, 100, 38, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      return;
+    }
+
+    if (space.type === 'railroad') {
+      ctx.fillStyle = '#3F4B5B';
+      roundedPath(ctx, 94, 92, 324, 154, 22);
+      ctx.fill();
+      ctx.strokeStyle = '#202A36';
+      ctx.lineWidth = 10;
+      ctx.stroke();
+      ctx.fillStyle = '#E9D8B7';
+      roundedPath(ctx, 136, 122, 110, 74, 10);
+      ctx.fill();
+      roundedPath(ctx, 266, 122, 110, 74, 10);
+      ctx.fill();
+      ctx.fillStyle = '#F2B93B';
+      ctx.beginPath();
+      ctx.arc(202, 248, 28, 0, Math.PI * 2);
+      ctx.arc(310, 248, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#E9D8B7';
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      ctx.moveTo(66, 294);
+      ctx.lineTo(446, 294);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(110, 274);
+      ctx.lineTo(150, 314);
+      ctx.moveTo(210, 274);
+      ctx.lineTo(250, 314);
+      ctx.moveTo(310, 274);
+      ctx.lineTo(350, 314);
+      ctx.stroke();
+      return;
+    }
+
+    if (space.type === 'utility') {
+      const water = space.index === 28;
+      ctx.fillStyle = water ? '#2D93B5' : '#F2C446';
+      ctx.beginPath();
+      ctx.arc(256, 168, 112, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = water ? '#1B617B' : '#A87C12';
+      ctx.lineWidth = 12;
+      ctx.stroke();
+      ctx.fillStyle = '#FFF6E4';
+      if (water) {
+        ctx.beginPath();
+        ctx.moveTo(256, 84);
+        ctx.bezierCurveTo(256, 84, 192, 174, 192, 212);
+        ctx.bezierCurveTo(192, 248, 220, 266, 256, 266);
+        ctx.bezierCurveTo(292, 266, 320, 248, 320, 212);
+        ctx.bezierCurveTo(320, 174, 256, 84, 256, 84);
+        ctx.fill();
+      } else {
+        ctx.font = '900 172px "Lilita One", Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚡', 256, 174);
+      }
+      return;
+    }
+
+    if (space.type === 'go') {
+      ctx.fillStyle = '#2F9E6F';
+      roundedPath(ctx, 70, 104, 372, 180, 34);
+      ctx.fill();
+      ctx.strokeStyle = '#1D7650';
+      ctx.lineWidth = 10;
+      ctx.stroke();
+      ctx.fillStyle = '#FFF6E4';
+      ctx.font = '900 112px "Lilita One", Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('GO →', 256, 198);
+      return;
+    }
+
+    if (space.type === 'jail') {
+      ctx.fillStyle = '#46556B';
+      roundedPath(ctx, 111, 66, 290, 228, 18);
+      ctx.fill();
+      ctx.fillStyle = '#2D3746';
+      roundedPath(ctx, 94, 46, 324, 58, 14);
+      ctx.fill();
+      ctx.strokeStyle = '#E8D9BC';
+      ctx.lineWidth = 18;
+      for (let i = 0; i < 5; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(142 + i * 56, 92);
+        ctx.lineTo(142 + i * 56, 274);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(114, 184);
+      ctx.lineTo(398, 184);
+      ctx.stroke();
+      return;
+    }
+
+    if (space.type === 'free') {
+      ctx.fillStyle = '#2F6FD0';
+      ctx.beginPath();
+      ctx.arc(256, 168, 112, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#1B4D9A';
+      ctx.lineWidth = 12;
+      ctx.stroke();
+      ctx.fillStyle = '#FFF6E4';
+      ctx.font = '900 158px "Lilita One", Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('P', 256, 174);
+      return;
+    }
+
+    if (space.type === 'gotojail') {
+      ctx.fillStyle = '#2E3A52';
+      roundedPath(ctx, 84, 128, 344, 106, 26);
+      ctx.fill();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 10;
+      ctx.stroke();
+      ctx.fillStyle = '#4C85D8';
+      roundedPath(ctx, 144, 88, 126, 66, 18);
+      ctx.fill();
+      ctx.fillStyle = '#F2B93B';
+      ctx.fillRect(166, 52, 80, 38);
+      ctx.fillStyle = '#E05555';
+      ctx.fillRect(166, 52, 40, 38);
+      ctx.fillStyle = '#27303E';
+      ctx.beginPath();
+      ctx.arc(156, 244, 32, 0, Math.PI * 2);
+      ctx.arc(356, 244, 32, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+  });
 }
 
 function createDeckStack(parent: THREE.Group, deck: 'chance' | 'chest', x: number, centerY: number): DeckView {
@@ -708,27 +894,6 @@ function addCenterProp(parent: THREE.Group, id: string, size: number, x: number,
       holder.removeFromParent();
       console.error('[board] center prop failed', id, error);
     });
-}
-
-function addCenterFountain(parent: THREE.Group, centerY: number): void {
-  const stone = new THREE.MeshStandardMaterial({ color: '#d7cdb9', roughness: 0.8, metalness: 0.04 });
-  const water = new THREE.MeshStandardMaterial({ color: '#4c9eb5', roughness: 0.18, metalness: 0.12 });
-  const base = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.09, 1.0, 2, 0.2), stone);
-  base.position.set(0, centerY + 0.055, 2.35);
-  base.castShadow = true;
-  base.receiveShadow = true;
-  parent.add(base);
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(0.38, 32), water);
-  pool.rotation.x = -Math.PI / 2;
-  pool.position.set(0, centerY + 0.106, 2.35);
-  parent.add(pool);
-  const column = new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.32, 0.16, 2, 0.05), stone);
-  column.position.set(0, centerY + 0.25, 2.35);
-  parent.add(column);
-  const bowl = new THREE.Mesh(new THREE.CircleGeometry(0.24, 24), water);
-  bowl.rotation.x = -Math.PI / 2;
-  bowl.position.set(0, centerY + 0.42, 2.35);
-  parent.add(bowl);
 }
 
 async function syncTexts(root: THREE.Object3D): Promise<void> {

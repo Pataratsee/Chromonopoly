@@ -1,0 +1,4 @@
+sunrise: board bbox=None extrema=((0, 0), (0, 0), (0, 0)) mean=[0.0, 0.0, 0.0]
+noon: board bbox=(397, 199, 764, 608) extrema=((0, 83), (0, 91), (0, 91)) mean=[0.0064, 0.0043, 0.004]
+sunset: board bbox=(397, 199, 764, 608) extrema=((0, 95), (0, 90), (0, 86)) mean=[0.0076, 0.0051, 0.0047]
+night: board bbox=(397, 199, 764, 608) extrema=((0, 95), (0, 91), (0, 89)) mean=[0.0082, 0.0055, 0.0049]

@@ -1,0 +1,13 @@
+round7 audio proof started 2026-11-08T19:46:39.229Z
+minute 1: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=318 this minute, stops=318
+minute 2: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=294 this minute, stops=612
+minute 3: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=288 this minute, stops=900
+minute 4: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=276 this minute, stops=1176
+minute 5: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=282 this minute, stops=1458
+minute 6: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=276 this minute, stops=1734
+minute 7: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=300 this minute, stops=2034
+minute 8: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=290 this minute, stops=2324
+minute 9: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=286 this minute, stops=2610
+minute 10: sfxOn=false musicOn=true buffers=0 (SFX must stay 0), oscillators=278 this minute, stops=2888
+10-minute total: buffers=0 (expected 0 with SFX off), oscillators=2888 (music only), stops=2888
+elapsed=600s pageErrors=[]

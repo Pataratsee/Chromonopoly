@@ -1,0 +1,23 @@
+import { chromium } from '@playwright/test';
+import { writeFileSync } from 'node:fs';
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+page.setDefaultTimeout(10000);
+await page.goto('http://127.0.0.1:5173/?e2e', { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('#auth-username', { timeout: 30000 });
+await page.fill('#auth-username', 'round7_mw86itaa');
+await page.fill('#auth-password', process.env.R7_PASSWORD);
+await page.click('#auth-submit');
+await page.waitForFunction(() => {
+  const el = document.querySelector('#you-name');
+  return el && !el.textContent?.includes('Connecting');
+}, null, { timeout: 25000 });
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Log', exact: true }).click();
+await page.waitForTimeout(2500);
+const text = await page.locator('[role="dialog"]').innerText();
+const line = text.split('\n').find((l) => /jailed for a failed bank robbery/i.test(l)) ?? 'record not found';
+const out = `settled main log jail record:\n${line}\nhas_record=${line !== 'record not found'}\n`;
+writeFileSync('docs/round7-proof/jail-record.log', out);
+console.log(out);
+await browser.close();
