@@ -1,0 +1,135 @@
+{
+  "sunset": {
+    "sky": {
+      "time": 0.7083333333333334,
+      "hour": 17,
+      "daylight": 0.8907678674768519,
+      "night": 0,
+      "phase": "Sunset",
+      "top": {
+        "isColor": true,
+        "r": 0.14455642085623044,
+        "g": 0.42053981439054433,
+        "b": 0.6846047246783992
+      },
+      "horizon": {
+        "isColor": true,
+        "r": 0.9563106985480812,
+        "g": 0.717808729826092,
+        "b": 0.5200719922912255
+      },
+      "fog": {
+        "isColor": true,
+        "r": 0.5045571582504362,
+        "g": 0.5837388702619007,
+        "b": 0.6018827593189658
+      },
+      "sunColor": {
+        "isColor": true,
+        "r": 1,
+        "g": 0.6607556750559415,
+        "b": 0.3408199745226491
+      }
+    },
+    "rig": {
+      "pitch": 0.10531316706533789,
+      "radius": 26.545949999999998
+    }
+  },
+  "twilight": {
+    "sky": {
+      "time": 0.8000000000000002,
+      "hour": 19.200000000000003,
+      "daylight": 0.3829629629629616,
+      "night": 0.4447037037037057,
+      "phase": "Sunset",
+      "top": {
+        "isColor": true,
+        "r": 0.057783629400221914,
+        "g": 0.0926110853775423,
+        "b": 0.20140423631142032
+      },
+      "horizon": {
+        "isColor": true,
+        "r": 0.6919099391726407,
+        "g": 0.16849553780172966,
+        "b": 0.09801905364462316
+      },
+      "fog": {
+        "isColor": true,
+        "r": 0.18101374961480587,
+        "g": 0.12430767582687902,
+        "b": 0.1504884305391646
+      },
+      "sunColor": {
+        "isColor": true,
+        "r": 1,
+        "g": 0.27865934679553694,
+        "b": 0.11885212665878277
+      }
+    },
+    "rig": {
+      "pitch": 0.10471975511965978,
+      "radius": 26.549999999999997
+    }
+  },
+  "night": {
+    "sky": {
+      "time": 0.9583333333333334,
+      "hour": 23,
+      "daylight": 0.1,
+      "night": 0.855,
+      "phase": "Night",
+      "top": {
+        "isColor": true,
+        "r": 0.0021246888847058823,
+        "g": 0.006512090790025684,
+        "b": 0.024157632443547246
+      },
+      "horizon": {
+        "isColor": true,
+        "r": 0.007499032040460618,
+        "g": 0.02217388478862708,
+        "b": 0.059511238155621766
+      },
+      "fog": {
+        "isColor": true,
+        "r": 0.006512090790025684,
+        "g": 0.01764195448412081,
+        "b": 0.04373502925049377
+      },
+      "sunColor": {
+        "isColor": true,
+        "r": 1,
+        "g": 0.6583748172725346,
+        "b": 0.3515325994898463
+      }
+    },
+    "rig": {
+      "pitch": 0.10471975511965978,
+      "radius": 26.549999999999997
+    }
+  },
+  "logs": [
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x9ec003bd600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x9ec003b8800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x9ec003bd600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x9ec003b6400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+    },
+    {
+      "type": "log",
+      "text": "[city] buildings loaded 656, visible 404, props 178, failed 0 / 834"
+    }
+  ]
+}

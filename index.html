@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2E6B4F" />
+    <title>Chromonopoly</title>
+    <script id="static-source-redirect">
+      // `python3 -m http.server 8000` at the repository root serves this
+      // source file, which needs Vite's TypeScript transform. Use the build.
+      if (location.port === '8000' && (location.pathname === '/' || location.pathname === '/index.html')) {
+        location.replace('dist/');
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Chromonopoly board"></canvas>
+    <div id="ui"></div>
+    <div id="boot" class="boot">
+      <div class="boot-mark">CHROMONOPOLY</div>
+      <div class="boot-bar"><i></i></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

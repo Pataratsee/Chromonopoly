@@ -1,0 +1,19 @@
+{
+  "cold": {
+    "readyMs": 1140,
+    "domContentLoadedMs": 79,
+    "loadMs": 79,
+    "transferKB": 2968,
+    "resourceCount": 7
+  },
+  "wallColdMs": 3506,
+  "frame": {
+    "samples": 4,
+    "averageMs": 549.97,
+    "fps": 1.8,
+    "p95Ms": 550,
+    "longFrames": 4,
+    "over33ms": 4
+  },
+  "measuredAt": "2026-11-07T02:29:35.674Z"
+}

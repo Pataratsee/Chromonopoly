@@ -1,0 +1,33 @@
+{
+  "city": {
+    "requested": 834,
+    "loaded": 834,
+    "failed": 0,
+    "buildings": 656,
+    "props": 178,
+    "visible": 404,
+    "ok": true
+  },
+  "logs": [
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x804003ba200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x804003b9600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x80402f0b000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x804003b9600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+    },
+    {
+      "type": "log",
+      "text": "[city] buildings loaded 656, visible 404, props 178, failed 0 / 834"
+    }
+  ]
+}

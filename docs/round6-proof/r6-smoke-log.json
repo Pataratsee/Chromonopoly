@@ -1,0 +1,41 @@
+{
+  "city": {
+    "requested": 514,
+    "loaded": 514,
+    "failed": 0,
+    "buildings": 336,
+    "props": 178,
+    "visible": 232,
+    "ok": true
+  },
+  "logs": [
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fbc003ad600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fbc003abe00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fbc003a6400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fbc003abe00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+    },
+    {
+      "type": "log",
+      "text": "[city] buildings loaded 0, visible 0, props 16, failed 0 / 514"
+    },
+    {
+      "type": "error",
+      "text": "[city] STARTUP CHECK FAILED: no buildings loaded. The city would be invisible."
+    },
+    {
+      "type": "log",
+      "text": "[city] buildings loaded 336, visible 232, props 178, failed 0 / 514"
+    }
+  ]
+}

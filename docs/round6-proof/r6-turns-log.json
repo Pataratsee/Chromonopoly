@@ -1,0 +1,1172 @@
+{
+  "session": "s_mw74med6_2a",
+  "turns": [
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 48099,
+          "elapsed": 0,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 48100,
+          "elapsed": 1,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 49589,
+          "elapsed": 1490,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 52672,
+          "elapsed": 4573,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 6"
+        },
+        {
+          "at": 53958,
+          "elapsed": 5859,
+          "state": "PIECE_MOVING",
+          "detail": "tile 6"
+        },
+        {
+          "at": 59758,
+          "elapsed": 11659,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 62219,
+          "elapsed": 14120,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 62237,
+          "elapsed": 14138,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 6,
+          "tileName": "Oriental Ave",
+          "pieceWorldPosition": {
+            "x": -1.05,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": -1.05,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 62218.79999999702
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "move": 0,
+        "log": 0
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 88293,
+          "elapsed": 1,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 88293,
+          "elapsed": 1,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 89828,
+          "elapsed": 1536,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 92895,
+          "elapsed": 4603,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 9"
+        },
+        {
+          "at": 94723,
+          "elapsed": 6431,
+          "state": "PIECE_MOVING",
+          "detail": "tile 9"
+        },
+        {
+          "at": 100549,
+          "elapsed": 12257,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 102715,
+          "elapsed": 14423,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 102727,
+          "elapsed": 14435,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 9,
+          "tileName": "Connecticut Ave",
+          "pieceWorldPosition": {
+            "x": -4.2,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": -4.2,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 102715
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 1,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 123723,
+          "elapsed": 0,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 123723,
+          "elapsed": 0,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 124912,
+          "elapsed": 1189,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 126128,
+          "elapsed": 2405,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 11"
+        },
+        {
+          "at": 127759,
+          "elapsed": 4036,
+          "state": "PIECE_MOVING",
+          "detail": "tile 11"
+        },
+        {
+          "at": 133272,
+          "elapsed": 9549,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 136087,
+          "elapsed": 12364,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 136098,
+          "elapsed": 12375,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 11,
+          "tileName": "St. Charles Place",
+          "pieceWorldPosition": {
+            "x": -5.25,
+            "y": 0.08,
+            "z": 4.2
+          },
+          "tileCenterWorldPosition": {
+            "x": -5.25,
+            "y": 0.08,
+            "z": 4.2
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 136086.5
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 2,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 160639,
+          "elapsed": 1,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 160639,
+          "elapsed": 1,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 162046,
+          "elapsed": 1408,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 165110,
+          "elapsed": 4472,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 23"
+        },
+        {
+          "at": 166449,
+          "elapsed": 5811,
+          "state": "PIECE_MOVING",
+          "detail": "tile 23"
+        },
+        {
+          "at": 171336,
+          "elapsed": 10698,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 173905,
+          "elapsed": 13267,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 173914,
+          "elapsed": 13276,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 23,
+          "tileName": "Indiana Ave",
+          "pieceWorldPosition": {
+            "x": -2.1,
+            "y": 0.08,
+            "z": -5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": -2.1,
+            "y": 0.08,
+            "z": -5.25
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 173905.20000000298
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 3,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 193291,
+          "elapsed": 1,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 193291,
+          "elapsed": 1,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 194701,
+          "elapsed": 1411,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 196351,
+          "elapsed": 3061,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 10"
+        },
+        {
+          "at": 198487,
+          "elapsed": 5197,
+          "state": "PIECE_MOVING",
+          "detail": "tile 10"
+        },
+        {
+          "at": 203464,
+          "elapsed": 10174,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 206402,
+          "elapsed": 13112,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 206421,
+          "elapsed": 13131,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 10,
+          "tileName": "Jail / Just Visiting",
+          "pieceWorldPosition": {
+            "x": -5.25,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": -5.25,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "distance": 0,
+          "inJail": true,
+          "at": 203457.5
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 4,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 251047,
+          "elapsed": 0,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 251047,
+          "elapsed": 0,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 252573,
+          "elapsed": 1526,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 255740,
+          "elapsed": 4693,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 15"
+        },
+        {
+          "at": 257149,
+          "elapsed": 6102,
+          "state": "PIECE_MOVING",
+          "detail": "tile 15"
+        },
+        {
+          "at": 263023,
+          "elapsed": 11976,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 265973,
+          "elapsed": 14926,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 265989,
+          "elapsed": 14942,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 15,
+          "tileName": "Pennsylvania RR",
+          "pieceWorldPosition": {
+            "x": -5.25,
+            "y": 0.08,
+            "z": 0
+          },
+          "tileCenterWorldPosition": {
+            "x": -5.25,
+            "y": 0.08,
+            "z": 0
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 265972.799999997
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 5,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 292007,
+          "elapsed": 0,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 292007,
+          "elapsed": 0,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 295027,
+          "elapsed": 3020,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 296621,
+          "elapsed": 4614,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 22"
+        },
+        {
+          "at": 298031,
+          "elapsed": 6024,
+          "state": "PIECE_MOVING",
+          "detail": "tile 22"
+        },
+        {
+          "at": 302872,
+          "elapsed": 10865,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 304243,
+          "elapsed": 12236,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 304250,
+          "elapsed": 12243,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 22,
+          "tileName": "Chance",
+          "pieceWorldPosition": {
+            "x": -3.15,
+            "y": 0.08,
+            "z": -5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": -3.15,
+            "y": 0.08,
+            "z": -5.25
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 304242.5
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 6,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 323118,
+          "elapsed": 0,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 323118,
+          "elapsed": 0,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 324613,
+          "elapsed": 1495,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 327705,
+          "elapsed": 4587,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 28"
+        },
+        {
+          "at": 329413,
+          "elapsed": 6295,
+          "state": "PIECE_MOVING",
+          "detail": "tile 28"
+        },
+        {
+          "at": 333913,
+          "elapsed": 10795,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 336684,
+          "elapsed": 13566,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 336701,
+          "elapsed": 13583,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 28,
+          "tileName": "Water Works",
+          "pieceWorldPosition": {
+            "x": 3.15,
+            "y": 0.08,
+            "z": -5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": 3.15,
+            "y": 0.08,
+            "z": -5.25
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 336683.59999999404
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 7,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 361620,
+          "elapsed": 1,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 361620,
+          "elapsed": 1,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 365122,
+          "elapsed": 3503,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 366624,
+          "elapsed": 5005,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 32"
+        },
+        {
+          "at": 368040,
+          "elapsed": 6421,
+          "state": "PIECE_MOVING",
+          "detail": "tile 32"
+        },
+        {
+          "at": 375182,
+          "elapsed": 13563,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 378405,
+          "elapsed": 16786,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 378415,
+          "elapsed": 16796,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 32,
+          "tileName": "North Carolina Ave",
+          "pieceWorldPosition": {
+            "x": 5.25,
+            "y": 0.08,
+            "z": -3.15
+          },
+          "tileCenterWorldPosition": {
+            "x": 5.25,
+            "y": 0.08,
+            "z": -3.15
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 378404.89999999106
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 8,
+        "log": 8
+      }
+    },
+    {
+      "pos": "TILE_PROMPT",
+      "turnLog": [
+        {
+          "at": 397855,
+          "elapsed": 1,
+          "state": "IDLE",
+          "detail": "ready"
+        },
+        {
+          "at": 397855,
+          "elapsed": 1,
+          "state": "DICE_ROLLING",
+          "detail": ""
+        },
+        {
+          "at": 399354,
+          "elapsed": 1500,
+          "state": "DICE_SETTLED",
+          "detail": ""
+        },
+        {
+          "at": 402429,
+          "elapsed": 4575,
+          "state": "CAMERA_ZOOM_IN",
+          "detail": "tile 5"
+        },
+        {
+          "at": 403869,
+          "elapsed": 6015,
+          "state": "PIECE_MOVING",
+          "detail": "tile 5"
+        },
+        {
+          "at": 409222,
+          "elapsed": 11368,
+          "state": "PIECE_LANDED",
+          "detail": ""
+        },
+        {
+          "at": 410571,
+          "elapsed": 12717,
+          "state": "CAMERA_ZOOM_OUT",
+          "detail": ""
+        },
+        {
+          "at": 410581,
+          "elapsed": 12727,
+          "state": "TILE_PROMPT",
+          "detail": "prompts released"
+        }
+      ],
+      "moveLog": [
+        {
+          "playerId": "p_mw74med6_29",
+          "logicTileIndex": 5,
+          "tileName": "Reading Railroad",
+          "pieceWorldPosition": {
+            "x": 0,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "tileCenterWorldPosition": {
+            "x": 0,
+            "y": 0.08,
+            "z": 5.25
+          },
+          "distance": 0,
+          "inJail": false,
+          "at": 410569
+        }
+      ],
+      "name": "Proof",
+      "before": {
+        "pos": "TILE_PROMPT",
+        "move": 9,
+        "log": 8
+      }
+    }
+  ],
+  "logs": [
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fdc003b8a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fdc003b9600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fdc003b8a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x1fdc003b2400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 6"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 6"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 6, tileName: Oriental Ave, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 9"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 9"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 9, tileName: Connecticut Ave, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 11"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 11"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 11, tileName: St. Charles Place, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 23"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 23"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 23, tileName: Indiana Ave, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 10"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 10"
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 10, tileName: Jail / Just Visiting, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 15"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 15"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 15, tileName: Pennsylvania RR, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 22"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 22"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 22, tileName: Chance, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 28"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 28"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 28, tileName: Water Works, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 32"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 32"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 32, tileName: North Carolina Ave, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] IDLE ready"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_ROLLING "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] DICE_SETTLED "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_IN tile 5"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_MOVING tile 5"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] PIECE_LANDED "
+    },
+    {
+      "type": "debug",
+      "text": "[move] {playerId: p_mw74med6_29, logicTileIndex: 5, tileName: Reading Railroad, pieceWorldPosition: Object, tileCenterWorldPosition: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[turn] CAMERA_ZOOM_OUT "
+    },
+    {
+      "type": "debug",
+      "text": "[turn] TILE_PROMPT prompts released"
+    }
+  ]
+}

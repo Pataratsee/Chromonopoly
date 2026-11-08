@@ -1,0 +1,44 @@
+{
+  "percent": "45",
+  "spin": {
+    "duration": 9752,
+    "turns": 0.01,
+    "samples": [
+      {
+        "t": 1422,
+        "angle": 0
+      },
+      {
+        "t": 4664,
+        "angle": -127.77880687407811
+      },
+      {
+        "t": 6441,
+        "angle": -2.7186033540915266
+      },
+      {
+        "t": 9751,
+        "angle": 3.599997906246242
+      }
+    ],
+    "result": "Caught"
+  },
+  "logs": [
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x2cc003c0a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x2cc003bc200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x2cc003c0a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+    },
+    {
+      "type": "warning",
+      "text": "[.WebGL-0x2cc003ba400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+    }
+  ]
+}
