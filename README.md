@@ -1,1 +1,1 @@
-pataratsee.github.io/Chromonopoly/
+pataratsee.github.io/Chromonopoly/dist/
