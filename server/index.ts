@@ -6,8 +6,8 @@ import { World, type TestSetup } from './world.ts';
 import { Store } from './db.ts';
 import type { GameEvent, GameMode, Intent, ServerMessage } from '../src/game/types.ts';
 
-// Deliberately not the ambient PORT variable: this game owns one fixed port.
-const PORT = Number(process.env.CHROMONOPOLY_PORT ?? 8787) || 8787;
+// Hosts such as Render inject PORT; CHROMONOPOLY_PORT keeps local/test ports explicit.
+const PORT = Number(process.env.CHROMONOPOLY_PORT ?? process.env.PORT ?? 8787) || 8787;
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 

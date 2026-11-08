@@ -1,0 +1,14 @@
+# Render Blueprint for the multiplayer server.
+# Connect this repository at https://dashboard.render.com/blueprints, then set
+# the frontend's VITE_GAME_SERVER_URL variable to the service's HTTPS URL.
+services:
+  - type: web
+    name: chromonopoly-server
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build:server
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0

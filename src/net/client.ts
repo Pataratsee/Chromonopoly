@@ -29,8 +29,7 @@ export class NetClient {
     const storedName = name ?? localStorage.getItem(NAME_KEY) ?? '';
     const storedToken = tokenId ?? localStorage.getItem(TOKEN_KEY) ?? 'cat';
     this.onStatus('connecting');
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${this.gameHost()}/ws`);
+    const ws = new WebSocket(this.socketUrl());
     this.ws = ws;
 
     ws.onopen = () => {
@@ -85,6 +84,22 @@ export class NetClient {
       this.scheduleReconnect(storedName, storedToken, mode);
     };
     ws.onerror = () => ws.close();
+  }
+
+  /**
+   * A deployed static frontend points at the separately hosted game server.
+   * The value is an HTTP(S) origin; it is converted to the matching WS scheme.
+   */
+  private socketUrl(): string {
+    const configured = import.meta.env.VITE_GAME_SERVER_URL?.trim();
+    if (configured) {
+      const url = new URL(configured);
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      if (url.pathname === '/' || url.pathname === '') url.pathname = '/ws';
+      return url.toString();
+    }
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${protocol}://${this.gameHost()}/ws`;
   }
 
   /**

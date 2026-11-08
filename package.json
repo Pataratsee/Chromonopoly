@@ -18,6 +18,7 @@
     "test": "node scripts/check-no-handmade-models.js && vitest run",
     "test:e2e": "playwright test",
     "check:models": "node scripts/check-no-handmade-models.js",
+    "check:pages": "node scripts/check-pages-build.mjs",
     "assets:download": "node scripts/download-models.mjs",
     "assets:normalize": "node scripts/normalize-model.mjs",
     "assets:compress": "node scripts/compress-models.mjs"

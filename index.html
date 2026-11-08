@@ -6,11 +6,17 @@
     <meta name="theme-color" content="#2E6B4F" />
     <title>Chromonopoly</title>
     <script id="static-source-redirect">
-      // `python3 -m http.server 8000` at the repository root serves this
-      // source file, which needs Vite's TypeScript transform. Use the build.
-      if (location.port === '8000' && (location.pathname === '/' || location.pathname === '/index.html')) {
-        location.replace('dist/');
-      }
+      // The source page loads /src/main.ts and only works through Vite. GitHub
+      // Pages (and any plain static server) must use the bundled app instead.
+      // Keep Vite's dev server (5173-5180) on the source entry.
+      (() => {
+        const port = Number(location.port);
+        const viteDev = port >= 5173 && port <= 5180;
+        const alreadyBuilt = location.pathname.includes('/dist/');
+        if (!viteDev && !alreadyBuilt) {
+          location.replace(new URL('dist/', location.href).href);
+        }
+      })();
     </script>
   </head>
   <body>

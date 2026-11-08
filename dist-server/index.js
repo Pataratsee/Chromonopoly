@@ -5655,7 +5655,7 @@ var Store = class {
 };
 
 // server/index.ts
-var PORT = Number(process.env.CHROMONOPOLY_PORT ?? 8787) || 8787;
+var PORT = Number(process.env.CHROMONOPOLY_PORT ?? process.env.PORT ?? 8787) || 8787;
 var ROOT = path2.resolve(import.meta.dirname, "..");
 var DIST = path2.join(ROOT, "dist");
 var MIME = {
