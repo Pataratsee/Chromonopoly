@@ -25,11 +25,12 @@ export function socketUrl(): string {
   return url.toString();
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+export async function apiFetch(path: string, init: RequestInit = {}, timeoutMs = 75_000): Promise<Response> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
   try {
-    return await fetch(apiUrl(path), { ...init, signal: controller.signal });
+    response = await fetch(apiUrl(path), { ...init, signal: controller.signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('The server took too long to answer.');
@@ -38,4 +39,11 @@ export async function apiFetch(path: string, init: RequestInit = {}, timeoutMs =
   } finally {
     window.clearTimeout(timeout);
   }
+  // A sleeping or misrouted server must never look like a successful JSON
+  // response. Render's edge can return an HTML fallback during a cold start.
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('text/html')) {
+    throw new Error('The game server is still waking. Try again in a moment.');
+  }
+  return response;
 }

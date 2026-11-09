@@ -254,6 +254,36 @@ when the custom property changed.
 property and the computed `#ui` font size at each value, and saves three
 screenshots. **Unverified:** every panel was not opened at each scale.
 
+## Production outage — Pages pointed at a stale server
+
+**Observed:** the published Pages site loaded, but every request to the game
+server failed and the auth panel reported that it could not reach the server.
+
+**Root causes:**
+1. GitHub Pages deployed commit `3e0f564`, but Render's only deploy was `266e7c1`
+   (nine hours old). The old server had no CORS headers at all, so the browser
+   rejected every `fetch` with `TypeError: Failed to fetch`; it also returned the
+   SPA HTML for `/api/auth/session` instead of JSON.
+2. The client health check used a 4-second timeout. Render documents cold starts
+   of 50 seconds or more; the server itself took 22 seconds to wake in this test,
+   so a sleeping-but-healthy server was reported as unreachable.
+3. The client treated any HTTP 200 as API data, so an HTML fallback from a
+   misrouted server produced a confusing parse failure instead of an outage.
+
+**Fixes:**
+- Render was manually redeployed from `3e0f564`; CORS preflight now returns 204,
+  `/api/auth/session` returns a JSON 401 without a token, and the WebSocket
+  endpoint upgrades successfully.
+- `apiFetch` now waits up to 75 seconds (the documented cold-start window) and
+  rejects `text/html` responses instead of accepting them as API data.
+- The auth panel changes from “Checking server…” to “Waking server…” after five
+  seconds, so a cold start is distinguishable from a failure.
+- Unknown `/api/*` routes now return JSON 404, never the SPA shell. `/api/health`
+  reports the deployed commit and protocol version for post-deploy checks.
+
+**Verified:** live health, CORS preflight, JSON auth rejection, and WebSocket 101
+against the Render origin. Browser sign-in against Pages is verified below.
+
 ## Test and build status
 
 - `npm run typecheck` — pass.

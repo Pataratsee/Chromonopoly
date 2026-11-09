@@ -14,6 +14,8 @@ const DIST = path.join(ROOT, 'dist');
 const BCRYPT_COST = 11;
 const LOGIN_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_MAX = 10;
+const BUILD = process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? 'dev';
+const PROTOCOL = 2;
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -103,6 +105,7 @@ function cors(req: IncomingMessage, res: ServerResponse): void {
   res.setHeader('vary', 'Origin');
   res.setHeader('access-control-allow-headers', 'content-type, authorization');
   res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+  res.setHeader('access-control-max-age', '86400');
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -164,6 +167,8 @@ const server = createServer(async (req, res) => {
       soloTables: soloWorlds.size,
       uptime: process.uptime(),
       accounts: store.topAccounts(1000).length,
+      version: BUILD,
+      protocol: PROTOCOL,
     });
     return;
   }
@@ -290,6 +295,18 @@ const server = createServer(async (req, res) => {
     } catch (err) {
       json(res, 400, { ok: false, reason: err instanceof Error ? err.message : 'bad request' });
     }
+    return;
+  }
+
+  // Never let an unknown API route fall through to the SPA shell: an HTML 200
+  // once made an old server look healthy while every real API call was broken.
+  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+    json(res, 404, { error: 'Unknown API route.' });
+    return;
+  }
+  if (url.pathname === '/ws') {
+    res.writeHead(426, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end('WebSocket upgrade required');
     return;
   }
 

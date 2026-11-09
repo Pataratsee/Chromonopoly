@@ -343,7 +343,7 @@ export class UI {
     let unreachable = '';
     if (key) {
       try {
-        const res = await apiFetch(`/api/solo?key=${encodeURIComponent(key)}`, {}, 5000);
+        const res = await apiFetch(`/api/solo?key=${encodeURIComponent(key)}`);
         if (res.ok) save = (await res.json()) as SoloMeta;
       } catch (error) {
         unreachable = error instanceof Error ? error.message : 'Cannot reach the game server.';
@@ -521,13 +521,20 @@ export class UI {
     const label = this.authStatusEl.querySelector('span');
     if (label) label.textContent = attempt === 0 ? 'Checking server…' : 'Connecting…';
     let delay = 10_000;
+    // Render's free tier documents cold starts of 50 seconds or more. A short
+    // timeout here made a waking server look permanently unreachable.
+    const waking = window.setTimeout(() => {
+      if (label?.isConnected) label.textContent = 'Waking server…';
+    }, 5000);
     try {
-      const res = await apiFetch('/api/health', {}, 4000);
+      const res = await apiFetch('/api/health');
       if (!res.ok) throw new Error('Health check failed');
       this.setAuthStatus('online', 'Connected');
     } catch {
       this.setAuthStatus('offline', 'Cannot reach server');
       delay = Math.min(15_000, 2500 * 2 ** Math.min(3, attempt));
+    } finally {
+      window.clearTimeout(waking);
     }
     if (!this.authStatusEl) return;
     this.authPoll = window.setTimeout(() => void this.pollAuthHealth(attempt + 1), delay);
@@ -553,7 +560,7 @@ export class UI {
     const token = authToken();
     if (!token) return;
     try {
-      await apiFetch('/api/auth/logout', { method: 'POST', headers: { authorization: `Bearer ${token}` } });
+      await apiFetch('/api/auth/logout', { method: 'POST', headers: { authorization: `Bearer ${token}` } }, 10_000);
     } catch {
       // Offline: the local session still ends; the server revokes on next login.
     }
