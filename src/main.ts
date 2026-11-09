@@ -536,11 +536,18 @@ async function start(): Promise<void> {
     (window as unknown as { __state: () => unknown }).__state = () => state;
   }
 
-  // first frame proves the renderer is alive
-  requestAnimationFrame(() => {
+  // The first frame proves the renderer is alive, but background tabs pause
+  // requestAnimationFrame. A timer guarantees the overlay can never sit on top
+  // of the menu and swallow every click.
+  let revealed = false;
+  const revealBoard = (): void => {
+    if (revealed) return;
+    revealed = true;
     boot.classList.add('done');
     setTimeout(() => boot.remove(), 600);
-  });
+  };
+  requestAnimationFrame(revealBoard);
+  window.setTimeout(revealBoard, 1500);
 
   // one-time gesture unlocks audio
   const unlock = (): void => {

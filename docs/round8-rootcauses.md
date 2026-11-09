@@ -280,8 +280,12 @@ server failed and the auth panel reported that it could not reach the server.
   seconds, so a cold start is distinguishable from a failure.
 - Unknown `/api/*` routes now return JSON 404, never the SPA shell. `/api/health`
   reports the deployed commit and protocol version for post-deploy checks.
+- The boot overlay now clears on a 1.5-second fallback as well as the first
+  animation frame. A background tab pauses `requestAnimationFrame`, which left
+  the overlay covering the menu and swallowing every click.
 
-**Verified:** live health, CORS preflight, JSON auth rejection, and WebSocket 101
+**Verified:** live health, CORS preflight, JSON auth rejection, account creation,
+Bearer-session lookup and an authenticated WebSocket welcome/state round-trip
 against the Render origin. Browser sign-in against Pages is verified below.
 
 ## Test and build status
