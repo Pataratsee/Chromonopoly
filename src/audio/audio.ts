@@ -1,7 +1,11 @@
 /**
  * All audio is synthesised here — no sampled material, so the licence is ours.
  * One master bus -> limiter -> destination; music and SFX have their own gains.
+ * Music is a shuffle bag of six full arrangements with a crossfade at each
+ * boundary, so it does not loop or repeat the same song back-to-back.
  */
+
+import { SONGS, SongDeck, midiToHz, songDuration, type Song } from './songs';
 
 type Sfx =
   | 'click'
@@ -27,8 +31,14 @@ export class AudioEngine {
   private musicBus!: GainNode;
   private sfxBus!: GainNode;
   private limiter!: DynamicsCompressorNode;
+  /** Two music buses let one arrangement fade out under the next. */
+  private musicGains: [GainNode, GainNode] | null = null;
+  private activeMusicGain: 0 | 1 = 0;
   private musicTimer: number | null = null;
-  private step = 0;
+  private songIndex = 0;
+  private songStep = 0;
+  private crossfades = 0;
+  private readonly songDeck = new SongDeck(SONGS.length);
   private volumes = { master: 0.8, music: 0.5, sfx: 0.8 };
   private musicOn = true;
   private sfxOn = true;
@@ -53,6 +63,14 @@ export class AudioEngine {
     this.sfxBus.connect(this.master);
     this.master.connect(this.limiter);
     this.limiter.connect(this.ctx.destination);
+
+    const a = this.ctx.createGain();
+    const b = this.ctx.createGain();
+    a.gain.value = 1;
+    b.gain.value = 0;
+    a.connect(this.musicBus);
+    b.connect(this.musicBus);
+    this.musicGains = [a, b];
     this.applyVolumes();
   }
 
@@ -108,7 +126,7 @@ export class AudioEngine {
 
   // ------------------------------------------------------------------ SFX
 
-  play(name: Sfx): void {
+  play(name: Sfx, pitch = 1): void {
     // Gate at the source. With SFX off, no oscillator or buffer is created.
     if (!this.ctx || !this.sfxOn || this.volumes.sfx <= 0) return;
     const t = this.ctx.currentTime;
@@ -124,7 +142,8 @@ export class AudioEngine {
         this.blip(180, t + 0.05, 0.08, 0.12, 'square');
         break;
       case 'hop':
-        this.blip(520, t, 0.07, 0.09, 'sine', 740);
+        // Each hop gets its own pitch so a run of tiles does not sound mechanical.
+        this.blip(520 * pitch, t, 0.07, 0.09, 'sine', 740 * pitch);
         break;
       case 'cash':
         this.blip(1046, t, 0.09, 0.15, 'triangle');
@@ -220,54 +239,148 @@ export class AudioEngine {
 
   // ---------------------------------------------------------------- music
 
-  /**
-   * I–vi–IV–V in C major, 120 BPM, 8-bar loop of plucked melody and bass.
-   * Synthesised so the loop is seamless and unlicensed. There is deliberately
-   * no percussion: the old noise shaker read as a looping drum SFX.
-   */
+  private currentSong(): Song {
+    return SONGS[this.songIndex]!;
+  }
+
+  /** Test/UI-visible snapshot; contains no audio samples. */
+  musicInfo(): {
+    id: string;
+    title: string;
+    index: number;
+    bpm: number;
+    bars: number;
+    duration: number;
+    step: number;
+    playing: boolean;
+    musicOn: boolean;
+    context: AudioContextState | 'none';
+    crossfades: number;
+    songs: Array<{ id: string; title: string; duration: number }>;
+  } {
+    const song = this.currentSong();
+    return {
+      id: song.id,
+      title: song.title,
+      index: this.songIndex,
+      bpm: song.bpm,
+      bars: song.bars,
+      duration: Math.round(songDuration(song)),
+      step: this.songStep,
+      playing: this.musicTimer !== null,
+      musicOn: this.musicOn,
+      context: this.ctx?.state ?? 'none',
+      crossfades: this.crossfades,
+      songs: SONGS.map((entry) => ({
+        id: entry.id,
+        title: entry.title,
+        duration: Math.round(songDuration(entry)),
+      })),
+    };
+  }
+
+  /** Skip immediately, using the same crossfade as a natural song ending. */
+  skipSong(): void {
+    this.advanceSong();
+  }
+
   startMusic(): void {
     if (!this.ctx || this.musicTimer !== null) return;
-    const stepMs = (60_000 / 120) / 4;
-    this.musicTimer = window.setInterval(() => {
-      if (!this.ctx) return;
-      this.musicStep(this.step, this.ctx.currentTime + 0.02);
-      this.step = (this.step + 1) % 128;
-    }, stepMs);
+    this.songStep = 0;
+    if (this.musicGains) {
+      const now = this.ctx.currentTime;
+      const active = this.musicGains[this.activeMusicGain];
+      const inactive = this.musicGains[this.activeMusicGain === 0 ? 1 : 0];
+      active.gain.cancelScheduledValues(now);
+      active.gain.setValueAtTime(1, now);
+      inactive.gain.cancelScheduledValues(now);
+      inactive.gain.setValueAtTime(0, now);
+    }
+    this.musicTimer = window.setTimeout(this.musicTick, 0);
   }
 
   stopMusic(): void {
-    if (this.musicTimer !== null) window.clearInterval(this.musicTimer);
+    if (this.musicTimer !== null) window.clearTimeout(this.musicTimer);
     this.musicTimer = null;
   }
 
-  private musicStep(step: number, at: number): void {
-    const bar = Math.floor(step / 16) % 8;
-    const beat = step % 16;
-    const chords = [
-      [261.63, 329.63, 392.0],
-      [220.0, 261.63, 329.63],
-      [174.61, 220.0, 261.63],
-      [196.0, 246.94, 293.66],
-      [261.63, 329.63, 392.0],
-      [220.0, 261.63, 329.63],
-      [174.61, 220.0, 261.63],
-      [196.0, 246.94, 293.66],
-    ];
-    const chord = chords[bar]!;
-    const roots = [65.41, 55.0, 43.65, 49.0];
-    const melody = [0, 4, 7, 4, 9, 7, 4, 2];
+  private musicTick = (): void => {
+    if (!this.ctx || this.musicTimer === null) return;
+    const song = this.currentSong();
+    const destination = this.musicGains?.[this.activeMusicGain] ?? this.musicBus;
+    this.musicStep(song, this.songStep, this.ctx.currentTime + 0.05, destination);
+    this.songStep += 1;
+    if (this.songStep >= song.bars * 16) this.advanceSong();
+    const stepMs = 60_000 / song.bpm / 4;
+    this.musicTimer = window.setTimeout(this.musicTick, stepMs);
+  };
 
-    if (beat % 4 === 0) this.pluck(chord[0]!, at, 0.32, 0.16, 'sine');
-    if (beat % 4 === 2) this.pluck(roots[bar % 4]!, at, 0.3, 0.2, 'triangle');
-    if (beat % 2 === 0) this.pluck(chord[(beat / 2) % chord.length]!, at, 0.22, 0.08, 'sine');
-    if (beat % 8 === 0 || beat % 8 === 6) {
-      const note = chord[0]! * 2 ** (melody[(bar + beat) % melody.length]! / 12);
-      this.pluck(note, at, 0.26, 0.11, 'triangle');
-      this.pluck(note * 2, at + 0.09, 0.2, 0.05, 'sine');
+  /**
+   * Move to the next song in the shuffle bag. The outgoing bus fades over
+   * 1.1 s while the incoming bus rises, so there is no silent gap or cut.
+   */
+  private advanceSong(): void {
+    const next = this.songDeck.next();
+    if (!this.ctx || !this.musicGains) {
+      this.songIndex = next;
+      this.songStep = 0;
+      return;
+    }
+    const now = this.ctx.currentTime;
+    const outgoing = this.musicGains[this.activeMusicGain];
+    const incomingIndex: 0 | 1 = this.activeMusicGain === 0 ? 1 : 0;
+    const incoming = this.musicGains[incomingIndex];
+    this.songIndex = next;
+    this.songStep = 0;
+    this.activeMusicGain = incomingIndex;
+
+    outgoing.gain.cancelScheduledValues(now);
+    outgoing.gain.setValueAtTime(outgoing.gain.value, now);
+    outgoing.gain.linearRampToValueAtTime(0.0001, now + 1.1);
+
+    incoming.gain.cancelScheduledValues(now);
+    incoming.gain.setValueAtTime(0.0001, now);
+    incoming.gain.linearRampToValueAtTime(1, now + 1.1);
+    this.crossfades += 1;
+  }
+
+  private musicStep(song: Song, step: number, at: number, destination: AudioNode): void {
+    const bar = Math.floor(step / 16) % song.chords.length;
+    const beat = step % 16;
+    const chord = song.chords[bar]!;
+    const root = song.roots[bar % song.roots.length]!;
+
+    if (beat % 4 === 0) {
+      this.pluck(midiToHz(chord[0]!), at, 0.34, 0.12, song.pad, destination);
+    }
+    if (beat % 4 === 2) {
+      this.pluck(midiToHz(root), at, 0.3, 0.17, song.bass, destination);
+    }
+    if (song.arp && beat % 2 === 0) {
+      this.pluck(midiToHz(chord[(beat / 2) % chord.length]! + 12), at, 0.18, 0.05, song.lead, destination);
+    }
+    if (beat === 0 || beat === 6) {
+      const melody = song.melody;
+      const semitone = melody[(bar * 2 + (beat === 6 ? 1 : 0)) % melody.length]!;
+      const note = midiToHz(chord[0]! + 12 + semitone);
+      this.pluck(note, at, 0.26, 0.1, song.lead, destination);
+      if (song.sparkle) {
+        this.pluck(note * 2, at + 0.09, 0.18, 0.035, 'sine', destination);
+      }
+    }
+    if (song.sparkle && beat === 12) {
+      this.pluck(midiToHz(chord[2]! + 24), at, 0.2, 0.04, 'sine', destination);
     }
   }
 
-  private pluck(freq: number, at: number, duration: number, gain: number, type: OscillatorType): void {
+  private pluck(
+    freq: number,
+    at: number,
+    duration: number,
+    gain: number,
+    type: OscillatorType,
+    destination: AudioNode = this.musicBus,
+  ): void {
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -279,7 +392,7 @@ export class AudioEngine {
     g.gain.setValueAtTime(0.0001, at);
     g.gain.exponentialRampToValueAtTime(gain, at + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, at + duration);
-    osc.connect(filter).connect(g).connect(this.musicBus);
+    osc.connect(filter).connect(g).connect(destination);
     osc.start(at);
     osc.stop(at + duration + 0.02);
   }

@@ -35,6 +35,19 @@ export function zoneIsSuccess(zone: WheelZone): boolean {
 }
 
 /**
+ * Semantic colours: a jail sale is good when nothing sells, partial when some
+ * sell and worst when every deed goes. Generic success/failure still reads
+ * green/red, with alternating red arcs for the split failure wheel.
+ */
+export function wheelColor(zone: WheelZone, index: number): string {
+  if (zone.key === 'none') return '#2F9E6F';
+  if (zone.key === 'some') return '#D99A2B';
+  if (zone.key === 'all') return '#C94C45';
+  if (zone.success) return '#2F9E6F';
+  return ['#C94C45', '#9F3F39', '#D9655C'][index % 3]!;
+}
+
+/**
  * CSS conic gradients start at 12 o'clock and run clockwise. The pointer is
  * fixed at 12 o'clock, so move the requested percentage under it by rotating
  * the wheel backwards by that exact amount.

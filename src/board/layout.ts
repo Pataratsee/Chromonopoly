@@ -58,3 +58,27 @@ export function contentBox(space: Space): { w: number; h: number } {
   const icon = space.type === 'property' || space.type === 'railroad' || space.type === 'utility' ? 0 : 0.24;
   return { w: 0.94, h: 0.84 - band - icon };
 }
+
+/** Where the 3D name and price sit inside a tile, in tile-local units. */
+export interface TileTextLayout {
+  nameZ: number;
+  priceZ: number;
+  nameSize: number;
+}
+
+/**
+ * Corner tiles are painted with their own art, so their 3D label moves to the
+ * inner apron instead of sitting across it. Banded tiles keep the name clear of
+ * the colour band at z=-0.38 (inner edge -0.305). Properties get two lines of
+ * room between the band and the price.
+ */
+export function tileTextLayout(space: Space): TileTextLayout {
+  const corner = space.index % 10 === 0;
+  const banded = space.type === 'railroad' || space.type === 'utility';
+  const flat = space.type !== 'property';
+  return {
+    nameZ: corner ? 0.36 : banded ? -0.16 : flat ? -0.33 : 0,
+    priceZ: 0.4,
+    nameSize: corner ? 0.18 : space.type === 'chance' || space.type === 'chest' ? 0.19 : 0.23,
+  };
+}

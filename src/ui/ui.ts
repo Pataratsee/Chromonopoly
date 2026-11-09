@@ -2,14 +2,15 @@ import { PALETTE, money, QUALITY, type QualityKey } from '../config';
 import { SPACES, spaceAt } from '../game/board';
 import { BUILDING_CATEGORIES, BUILDING_META, buildingCost, buildingRent, buildingTypesForMode, canBuild, evadeChance, mortgageValue, rentFor, robberyAmountIssues, robberyChance, unmortgageCost, RULES } from '../game/rules';
 import type { ChanceRoll, CrimeOutcome, GameEvent, GameMode, PrivateState, PublicState, Settings, Suit, TradeOffer } from '../game/types';
-import { setAuthToken } from '../net/client';
+import { authToken, setAuthToken, soloKey } from '../net/client';
+import { apiFetch } from '../net/endpoint';
 import type { ModelAsset } from '../render/models';
 import type { ThumbnailStudio } from '../render/thumbnails';
 import { audio } from '../audio/audio';
 import { DEFAULT_SETTINGS, clearRestartFlag, isRestarting, loadSettings, saveSettings } from './settings';
 import type { NetClient } from '../net/client';
 import { intentKey } from '../net/client';
-import { rotationAt, segmentsForDisplay, segmentAtRotation, spinPlan, wheelZones } from './chanceWheel';
+import { rotationAt, segmentsForDisplay, segmentAtRotation, spinPlan, wheelColor, wheelZones } from './chanceWheel';
 import './styles.css';
 
 void PALETTE;
@@ -80,11 +81,6 @@ const GROUP_LABEL: Record<string, string> = {
 
 const CATEGORY_ORDER = ['vehicle', 'animal', 'food', 'object', 'fantasy'];
 
-function zoneColor(zone: { success: boolean }, index: number): string {
-  if (zone.success) return '#2F9E6F';
-  return ['#C94C45', '#9F3F39', '#D9655C'][index % 3]!;
-}
-
 export interface UIDeps {
   net: NetClient;
   studio: ThumbnailStudio;
@@ -117,6 +113,12 @@ export class UI {
   private promptsBlocked = false;
   private logTab: 'main' | 'players' | 'market' = 'main';
   private logPlayer: string | null = null;
+  private marketLive: (() => void) | null = null;
+  private menuPanel: HTMLElement | null = null;
+  private authStatusEl: HTMLElement | null = null;
+  private authPoll: number | null = null;
+  private authBusy = false;
+  private accountName = '';
 
   constructor(private readonly deps: UIDeps) {
     this.root = document.getElementById('ui') as HTMLElement;
@@ -139,6 +141,7 @@ export class UI {
   }
 
   mount(): void {
+    this.deps.net.onAuthLost = (reason) => this.authLost(reason);
     this.root.append(this.buildHud());
     this.tableStage = h('div', { class: 'table-stage', id: 'table-stage' });
     this.root.append(this.tableStage);
@@ -263,96 +266,36 @@ export class UI {
     const existing = document.querySelector('.menu');
     existing?.remove();
     this.menuOpen = true;
-    const name = localStorage.getItem('chromonopoly.name') ?? '';
     const card = h('div', { class: 'menu-card glass-strong' });
     const left = h('div', { class: 'menu-left' });
     left.append(
       h('div', { class: 'menu-kicker' }, 'Property · power · a little larceny'),
       h('h1', { class: 'menu-logo' }, 'Chromo', h('span', {}, 'nopoly')),
-      h('p', { class: 'menu-sub' }, 'Buy streets, build skylines, and outlast everyone. Log in for the one shared board, or play a proper turn-based table against three AI.'),
+      h('p', { class: 'menu-sub' }, 'Buy streets, build skylines, and outlast everyone. Play a proper table against three AI — or take the one shared board with everyone else.'),
     );
-
-    // Accounts are username + password only. The glass panel is the door to
-    // multiplayer; solo never asks for one.
-    let authMode: 'login' | 'create' = 'login';
-    const error = h('p', { class: 'auth-error', role: 'alert' });
-    const tabs = h('div', { class: 'segmented auth-tabs' });
-    const loginTab = h('button', { 'aria-pressed': 'true', onclick: () => setMode('login') }, 'Log in');
-    const createTab = h('button', { 'aria-pressed': 'false', onclick: () => setMode('create') }, 'Create account');
-    tabs.append(loginTab, createTab);
-    const username = h('input', { class: 'field', id: 'auth-username', maxlength: '16', placeholder: 'Username', autocomplete: 'username' }) as HTMLInputElement;
-    username.value = localStorage.getItem('chromonopoly.username') ?? '';
-    const password = h('input', { class: 'field', id: 'auth-password', type: 'password', maxlength: '128', placeholder: 'Password', autocomplete: 'current-password' }) as HTMLInputElement;
-    const submit = h('button', { class: 'btn btn-gold btn-block', id: 'auth-submit' }, 'Log in');
-    const hint = h('p', { class: 'note auth-hint' }, 'Username: 3–16 letters, numbers or underscores · password: 6+ characters');
-    const setMode = (next: 'login' | 'create'): void => {
-      authMode = next;
-      loginTab.setAttribute('aria-pressed', String(next === 'login'));
-      createTab.setAttribute('aria-pressed', String(next === 'create'));
-      submit.textContent = next === 'login' ? 'Log in' : 'Create account';
-      password.autocomplete = next === 'login' ? 'current-password' : 'new-password';
-      error.textContent = '';
-    };
-    const fail = (message: string): void => {
-      error.textContent = message;
-      this.toast(message, 'bad');
-    };
-    const runAuth = async (): Promise<void> => {
-      const user = username.value.trim();
-      const pass = password.value;
-      if (!/^[A-Za-z0-9_]{3,16}$/.test(user)) { fail('Username must be 3–16 letters, numbers or underscores.'); username.focus(); return; }
-      if (pass.length < 6) { fail('Password must be at least 6 characters.'); password.focus(); return; }
-      submit.disabled = true;
-      try {
-        const res = await fetch(`/api/auth/${authMode === 'login' ? 'login' : 'register'}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ username: user, password: pass }),
-        });
-        const data = (await res.json()) as { token?: string; account?: { username?: string }; error?: string };
-        if (!res.ok || !data.token) throw new Error(data.error ?? 'Could not sign in.');
-        setAuthToken(data.token);
-        const confirmed = data.account?.username ?? user;
-        localStorage.setItem('chromonopoly.username', confirmed);
-        this.join(confirmed, 'multi');
-      } catch (err) {
-        fail(err instanceof Error ? err.message : 'Could not sign in.');
-      } finally {
-        submit.disabled = false;
-      }
-    };
-    submit.addEventListener('click', () => void runAuth());
-    password.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') void runAuth(); });
-    const authCard = h('div', { class: 'auth-card liquid' }, error, tabs, username, password, submit, hint);
-
-    const soloName = h('input', { class: 'field', id: 'name-input', maxlength: '24', placeholder: 'Your name (solo)', autocomplete: 'nickname' }) as HTMLInputElement;
-    soloName.value = name;
-    const solo = h(
-      'button',
-      { class: 'mode-btn solo', id: 'solo-btn' },
-      h('span', { class: 'mode-eyebrow' }, 'No account · 3 AI'),
-      h('b', {}, 'Single Player'),
-      h('span', { class: 'mode-note' }, 'A proper table. One player acts at a time.'),
-    );
-    solo.addEventListener('click', () => this.join(soloName.value.trim() || 'Tycoon', 'solo'));
-    const form = h('div', { class: 'menu-form' }, authCard, h('div', { class: 'solo-row' }, soloName, solo));
-    form.append(
-      h(
-        'div',
-        { class: 'inline', style: 'margin-top:4px;gap:6px' },
-        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openTokens(true) }, 'Choose piece'),
-        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openSettings() }, 'Settings'),
-        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openHelp() }, 'How to play'),
-      ),
-    );
-    left.append(form);
+    const panel = h('div', { class: 'menu-panel' });
+    left.append(panel);
+    this.menuPanel = panel;
+    this.showHomePanel(panel);
 
     const preview = h('canvas', { id: 'menu-preview' }) as HTMLCanvasElement;
     const previewLoading = h('div', { class: 'menu-preview-loading', id: 'menu-preview-loading' }, h('i', {}), h('span', {}, 'Waking the city…'));
-    const right = h('div', { class: 'menu-right' }, preview, previewLoading);
+    const tokenName = h('b', { id: 'menu-token-name' }, this.assetName(this.selectedToken));
+    const right = h(
+      'div',
+      { class: 'menu-right' },
+      preview,
+      previewLoading,
+      h('div', { class: 'menu-preview-foot' }, tokenName, h('span', {}, 'Click to change your piece')),
+    );
     card.append(left, right);
     const menu = h('div', { class: 'menu' }, card);
     document.body.append(menu);
+
+    preview.addEventListener('click', () => {
+      audio.play('click');
+      this.openTokens(true);
+    });
 
     this.stopPreview?.();
     this.stopPreview = this.deps.studio.preview(preview, this.selectedToken, 'token', () => {
@@ -361,11 +304,276 @@ export class UI {
     });
   }
 
+  private showHomePanel(panel: HTMLElement): void {
+    this.stopAuthPoll();
+    this.authStatusEl = null;
+    panel.replaceChildren(
+      h('div', { class: 'menu-actions' },
+        h(
+          'button',
+          { class: 'mode-btn solo', id: 'solo-btn' },
+          h('span', { class: 'mode-eyebrow' }, 'No account · 3 AI'),
+          h('b', {}, 'Single Player'),
+          h('span', { class: 'mode-note' }, 'A proper table. One player acts at a time.'),
+        ),
+        h(
+          'button',
+          { class: 'mode-btn multi', id: 'multi-btn' },
+          h('span', { class: 'mode-eyebrow' }, 'Account · shared board'),
+          h('b', {}, 'Multiplayer'),
+          h('span', { class: 'mode-note' }, 'Sign in after this and join everyone in the shared city.'),
+        ),
+      ),
+      h(
+        'div',
+        { class: 'menu-footer' },
+        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openSettings() }, 'Settings'),
+        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openHelp() }, 'How to play'),
+      ),
+    );
+    panel.querySelector('#solo-btn')?.addEventListener('click', () => this.showSoloPanel(panel));
+    panel.querySelector('#multi-btn')?.addEventListener('click', () => void this.beginMultiplayer(panel));
+  }
+
+  private async showSoloPanel(panel: HTMLElement): Promise<void> {
+    this.stopAuthPoll();
+    panel.replaceChildren(h('div', { class: 'menu-loading' }, h('i', {}), h('span', {}, 'Checking your table…')));
+    const key = soloKey();
+    let save: SoloMeta | null = null;
+    let unreachable = '';
+    if (key) {
+      try {
+        const res = await apiFetch(`/api/solo?key=${encodeURIComponent(key)}`, {}, 5000);
+        if (res.ok) save = (await res.json()) as SoloMeta;
+      } catch (error) {
+        unreachable = error instanceof Error ? error.message : 'Cannot reach the game server.';
+      }
+    }
+    const hasSave = Boolean(save?.exists);
+    const details = hasSave
+      ? `${save!.playerName ?? 'Your table'} · turn ${save!.turnNumber ?? 1} · ${save!.played ?? 0} players`
+      : save?.corrupt
+        ? 'The saved table is damaged and cannot be loaded.'
+        : 'No saved single-player table yet.';
+    const continueBtn = h(
+      'button',
+      {
+        class: 'mode-btn solo',
+        id: 'continue-btn',
+        disabled: !hasSave || Boolean(unreachable),
+        title: unreachable || (hasSave ? 'Continue your table' : save?.corrupt ? 'The save is damaged' : 'No saved game yet'),
+      },
+      h('span', { class: 'mode-eyebrow' }, 'Resume'),
+      h('b', {}, 'Continue Game'),
+      h('span', { class: 'mode-note' }, details),
+    );
+    const newBtn = h(
+      'button',
+      { class: 'mode-btn multi', id: 'new-game-btn', disabled: Boolean(unreachable) },
+      h('span', { class: 'mode-eyebrow' }, 'Fresh start'),
+      h('b', {}, 'New Game'),
+      h('span', { class: 'mode-note' }, hasSave ? 'This replaces your saved table after confirmation.' : 'Start a fresh table with three AI rivals.'),
+    );
+    const rows: HTMLElement[] = [
+      h('button', { class: 'menu-back', onclick: () => this.showHomePanel(panel) }, '← Main menu'),
+      h('div', { class: 'menu-section-title' }, 'Single Player'),
+    ];
+    if (unreachable) {
+      rows.push(h('p', { class: 'auth-status offline', role: 'status' }, h('i', {}), h('span', {}, unreachable), h('button', { class: 'btn btn-sm btn-ghost', onclick: () => void this.showSoloPanel(panel) }, 'Retry')));
+    }
+    rows.push(h('div', { class: 'menu-actions' }, continueBtn, newBtn));
+    panel.replaceChildren(...rows);
+    continueBtn.addEventListener('click', () => this.startSolo(false));
+    newBtn.addEventListener('click', () => {
+      if (hasSave && !window.confirm('Start a new game? Your saved single-player table will be overwritten.')) return;
+      this.startSolo(true);
+    });
+  }
+
+  private startSolo(fresh: boolean): void {
+    const name = localStorage.getItem('chromonopoly.username') || 'Tycoon';
+    this.join(name, 'solo', fresh);
+  }
+
+  private async beginMultiplayer(panel: HTMLElement): Promise<void> {
+    this.stopAuthPoll();
+    if (!authToken()) {
+      this.showAuthPanel(panel, 'login');
+      return;
+    }
+    panel.replaceChildren(h('div', { class: 'menu-loading' }, h('i', {}), h('span', {}, 'Restoring your session…')));
+    try {
+      const res = await apiFetch('/api/auth/session', { headers: { authorization: `Bearer ${authToken()}` } });
+      if (res.ok) {
+        const data = (await res.json()) as { account?: { username?: string } };
+        this.accountName = data.account?.username ?? '';
+        this.join(this.accountName, 'multi');
+        return;
+      }
+      if (res.status === 401) {
+        setAuthToken('');
+        this.showAuthPanel(panel, 'login', 'Your session expired. Sign in again.');
+        return;
+      }
+      throw new Error('The server could not restore your session.');
+    } catch (error) {
+      this.showAuthPanel(panel, 'login', error instanceof Error ? error.message : 'Cannot reach the game server.');
+    }
+  }
+
+  private showAuthPanel(panel: HTMLElement, requestedMode: 'login' | 'create', message = ''): void {
+    this.stopAuthPoll();
+    this.authBusy = false;
+    let mode = requestedMode;
+    const error = h('p', { class: 'auth-error', role: 'alert' }, message);
+    const status = h('div', { class: 'auth-status connecting', role: 'status' }, h('i', {}), h('span', {}, 'Checking server…'));
+    this.authStatusEl = status;
+    const tabs = h('div', { class: 'segmented auth-tabs' });
+    const loginTab = h('button', { 'aria-pressed': 'true', onclick: () => switchMode('login') }, 'Log in');
+    const createTab = h('button', { 'aria-pressed': 'false', onclick: () => switchMode('create') }, 'Create account');
+    tabs.append(loginTab, createTab);
+    const username = h('input', { class: 'field', id: 'auth-username', maxlength: '16', placeholder: 'Username', autocomplete: 'username' }) as HTMLInputElement;
+    username.value = localStorage.getItem('chromonopoly.username') ?? '';
+    const password = h('input', { class: 'field', id: 'auth-password', type: 'password', maxlength: '128', placeholder: 'Password', autocomplete: 'current-password' }) as HTMLInputElement;
+    const submit = h('button', { class: 'btn btn-gold btn-block', id: 'auth-submit' }, 'Log in');
+    const hint = h('p', { class: 'note auth-hint' }, 'Username: 3–16 letters, numbers or underscores · password: 6+ characters');
+    const switchMode = (next: 'login' | 'create'): void => {
+      mode = next;
+      loginTab.setAttribute('aria-pressed', String(next === 'login'));
+      createTab.setAttribute('aria-pressed', String(next === 'create'));
+      submit.textContent = next === 'login' ? 'Log in' : 'Create account';
+      password.autocomplete = next === 'login' ? 'current-password' : 'new-password';
+      error.textContent = '';
+      error.style.display = 'none';
+    };
+    const fail = (text: string): void => {
+      error.style.display = '';
+      error.textContent = text;
+      this.toast(text, 'bad');
+    };
+    const runAuth = async (): Promise<void> => {
+      if (this.authBusy) return;
+      const user = username.value.trim();
+      const pass = password.value;
+      if (!user) { fail('Enter a username.'); username.focus(); return; }
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(user)) { fail('Username must be 3–16 letters, numbers or underscores.'); username.focus(); return; }
+      if (!pass) { fail('Enter a password.'); password.focus(); return; }
+      if (pass.length < 6) { fail('Password must be at least 6 characters.'); password.focus(); return; }
+      if (pass.length > 128) { fail('Password must be 128 characters or fewer.'); password.focus(); return; }
+      this.authBusy = true;
+      submit.disabled = true;
+      submit.textContent = mode === 'login' ? 'Signing in…' : 'Creating account…';
+      try {
+        const res = await apiFetch(`/api/auth/${mode === 'login' ? 'login' : 'register'}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass }),
+        });
+        let data: { token?: string; account?: { username?: string }; error?: string } = {};
+        try { data = (await res.json()) as typeof data; } catch { /* non-JSON server error */ }
+        if (!res.ok || !data.token) throw new Error(data.error ?? (res.status === 429 ? 'Too many attempts. Wait a moment and try again.' : 'Could not sign in.'));
+        setAuthToken(data.token);
+        this.accountName = data.account?.username ?? user;
+        localStorage.setItem('chromonopoly.username', this.accountName);
+        this.stopAuthPoll();
+        this.join(this.accountName, 'multi');
+      } catch (err) {
+        const text = err instanceof Error ? err.message : 'Could not sign in.';
+        fail(text);
+        if (text === 'Cannot reach the game server.') this.setAuthStatus('offline', text);
+      } finally {
+        this.authBusy = false;
+        if (submit.isConnected) {
+          submit.disabled = false;
+          submit.textContent = mode === 'login' ? 'Log in' : 'Create account';
+        }
+      }
+    };
+    submit.addEventListener('click', () => void runAuth());
+    password.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') void runAuth(); });
+    error.style.display = message ? '' : 'none';
+    const authCard = h('div', { class: 'auth-card liquid' }, status, error, tabs, username, password, submit, hint);
+    panel.replaceChildren(
+      h('button', { class: 'menu-back', onclick: () => this.showHomePanel(panel) }, '← Main menu'),
+      h('div', { class: 'menu-section-title' }, 'Multiplayer'),
+      authCard,
+    );
+    if (mode === 'create') switchMode('create');
+    void this.pollAuthHealth(0);
+  }
+
+  private setAuthStatus(state: 'connecting' | 'online' | 'offline', text: string): void {
+    const el = this.authStatusEl;
+    if (!el) return;
+    el.className = `auth-status ${state}`;
+    const label = el.querySelector('span');
+    if (label) label.textContent = text;
+    let retry = el.querySelector('button');
+    if (state === 'offline' && !retry) {
+      retry = h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { this.stopAuthPoll(); void this.pollAuthHealth(0); } }, 'Retry');
+      el.append(retry);
+    } else if (state !== 'offline' && retry) retry.remove();
+  }
+
+  private async pollAuthHealth(attempt: number): Promise<void> {
+    if (!this.authStatusEl) return;
+    this.authStatusEl.className = 'auth-status connecting';
+    const label = this.authStatusEl.querySelector('span');
+    if (label) label.textContent = attempt === 0 ? 'Checking server…' : 'Connecting…';
+    let delay = 10_000;
+    try {
+      const res = await apiFetch('/api/health', {}, 4000);
+      if (!res.ok) throw new Error('Health check failed');
+      this.setAuthStatus('online', 'Connected');
+    } catch {
+      this.setAuthStatus('offline', 'Cannot reach server');
+      delay = Math.min(15_000, 2500 * 2 ** Math.min(3, attempt));
+    }
+    if (!this.authStatusEl) return;
+    this.authPoll = window.setTimeout(() => void this.pollAuthHealth(attempt + 1), delay);
+  }
+
+  private stopAuthPoll(): void {
+    if (this.authPoll !== null) window.clearTimeout(this.authPoll);
+    this.authPoll = null;
+  }
+
+  private authLost(reason: string): void {
+    setAuthToken('');
+    this.accountName = '';
+    this.closeSheet(false);
+    this.stopAuthPoll();
+    document.getElementById('hud')?.classList.add('hidden');
+    this.renderMenu();
+    if (this.menuPanel) this.showAuthPanel(this.menuPanel, 'login', reason);
+    this.toast(reason, 'bad');
+  }
+
+  private async logout(): Promise<void> {
+    const token = authToken();
+    if (!token) return;
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST', headers: { authorization: `Bearer ${token}` } });
+    } catch {
+      // Offline: the local session still ends; the server revokes on next login.
+    }
+    setAuthToken('');
+    this.accountName = '';
+    this.deps.net.close();
+    // The server also closes the socket, but a signed-out tab must land on the
+    // sign-in panel even when that close event never arrives.
+    this.closeSheet(false);
+    document.getElementById('hud')?.classList.add('hidden');
+    this.renderMenu();
+    if (this.menuPanel) this.showAuthPanel(this.menuPanel, 'login', 'Signed out.');
+  }
+
   private assetName(id: string): string {
     return this.deps.assets.find((a) => a.id === id)?.name ?? id;
   }
 
   private join(name: string, mode: GameMode, fresh = false): void {
+    this.stopAuthPoll();
     localStorage.setItem('chromonopoly.name', name);
     this.deps.net.setIdentity(name, this.selectedToken);
     audio.resume();
@@ -383,6 +591,7 @@ export class UI {
     this.stopPreview = null;
     const badge = document.getElementById('mode-badge');
     if (badge) badge.textContent = mode === 'solo' ? 'Solo table' : 'Shared world';
+    this.accountName = mode === 'multi' ? name : '';
     this.ribbon(mode === 'solo' ? 'Your table is ready' : 'Shared world', mode === 'solo' ? 'Turn-based · three AI rivals' : 'One board · everyone plays at once');
   }
 
@@ -418,6 +627,7 @@ export class UI {
       this.openEndgame(state.gameOver.winnerId);
     }
     if (this.currentSheet === 'log') this.renderLog();
+    if (this.currentSheet === 'market') this.marketLive?.();
   }
 
   private openEndgame(winnerId: string): void {
@@ -652,6 +862,7 @@ export class UI {
   closeSheet(animate = true): void {
     if (!this.sheet) return;
     if (this.currentSheet === 'log') this.logBody = null;
+    this.marketLive = null;
     this.stopPreview?.();
     this.stopPreview = null;
     const sheet = this.sheet;
@@ -940,13 +1151,13 @@ export class UI {
     const realized = this.priv?.you.realizedPnl ?? 0;
     const net = realized + unrealized;
     const summary = h('div', { class: 'market-summary' },
-      h('div', { class: 'summary-head' }, h('span', {}, 'Portfolio summary'), h('b', {}, `${holdings.length} holdings`)),
+      h('div', { class: 'summary-head' }, h('span', {}, 'Portfolio summary'), h('b', { 'data-sum': 'count' }, `${holdings.length} holdings`)),
       h('div', { class: 'summary-metrics' },
-        h('div', {}, h('span', {}, 'Cash'), h('b', {}, money(this.priv?.you.cash ?? 0))),
-        h('div', {}, h('span', {}, 'Holdings'), h('b', {}, money(holdingsValue))),
-        h('div', {}, h('span', {}, 'Made'), h('b', { class: 'up' }, `+${money(grossMade)}`)),
-        h('div', {}, h('span', {}, 'Lost'), h('b', { class: 'down' }, `-${money(grossLost)}`)),
-        h('div', { class: net >= 0 ? 'summary-net up' : 'summary-net down' }, h('span', {}, 'Net P/L'), h('b', {}, `${net >= 0 ? '+' : ''}${money(net)}`)),
+        h('div', {}, h('span', {}, 'Cash'), h('b', { 'data-sum': 'cash' }, money(this.priv?.you.cash ?? 0))),
+        h('div', {}, h('span', {}, 'Holdings'), h('b', { 'data-sum': 'holdings' }, money(holdingsValue))),
+        h('div', {}, h('span', {}, 'Made'), h('b', { class: 'up', 'data-sum': 'made' }, `+${money(grossMade)}`)),
+        h('div', {}, h('span', {}, 'Lost'), h('b', { class: 'down', 'data-sum': 'lost' }, `-${money(grossLost)}`)),
+        h('div', { class: net >= 0 ? 'summary-net up' : 'summary-net down', 'data-sum': 'net' }, h('span', {}, 'Net P/L'), h('b', {}, `${net >= 0 ? '+' : ''}${money(net)}`)),
       ),
     );
     const header = h('div', { class: 'inline', style: 'justify-content:space-between;margin-bottom:12px' });
@@ -974,9 +1185,11 @@ export class UI {
         const hist = this.history.get(space.index) ?? [];
         const prev = hist.length > 1 ? hist[hist.length - 2]! : price;
         const delta = price - prev;
-        const row = h('div', { class: 'market-row' });
+        const row = h('div', { class: 'market-row', 'data-market-tile': String(space.index) });
         const avg = held > 0 ? basis / held : 0;
         const value = held * price;
+        const spark = this.sparkline(hist);
+        spark.setAttribute('data-market-spark', '');
         const qty = h('input', { type: 'number', min: '1', max: '1000', value: String(qtyFor.get(space.index) ?? 10), 'aria-label': `Quantity for ${space.name}` }) as HTMLInputElement;
         qty.addEventListener('input', () => qtyFor.set(space.index, Math.max(1, Number(qty.value) || 1)));
         row.append(
@@ -994,20 +1207,20 @@ export class UI {
               tile?.ownerId === this.deps.net.playerId ? ' · yours' : '',
             ),
           ),
-          this.sparkline(hist),
+          spark,
           h(
             'div',
             { class: 'market-quote' },
-            h('div', { class: `market-price ${delta >= 0 ? 'up' : 'down'}` }, money(price)),
-            h('div', { class: 'row-sub', style: 'text-align:right' }, `${delta >= 0 ? '+' : ''}${money(delta)}`),
+            h('div', { class: `market-price ${delta >= 0 ? 'up' : 'down'}`, 'data-market-price': '' }, money(price)),
+            h('div', { class: 'row-sub', style: 'text-align:right', 'data-market-delta': '' }, `${delta >= 0 ? '+' : ''}${money(delta)}`),
           ),
         );
         if (held > 0) {
           row.append(h('div', { class: 'holding-stats' },
-            h('div', {}, h('span', {}, 'Qty'), h('b', {}, String(held))),
-            h('div', {}, h('span', {}, 'Avg cost'), h('b', {}, money(avg))),
-            h('div', {}, h('span', {}, 'Value'), h('b', {}, money(value))),
-            h('div', { class: pnl >= 0 ? 'up' : 'down' }, h('span', {}, 'P/L'), h('b', {}, `${pnl >= 0 ? '+' : ''}${money(pnl)}`)),
+            h('div', {}, h('span', {}, 'Qty'), h('b', { 'data-market-qty': '' }, String(held))),
+            h('div', {}, h('span', {}, 'Avg cost'), h('b', { 'data-market-avg': '' }, money(avg))),
+            h('div', {}, h('span', {}, 'Value'), h('b', { 'data-market-value': '' }, money(value))),
+            h('div', { class: pnl >= 0 ? 'up' : 'down', 'data-market-pnl': '' }, h('span', {}, 'P/L'), h('b', {}, `${pnl >= 0 ? '+' : ''}${money(pnl)}`)),
           ));
         }
         const controls = h('div', { class: 'inline' });
@@ -1049,6 +1262,72 @@ export class UI {
     };
     draw();
     this.openSheet('market', 'Stock market', 'Every street is a ticker. External owners cap at 50%.', body, { tall: true, wide: true });
+    // Live refresh in place: prices, arrows, sparklines and P/L move with the
+    // server tick without closing or rebuilding the panel.
+    this.marketLive = () => {
+      if (!this.sheet || this.currentSheet !== 'market') return;
+      const cash = this.priv?.you.cash ?? 0;
+      let heldValue = 0;
+      let unrealized = 0;
+      let made = Math.max(0, this.priv?.you.realizedPnl ?? 0);
+      let lost = Math.max(0, -(this.priv?.you.realizedPnl ?? 0));
+      for (const [tile, qty] of Object.entries(this.priv?.you.holdings ?? {})) {
+        if (qty <= 0) continue;
+        const p = this.state?.prices[Number(tile)] ?? 0;
+        const basis = this.priv?.you.costBasis[tile] ?? 0;
+        heldValue += qty * p;
+        unrealized += qty * p - basis;
+      }
+      const netPnl = (this.priv?.you.realizedPnl ?? 0) + unrealized;
+      const set = (key: string, text: string): void => {
+        const el = this.sheet?.querySelector(`[data-sum="${key}"] b, b[data-sum="${key}"]`);
+        if (el) el.textContent = text;
+      };
+      set('count', `${Object.values(this.priv?.you.holdings ?? {}).filter((q) => q > 0).length} holdings`);
+      set('cash', money(cash));
+      set('holdings', money(heldValue));
+      set('made', `+${money(made)}`);
+      set('lost', `-${money(lost)}`);
+      const netCell = this.sheet?.querySelector('[data-sum="net"]');
+      if (netCell) {
+        netCell.className = netPnl >= 0 ? 'summary-net up' : 'summary-net down';
+        const b = netCell.querySelector('b');
+        if (b) b.textContent = `${netPnl >= 0 ? '+' : ''}${money(netPnl)}`;
+      }
+      for (const row of this.sheet?.querySelectorAll<HTMLElement>('[data-market-tile]') ?? []) {
+        const index = Number(row.dataset.marketTile);
+        const price = this.state?.prices[index] ?? 0;
+        const hist = this.history.get(index) ?? [];
+        const prev = hist.length > 1 ? hist[hist.length - 2]! : price;
+        const delta = price - prev;
+        const priceEl = row.querySelector<HTMLElement>('[data-market-price]');
+        if (priceEl) {
+          priceEl.textContent = money(price);
+          priceEl.className = `market-price ${delta >= 0 ? 'up' : 'down'}`;
+        }
+        const deltaEl = row.querySelector<HTMLElement>('[data-market-delta]');
+        if (deltaEl) deltaEl.textContent = `${delta >= 0 ? '+' : ''}${money(delta)}`;
+        const oldSpark = row.querySelector('[data-market-spark]');
+        if (oldSpark) oldSpark.replaceWith(this.sparkline(hist));
+        const qtyEl = row.querySelector<HTMLElement>('[data-market-qty]');
+        const avgEl = row.querySelector<HTMLElement>('[data-market-avg]');
+        const valueEl = row.querySelector<HTMLElement>('[data-market-value]');
+        const pnlEl = row.querySelector<HTMLElement>('[data-market-pnl]');
+        if (qtyEl || avgEl || valueEl || pnlEl) {
+          const held = this.priv?.you.holdings[String(index)] ?? 0;
+          const basis = this.priv?.you.costBasis[String(index)] ?? 0;
+          const pnl = held * price - basis;
+          if (qtyEl) qtyEl.textContent = String(held);
+          if (avgEl) avgEl.textContent = money(held > 0 ? basis / held : 0);
+          if (valueEl) valueEl.textContent = money(held * price);
+          if (pnlEl) {
+            pnlEl.className = pnl >= 0 ? 'up' : 'down';
+            const b = pnlEl.querySelector('b');
+            if (b) b.textContent = `${pnl >= 0 ? '+' : ''}${money(pnl)}`;
+          }
+        }
+      }
+    };
     void select;
   }
 
@@ -1768,7 +2047,7 @@ export class UI {
       h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Quality'), h('div', { class: 'row-sub' }, 'Shadows, bloom and pixel ratio')), qualitySeg),
       this.toggleRow('Reduced motion', s.reducedMotion, (v) => update({ reducedMotion: v })),
       this.toggleRow('Colourblind palette', s.colorblind, (v) => update({ colorblind: v })),
-      this.sliderRow('UI scale', s.uiScale, (v) => update({ uiScale: v }), undefined, 0.8, 1.3, 0.05, (v) => `${Math.round(v * 100)}%`),
+      this.uiScaleRow(),
       this.toggleRow('Show tile prices', s.showPrices, (v) => update({ showPrices: v })),
     );
     body.append(gfx);
@@ -1815,6 +2094,16 @@ export class UI {
         h('button', { class: `btn btn-sm ${solo ? 'btn-danger' : 'btn-ghost'}`, disabled: !solo, title: solo ? 'Start a fresh solo table' : 'Restart applies to solo tables only', onclick: () => this.restartSession() }, 'Restart'),
       ),
     );
+    if (authToken() && !solo) {
+      session.append(
+        h(
+          'div',
+          { class: 'row' },
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Log out'), h('div', { class: 'row-sub' }, 'End this session on this browser. Your account and table stay saved.')),
+          h('button', { class: 'btn btn-sm btn-ghost', id: 'logout-btn', onclick: () => void this.logout() }, 'Log out'),
+        ),
+      );
+    }
     body.append(session);
 
     body.append(
@@ -1868,6 +2157,35 @@ export class UI {
         window.location.reload();
       },
     );
+  }
+
+  /** UI scale is staged: it changes only on Apply, and Cancel restores it. */
+  private uiScaleRow(): HTMLElement {
+    const row = h('div', { class: 'row' },
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'UI scale'), h('div', { class: 'row-sub' }, 'Preview the value, then Apply. Cancel keeps the current scale.')),
+    );
+    const value = h('b', { class: 'mono' }, `${Math.round(this.settings.uiScale * 100)}%`);
+    const slider = h('input', { type: 'range', min: '80', max: '130', step: '5', value: String(Math.round(this.settings.uiScale * 100)) }) as HTMLInputElement;
+    const apply = h('button', { class: 'btn btn-sm btn-gold', disabled: true }, 'Apply');
+    const cancel = h('button', { class: 'btn btn-sm btn-ghost', disabled: true }, 'Cancel');
+    const sync = (): void => {
+      value.textContent = `${slider.value}%`;
+      const pending = Number(slider.value) / 100 !== this.settings.uiScale;
+      apply.disabled = !pending;
+      cancel.disabled = !pending;
+    };
+    slider.addEventListener('input', sync);
+    apply.addEventListener('click', () => {
+      this.settings = { ...this.settings, uiScale: Number(slider.value) / 100 };
+      this.applySettings();
+      sync();
+    });
+    cancel.addEventListener('click', () => {
+      slider.value = String(Math.round(this.settings.uiScale * 100));
+      sync();
+    });
+    row.append(h('div', { class: 'inline ui-scale-controls' }, value, slider, apply, cancel));
+    return row;
   }
 
   private sliderRow(
@@ -2002,6 +2320,8 @@ export class UI {
     const me = this.deps.net.playerId;
     const actor = ev.playerId ? this.state?.players[ev.playerId] : null;
     const local = Boolean(ev.playerId && ev.playerId === me) || Boolean(ev.targetId && ev.targetId === me) || ev.kind === 'win';
+    // Solo tables show bot cards and purchases on the human's screen too.
+    const bot = Boolean(actor?.isBot) && this.state?.mode === 'solo' && !local;
     if (ev.outcome && ev.playerId === me) this.showOutcome(ev.outcome);
     if (ev.chance && local) this.queueChance(ev.chance);
     switch (ev.kind) {
@@ -2027,6 +2347,8 @@ export class UI {
         if (local) {
           audio.play('purchase');
           this.ribbon(ev.text === 'offer' ? 'Property for sale' : 'Sold!', ev.text === 'offer' ? 'The table is waiting on you' : '');
+        } else if (bot) {
+          this.ribbon(`${actor!.name} bought a property`, ev.tile !== undefined ? spaceAt(ev.tile).name : '');
         }
         break;
       case 'rent':
@@ -2034,19 +2356,23 @@ export class UI {
           if (ev.text === 'evaded') this.ribbon('Rent evaded', 'Reputation takes the hit');
           else if (ev.text === 'caught') this.ribbon('Caught evading');
           else this.ribbon(`Rent due: ${money(ev.amount ?? 0)}`);
+        } else if (bot) {
+          this.ribbon(`${actor!.name} paid rent`, money(ev.amount ?? 0));
         }
         break;
       case 'build':
         if (local) {
           audio.play('build');
           this.ribbon('Skyline grows');
+        } else if (bot) {
+          this.ribbon(`${actor!.name} is building`, ev.tile !== undefined ? spaceAt(ev.tile).name : '');
         }
         break;
       case 'card':
-        if (local) {
+        if (local || bot) {
           audio.play('card');
-          this.closeSheet(false);
-          this.ribbon(ev.deck === 'chest' ? 'Community Chest' : 'Chance', ev.text ?? '');
+          if (local) this.closeSheet(false);
+          this.ribbon(ev.deck === 'chest' ? 'Community Chest' : 'Chance', `${bot ? `${actor!.name} · ` : ''}${ev.text ?? ''}`);
           this.showCard(ev.text ?? 'A card is drawn.', ev.deck === 'chest' ? 'Community Chest' : 'Chance');
           window.dispatchEvent(new CustomEvent('chromonopoly:card', { detail: { deck: ev.deck ?? 'chance', text: ev.text ?? '' } }));
         }
@@ -2138,6 +2464,8 @@ export class UI {
     const fake: [number, number] = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
     this.setDice(fake);
     window.setTimeout(() => layer.classList.remove('rolling'), 620);
+    // Safety net: dice may never cover the table for more than a few seconds.
+    window.setTimeout(() => layer.classList.remove('show', 'rolling'), 6000);
   }
 
   private showDice(dice: [number, number]): void {
@@ -2187,7 +2515,7 @@ export class UI {
     document.getElementById('pending-overlay')?.remove();
     document.body.classList.add('chance-active');
     const zones = wheelZones(spec.percent, spec.zones);
-    const colors = zones.map(zoneColor);
+    const colors = zones.map(wheelColor);
     const segments = segmentsForDisplay(zones);
     // `segmentsForDisplay` creates new objects, so indexOf() always returned -1
     // and every conic-gradient stop was invalid. Use the matching index.
@@ -2336,5 +2664,14 @@ function helpRows(): HTMLElement[] {
   return rows.map(([title, text]) =>
     h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, text))),
   );
+}
+
+interface SoloMeta {
+  exists: boolean;
+  corrupt?: boolean;
+  updatedAt?: number;
+  turnNumber?: number;
+  playerName?: string;
+  played?: number;
 }
 

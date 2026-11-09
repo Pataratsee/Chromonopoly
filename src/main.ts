@@ -42,6 +42,8 @@ declare global {
     __flowState?: TurnState;
     __stage?: Stage;
     __sky?: Sky;
+    __music?: () => ReturnType<typeof audio.musicInfo>;
+    __skipSong?: () => void;
   }
 }
 
@@ -62,7 +64,9 @@ async function start(): Promise<void> {
   stage.camera.layers.enable(2);
   const testParams = new URLSearchParams(location.search);
   const fastTest = testParams.has('e2e') && !testParams.has('visual');
-  if (fastTest) stage.setQuality('low');
+  // Browser proofs keep the visual city, but software WebGL cannot render it
+  // at high quality inside a normal test timeout.
+  if (testParams.has('e2e')) stage.setQuality('low');
   const board: BoardView = await createBoard();
   stage.scene.add(board.group);
   const sky = new Sky();
@@ -74,6 +78,8 @@ async function start(): Promise<void> {
   if (testParams.has('e2e')) {
     window.__stage = stage;
     window.__sky = sky;
+    window.__music = () => audio.musicInfo();
+    window.__skipSong = () => audio.skipSong();
   }
   const dice = new DiceLayer(stage.scene);
   const tokens = new TokenLayer(stage.scene);
@@ -418,7 +424,7 @@ async function start(): Promise<void> {
     (e) => {
       e.preventDefault();
       // Zoom toward the tile under the cursor, not the screen centre.
-      stage.rig.zoom(e.deltaY, worldFromPointer(e));
+      stage.rig.zoom(e.deltaY);
     },
     { passive: false },
   );
@@ -527,6 +533,7 @@ async function start(): Promise<void> {
       const p = board.tilePoint(index);
       return { x: p.x, y: p.y, z: p.z };
     };
+    (window as unknown as { __state: () => unknown }).__state = () => state;
   }
 
   // first frame proves the renderer is alive

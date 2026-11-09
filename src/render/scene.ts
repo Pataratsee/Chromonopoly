@@ -29,10 +29,9 @@ export class CameraRig {
     this.manualUntil = performance.now() + CAMERA.followResumeMs;
   }
 
-  /** Zoom toward the point under the cursor, not toward the screen centre. */
-  zoom(delta: number, toward?: THREE.Vector3): void {
+  /** Zoom only. The pivot stays on the board; cursor-directed pan drifted it away. */
+  zoom(delta: number): void {
     this.wantRadius = THREE.MathUtils.clamp(this.wantRadius * (1 + delta * 0.0012), CAMERA.minRadius, CAMERA.maxRadius);
-    if (toward) this.wantTarget.lerp(new THREE.Vector3(toward.x, 0.1, toward.z), 0.34);
     this.manualUntil = performance.now() + CAMERA.followResumeMs;
   }
 

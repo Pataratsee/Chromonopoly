@@ -464,17 +464,31 @@ export class World {
     }
 
     if (p.inJail) {
-      p.jailTurns -= 1;
-      if (p.jailTurns <= 0) {
+      // Every jail roll emits dice. The old branch returned before this, so the
+      // client's dice animation never received a result and spun forever.
+      const j1 = 1 + Math.floor(this.rng() * 6);
+      const j2 = 1 + Math.floor(this.rng() * 6);
+      this.emit({ kind: 'roll', playerId: p.id, dice: [j1, j2] });
+      this.logLine(`${p.name} rolls ${j1} + ${j2} in jail.`, 'info');
+      if (j1 === j2) {
         p.inJail = false;
         p.jailTurns = 0;
-        this.logLine(`${p.name} has served their term and is released.`, 'crime');
+        this.logLine(`${p.name} rolls doubles and walks free.`, 'crime');
         this.emit({ kind: 'jail', playerId: p.id, text: 'released' });
       } else {
-        this.emit({ kind: 'jail', playerId: p.id, text: `${p.jailTurns} turns left` });
-        this.logLine(`${p.name} waits in jail (${p.jailTurns} left).`, 'crime');
+        p.jailTurns -= 1;
+        if (p.jailTurns <= 0) {
+          p.inJail = false;
+          p.jailTurns = 0;
+          this.logLine(`${p.name} has served their term and is released.`, 'crime');
+          this.emit({ kind: 'jail', playerId: p.id, text: 'released' });
+        } else {
+          this.emit({ kind: 'jail', playerId: p.id, text: `${p.jailTurns} turns left` });
+          this.logLine(`${p.name} waits in jail (${p.jailTurns} left).`, 'crime');
+        }
       }
       this.endTurn(p);
+      this.seq += 1;
       return { ok: true };
     }
 

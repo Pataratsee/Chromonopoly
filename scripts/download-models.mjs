@@ -95,6 +95,35 @@ const TOKENS = [
   ['rover', 'Rover', 'fantasy', 'space', 'rover.glb'],
   ['satellite', 'Satellite Dish', 'fantasy', 'space', 'satelliteDish.glb'],
   ['catapult', 'Catapult', 'fantasy', 'castle', 'siege-catapult.glb'],
+  // Round 8: 28 more licensed pieces, bringing the usable set to 100.
+  ['apple', 'Apple', 'food', 'food', 'apple.glb'],
+  ['banana', 'Banana', 'food', 'food', 'banana.glb'],
+  ['bread', 'Bread', 'food', 'food', 'bread.glb'],
+  ['carrot', 'Carrot', 'food', 'food', 'carrot.glb'],
+  ['cheese', 'Cheese', 'food', 'food', 'cheese.glb'],
+  ['cherries', 'Cherries', 'food', 'food', 'cherries.glb'],
+  ['cookie', 'Cookie', 'food', 'food', 'cookie.glb'],
+  ['corn', 'Corn', 'food', 'food', 'corn.glb'],
+  ['noodles', 'Noodles', 'food', 'food', 'chinese.glb'],
+  ['ketchup', 'Ketchup', 'food', 'food', 'bottle-ketchup.glb'],
+  ['soup', 'Soup', 'food', 'food', 'bowl-soup.glb'],
+  ['avocado', 'Avocado', 'food', 'food', 'avocado.glb'],
+  ['broccoli', 'Broccoli', 'food', 'food', 'broccoli.glb'],
+  ['chocolate', 'Chocolate', 'food', 'food', 'chocolate.glb'],
+  ['bookcase', 'Bookcase', 'object', 'furniture', 'bookcaseOpen.glb'],
+  ['deskchair', 'Desk Chair', 'object', 'furniture', 'chairDesk.glb'],
+  ['monitor', 'Monitor', 'object', 'furniture', 'computerScreen.glb'],
+  ['desk', 'Desk', 'object', 'furniture', 'desk.glb'],
+  ['fridge', 'Fridge', 'object', 'furniture', 'kitchenFridge.glb'],
+  ['microwave', 'Microwave', 'object', 'furniture', 'kitchenMicrowave.glb'],
+  ['stove', 'Stove', 'object', 'furniture', 'kitchenStove.glb'],
+  ['bathtub', 'Bathtub', 'object', 'furniture', 'bathtub.glb'],
+  ['alien', 'Alien', 'fantasy', 'space', 'alien.glb'],
+  ['astronautb', 'Astronaut B', 'fantasy', 'space', 'astronautB.glb'],
+  ['spaceracer', 'Space Racer', 'fantasy', 'space', 'craft_racer.glb'],
+  ['speeder', 'Speeder', 'fantasy', 'space', 'craft_speederA.glb'],
+  ['meteor', 'Meteor', 'fantasy', 'space', 'meteor.glb'],
+  ['monorail', 'Monorail Car', 'fantasy', 'space', 'monorail_trainPassenger.glb'],
 ];
 
 /** buildings: id -> kit/file. */
@@ -162,7 +191,24 @@ async function main() {
     });
   }
 
-  await writeFile(path.join(OUT, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  // The city pass adds its own licensed assets to the same manifest. Preserve
+  // every existing entry this script does not own, so a token refresh cannot
+  // drop the city files again.
+  const manifestPath = path.join(OUT, 'manifest.json');
+  try {
+    const existing = JSON.parse(await readFile(manifestPath, 'utf8'));
+    const known = new Set(manifest.assets.map((a) => a.id));
+    for (const asset of existing.assets) {
+      if (!known.has(asset.id)) {
+        manifest.assets.push(asset);
+        known.add(asset.id);
+      }
+    }
+  } catch {
+    // First run: there is nothing to preserve.
+  }
+
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
   const tokens = manifest.assets.filter((a) => a.kind === 'token').length;
   const buildings = manifest.assets.filter((a) => a.kind === 'building').length;

@@ -4,7 +4,7 @@ import { Text } from 'troika-three-text';
 import { PALETTE, BOARD, money } from '../config';
 import { SPACES } from '../game/board';
 import type { PublicState, Space } from '../game/types';
-import { HAS_BAND, boardName, contentBox, tilePose } from './layout';
+import { HAS_BAND, boardName, contentBox, tilePose, tileTextLayout } from './layout';
 import { fitText, loadFont } from './textFit';
 import type { Font } from 'opentype.js';
 import { assetUrl } from '../assetUrl';
@@ -333,23 +333,23 @@ export async function createBoard(): Promise<BoardView> {
     const box = contentBox(space);
     const isCorner = space.index % 10 === 0;
     const hasFlatIcon = space.type !== 'property';
-    const isDeck = space.type === 'chance' || space.type === 'chest';
     const label = specialName(space);
-    const nameSize = isCorner ? 0.27 : isDeck ? 0.19 : 0.23;
+    const textLayout = tileTextLayout(space);
+    const nameSize = textLayout.nameSize;
     const nameText = makeText(label, nameSize, '#1B1511', BOARD_FONT, 700);
     const nameFit = fitText(font, label, { w: box.w, h: hasFlatIcon ? 0.22 : box.h }, nameSize);
     nameText.fontSize = nameFit.size;
     nameText.maxWidth = box.w;
     nameText.text = isCorner || hasFlatIcon ? label : nameFit.lines.join('\n');
     nameText.textAlign = 'center';
-    nameText.position.set(0, SURFACE, isCorner || hasFlatIcon ? -0.33 : space.group ? 0.0 : 0.04);
+    nameText.position.set(0, SURFACE, textLayout.nameZ);
     nameText.rotation.x = -Math.PI / 2;
     tileGroup.add(nameText);
 
     let price: Text | null = null;
     if (space.price > 0) {
       price = makeText(money(space.price), 0.12, '#241D17', BOARD_FONT, 700);
-      price.position.set(0, SURFACE, space.group ? 0.44 : 0.32);
+      price.position.set(0, SURFACE, textLayout.priceZ);
       price.rotation.x = -Math.PI / 2;
       tileGroup.add(price);
     }

@@ -69,6 +69,11 @@ export class Store {
         created_at INTEGER NOT NULL,
         last_seen INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS solo_saves (
+        id TEXT PRIMARY KEY,
+        snapshot TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
     `);
   }
 
@@ -129,6 +134,12 @@ export class Store {
     return token;
   }
 
+  /** Replaces every other session for the account. One account, one live login. */
+  replaceSession(accountId: string): string {
+    this.db.prepare('DELETE FROM auth_sessions WHERE account_id = ?').run(accountId);
+    return this.createSession(accountId);
+  }
+
   sessionAccount(token: string): Account | null {
     if (!token) return null;
     const row = this.db
@@ -146,6 +157,49 @@ export class Store {
   revokeSession(token: string): void {
     if (!token) return;
     this.db.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash(token));
+  }
+
+  saveSolo(id: string, snapshot: WorldSnapshot): void {
+    const json = JSON.stringify(snapshot, (_k, v) => (v instanceof Map ? [...v.entries()] : v));
+    this.db
+      .prepare(
+        `INSERT INTO solo_saves (id, snapshot, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET snapshot = excluded.snapshot, updated_at = excluded.updated_at`,
+      )
+      .run(id, json, Date.now());
+  }
+
+  deleteSolo(id: string): void {
+    this.db.prepare('DELETE FROM solo_saves WHERE id = ?').run(id);
+  }
+
+  loadSolo(id: string): WorldSnapshot | null {
+    const row = this.db.prepare('SELECT snapshot FROM solo_saves WHERE id = ?').get(id) as { snapshot?: string } | undefined;
+    if (!row?.snapshot) return null;
+    try {
+      return JSON.parse(row.snapshot) as WorldSnapshot;
+    } catch {
+      return null;
+    }
+  }
+
+  soloMeta(id: string): { exists: boolean; corrupt?: boolean; updatedAt?: number; turnNumber?: number; playerName?: string; played?: number } {
+    const row = this.db.prepare('SELECT snapshot, updated_at FROM solo_saves WHERE id = ?').get(id) as { snapshot?: string; updated_at?: number } | undefined;
+    if (!row?.snapshot) return { exists: false };
+    try {
+      const snap = JSON.parse(row.snapshot) as WorldSnapshot;
+      const players = Array.isArray(snap.players) ? snap.players : [];
+      const human = players.find((p) => !(p as { isBot?: boolean }).isBot) as { name?: string } | undefined;
+      return {
+        exists: true,
+        updatedAt: row.updated_at,
+        turnNumber: snap.turnNumber ?? 1,
+        playerName: human?.name ?? 'Your table',
+        played: players.length,
+      };
+    } catch {
+      return { exists: false, corrupt: true, updatedAt: row.updated_at };
+    }
   }
 
   accountIds(): Set<string> {

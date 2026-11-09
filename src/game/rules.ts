@@ -26,7 +26,7 @@ export const RULES = {
   playerTheftCap: 800,
   jailAllChance: 0.25,
   jailSomeChance: 0.4,
-  murderChance: 0.01,
+  murderChance: 0.05,
   murderCaughtChance: 0.7,
   murderFine: 1000,
   murderAttemptRep: 15,

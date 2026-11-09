@@ -357,7 +357,7 @@ describe('chance meters', () => {
     expect(actor.player.inJail).toBe(true);
   });
 
-  it('uses a 1% murder roll and applies the hospital consequences', () => {
+  it('uses a 5% murder roll and applies the hospital consequences', () => {
     const { world, events } = makeWorld([0.005]);
     const actor = world.join('Ada', 'dog');
     const victim = world.join('Bo', 'cat');
@@ -367,7 +367,7 @@ describe('chance meters', () => {
 
     expect(world.intent(actor.player.id, { t: 'murder', target: victim.player.id, key: 'hit' }).ok).toBe(true);
     const murder = events.find((e) => e.kind === 'murder')!;
-    expect(murder.chance!.percent).toBe(1);
+    expect(murder.chance!.percent).toBe(5);
     expect(murder.chance!.rollPercent).toBe(0.5);
     expect(murder.chance!.success).toBe(true);
     expect(murder.audience).toEqual([actor.player.id, victim.player.id]);

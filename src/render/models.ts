@@ -42,7 +42,7 @@ function getLoader(): GLTFLoader {
 }
 
 /** Bump when the asset list changes; also bypasses stale browser manifests. */
-const MANIFEST_VERSION = 'round6-2026-11-07';
+const MANIFEST_VERSION = 'round8-2026-11-09';
 
 export async function loadManifest(): Promise<Manifest> {
   if (manifest) return manifest;

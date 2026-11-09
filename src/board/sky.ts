@@ -182,6 +182,38 @@ export class Sky {
     this.running = running;
   }
 
+  /** Read-only snapshot used by the all-angle sky audit. */
+  audit(): {
+    hour: number;
+    sun: { x: number; y: number; z: number; opacity: number };
+    moon: { x: number; y: number; z: number; opacity: number };
+    stars: number;
+    clouds: Array<{ x: number; y: number; z: number; opacity: number }>;
+  } {
+    return {
+      hour: this.state.hour,
+      sun: {
+        x: this.sun.position.x,
+        y: this.sun.position.y,
+        z: this.sun.position.z,
+        opacity: this.sun.material.opacity,
+      },
+      moon: {
+        x: this.moon.position.x,
+        y: this.moon.position.y,
+        z: this.moon.position.z,
+        opacity: this.moon.material.opacity,
+      },
+      stars: this.starMaterial.opacity,
+      clouds: this.clouds.map((cloud) => ({
+        x: cloud.position.x,
+        y: cloud.position.y,
+        z: cloud.position.z,
+        opacity: cloud.material.opacity,
+      })),
+    };
+  }
+
   setHour(hour: number): void {
     this.time = ((hour % 24) + 24) % 24 / 24;
     this.apply();

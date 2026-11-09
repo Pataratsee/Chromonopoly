@@ -33,6 +33,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1400,
   },
   test: {
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
+    // Never scan a nested staging clone; its Playwright specs are not unit tests.
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', '**/.git-upload/**'],
   },
 });

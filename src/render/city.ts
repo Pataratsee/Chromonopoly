@@ -164,8 +164,11 @@ export class CityLayer {
     void loadModel(id, size)
       .then((model) => {
         if (!holder.parent) return;
-        tune?.(model);
+        // Attach first: rooftop props are positioned in the holder's unscaled
+        // space. Attaching them to the model multiplied by its normalisation
+        // scale a second time and threw them into the sky.
         holder.add(model);
+        tune?.(model);
         this.setLayer(holder);
         this.debug.loaded += 1;
         if (kind === 'building') {
@@ -205,7 +208,7 @@ export class CityLayer {
    * Only loaded models may become 3D objects in this file, so rooftop props
    * are small manifest models, never primitive geometry.
    */
-  private decorate(model: THREE.Group, seed: number, detailed: boolean): void {
+  private decorate(model: THREE.Group, seed: number, detailed: boolean, holder: THREE.Group): void {
     const rng = seeded(seed * 2654435761);
     if (detailed) {
       model.traverse((node) => {
@@ -250,15 +253,18 @@ export class CityLayer {
     const pick = props[Math.floor(rng() * props.length)]!;
     const propSize = Math.min(size.x, size.z) * (pick === 'tree-small' ? 0.28 : 0.16);
     if (propSize < 0.18) return;
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    const roof = holder.worldToLocal(new THREE.Vector3(center.x, box.max.y, center.z));
     void loadModel(pick, propSize)
       .then((prop) => {
         prop.position.set(
-          (rng() - 0.5) * size.x * 0.45,
-          box.max.y,
-          (rng() - 0.5) * size.z * 0.45,
+          roof.x + (rng() - 0.5) * size.x * 0.45,
+          roof.y,
+          roof.z + (rng() - 0.5) * size.z * 0.45,
         );
         prop.rotation.y = rng() * Math.PI * 2;
-        model.add(prop);
+        holder.add(prop);
         this.setLayer(prop);
       })
       .catch(() => {
@@ -292,7 +298,7 @@ export class CityLayer {
     // Uniform scale only: loadModel already normalises the model's largest
     // dimension to `size`. Different heights come from different models.
     this.requestModel(id, size, holder, 'building', (model) => {
-      this.decorate(model, seed + Math.round(variant * 100), withPads);
+      this.decorate(model, seed + Math.round(variant * 100), withPads, holder);
     });
   }
 

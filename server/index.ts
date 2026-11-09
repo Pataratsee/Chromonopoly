@@ -41,8 +41,10 @@ interface Client {
 }
 
 const clients = new Map<WebSocket, Client>();
+/** One live socket per account. A second sign-in takes the seat over. */
+const accountSockets = new Map<string, WebSocket>();
 const events: GameEvent[] = [];
-const soloWorlds = new Map<string, { world: World; touched: number }>();
+const soloWorlds = new Map<string, { world: World; touched: number; saved?: number }>();
 const loginAttempts = new Map<string, number[]>();
 
 function clientsIn(world: World): Client[] {
@@ -154,7 +156,7 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (url.pathname === '/api/health') {
+  if (url.pathname === '/api/health' || url.pathname === '/health') {
     json(res, 200, {
       ok: true,
       players: publicWorld.players.size,
@@ -163,6 +165,16 @@ const server = createServer(async (req, res) => {
       uptime: process.uptime(),
       accounts: store.topAccounts(1000).length,
     });
+    return;
+  }
+
+  if (url.pathname === '/api/solo' && req.method === 'GET') {
+    const key = url.searchParams.get('key') ?? '';
+    if (!key) {
+      json(res, 400, { error: 'Missing save key.' });
+      return;
+    }
+    json(res, 200, store.soloMeta(key));
     return;
   }
 
@@ -208,7 +220,10 @@ const server = createServer(async (req, res) => {
         json(res, 401, { error: 'Wrong username or password.' });
         return;
       }
-      json(res, 200, { account: publicAccount(account), token: store.createSession(account.id) });
+      // A new login is the only session for this account; old tabs must not
+      // keep a stale seat alive after the user signs in on another device.
+      const token = store.replaceSession(account.id);
+      json(res, 200, { account: publicAccount(account), token });
     } catch (error) {
       json(res, 400, { error: error instanceof Error ? error.message : 'Login failed.' });
     }
@@ -226,7 +241,14 @@ const server = createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/auth/logout' && req.method === 'POST') {
-    store.revokeSession(bearer(req));
+    const token = bearer(req);
+    const account = store.sessionAccount(token);
+    store.revokeSession(token);
+    if (account) {
+      const socket = accountSockets.get(account.id);
+      if (socket) socket.close(4001, 'signed out');
+      accountSockets.delete(account.id);
+    }
     json(res, 200, { ok: true });
     return;
   }
@@ -310,6 +332,8 @@ wss.on('connection', (ws) => {
       session?: string;
       mode?: GameMode;
       authToken?: string;
+      soloKey?: string;
+      fresh?: boolean;
       color?: string;
     };
     try {
@@ -329,25 +353,43 @@ wss.on('connection', (ws) => {
       }
       const tokenId = String(msg.tokenId ?? 'cat');
       const color = typeof msg.color === 'string' ? msg.color : undefined;
+      const soloSave = mode === 'solo' ? String(msg.soloKey ?? '') : '';
       let world = publicWorld;
-      let known: { world: World; touched: number } | undefined;
+      let known: { world: World; touched: number; saved?: number } | undefined;
       if (mode === 'solo') {
-        known = msg.session ? soloWorlds.get(msg.session) : undefined;
+        if (soloSave && msg.fresh) {
+          store.deleteSolo(soloSave);
+          soloWorlds.delete(soloSave);
+        }
+        known = soloSave ? soloWorlds.get(soloSave) : undefined;
         if (known) {
           world = known.world;
           known.touched = Date.now();
         } else {
           world = newWorld('solo');
+          const saved = soloSave ? store.loadSolo(soloSave) : null;
+          if (saved) world.restore(saved);
         }
       }
       const name = account?.username ?? (String(msg.name ?? '').trim() || 'Tycoon');
-      const { player, session } = world.join(name, tokenId, msg.session, account?.id, color);
+      if (account) {
+        const existing = accountSockets.get(account.id);
+        if (existing && existing !== ws) {
+          existing.close(4002, 'Signed in on another device.');
+        }
+        accountSockets.set(account.id, ws);
+      }
+      // A restored single-player table already holds its human seat; reuse that
+      // seat instead of seating a second copy of the player.
+      const seated = mode === 'solo' ? [...world.players.values()].find((p) => !p.isBot) : undefined;
+      const { player, session } = world.join(name, tokenId, seated?.session ?? msg.session, account?.id, color);
       if (mode === 'solo') {
         if (!known) fillSoloBots(world);
-        const entry = soloWorlds.get(session) ?? { world, touched: Date.now() };
+        const key = soloSave || session;
+        const entry = soloWorlds.get(key) ?? { world, touched: Date.now() };
         entry.world = world;
         entry.touched = Date.now();
-        soloWorlds.set(session, entry);
+        soloWorlds.set(key, entry);
       }
       client = { ws, playerId: player.id, world, mode };
       clients.set(ws, client);
@@ -384,6 +426,10 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (!client) return;
+    if (client.mode === 'multi') {
+      const account = [...accountSockets.entries()].find(([, socket]) => socket === ws);
+      if (account) accountSockets.delete(account[0]);
+    }
     clients.delete(ws);
     client = null;
   });
@@ -417,6 +463,14 @@ setInterval(() => {
   if (publicWorld.dirty) {
     publicWorld.dirty = false;
     store.saveWorld(publicWorld.snapshot());
+  }
+
+  // Autosave every single-player table to its browser key, at most every 1.5 s.
+  for (const [key, entry] of soloWorlds) {
+    if (!entry.world.dirty || Date.now() - (entry.saved ?? 0) < 1500) continue;
+    entry.world.dirty = false;
+    entry.saved = Date.now();
+    store.saveSolo(key, entry.world.snapshot());
   }
 }, 80);
 

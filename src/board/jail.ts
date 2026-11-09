@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { loadModel } from '../render/models';
 import type { PlayerPublic } from '../game/types';
 
 interface CageView {
@@ -136,22 +135,6 @@ export class JailCageLayer {
     const lock = new THREE.Mesh(new RoundedBoxGeometry(0.09, 0.11, 0.05, 2, 0.014), GOLD);
     lock.position.set(0, 0.24, 0.276);
     group.add(lock);
-
-    void loadModel('jailbars', 0.52)
-      .then((model) => {
-        for (const [x, z, rot] of [
-          [0, -0.235, 0],
-          [0, 0.235, Math.PI],
-          [-0.235, 0, Math.PI / 2],
-          [0.235, 0, -Math.PI / 2],
-        ] as Array<[number, number, number]>) {
-          const bars = model.clone(true);
-          bars.position.set(x, 0.05, z);
-          bars.rotation.y = rot;
-          group.add(bars);
-        }
-      })
-      .catch((error: unknown) => console.error('[jail] cage model failed', error));
     return group;
   }
 

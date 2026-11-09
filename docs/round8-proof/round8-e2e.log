@@ -1,0 +1,20 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test tests/e2e/round8.spec.ts --reporter=list
+[WebServer] npm notice run chromonopoly@3.0.0 start
+[WebServer] npm notice run node dist-server/index.js
+
+Running 9 tests using 1 worker
+
+  ✓  1 tests/e2e/round8.spec.ts:79:1 › V1/V12: menu, validation, create, login, refresh, logout, duplicate, wrong password (42.0s)
+  ✓  2 tests/e2e/round8.spec.ts:158:1 › V1: the same account on a second client kicks the first with a clear message (27.6s)
+  ✓  3 tests/e2e/round8.spec.ts:177:1 › V2: new solo game saves, refresh restores the exact table, Continue resumes it (23.9s)
+  ✓  4 tests/e2e/round8.spec.ts:219:1 › V12: the piece preview fills a large, square-ish area at every viewport (30.1s)
+  ✓  5 tests/e2e/round8.spec.ts:240:1 › V3/V11: every panel opens against the live server with no console or network errors (2.2m)
+  ✓  6 tests/e2e/round8.spec.ts:267:1 › V14: six full arrangements shuffle without an immediate repeat (27.0s)
+  ✓  7 tests/e2e/round8.spec.ts:302:1 › V4/V13: all-angle sky audit and camera drag never leave a floating sky object (2.6m)
+  ✓  8 tests/e2e/round8.spec.ts:388:1 › V8/V16: robbery UI reaches jail and the jail roll returns dice and consumes a turn (53.6s)
+  ✓  9 tests/e2e/round8.spec.ts:471:1 › V19: UI scale previews and applies at 80, 100 and 130 percent (29.3s)
+
+  Slow test file: tests/e2e/round8.spec.ts (8.7m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  9 passed (8.8m)

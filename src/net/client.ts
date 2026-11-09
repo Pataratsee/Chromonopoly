@@ -1,4 +1,5 @@
 import type { GameEvent, GameMode, Intent, PrivateState, PublicState, ServerMessage } from '../game/types';
+import { socketUrl } from './endpoint';
 
 type StateHandler = (state: PublicState) => void;
 type PrivateHandler = (state: PrivateState) => void;
@@ -9,7 +10,18 @@ const SESSION_KEY = 'chromonopoly.session';
 const NAME_KEY = 'chromonopoly.name';
 const TOKEN_KEY = 'chromonopoly.token';
 const AUTH_KEY = 'chromonopoly.auth';
+const SOLO_KEY = 'chromonopoly.solo.key';
 const sessionKey = (mode: GameMode): string => `${SESSION_KEY}.${mode}`;
+
+/** Stable browser key for the server-side single-player save. */
+export function soloKey(): string {
+  let key = localStorage.getItem(SOLO_KEY);
+  if (!key) {
+    key = crypto.randomUUID();
+    localStorage.setItem(SOLO_KEY, key);
+  }
+  return key;
+}
 
 /** The bearer token for the signed-in password account. */
 export function authToken(): string {
@@ -25,6 +37,8 @@ export class NetClient {
   private ws: WebSocket | null = null;
   private reconnectTimer: number | null = null;
   private attempts = 0;
+  private stopped = false;
+  private freshSolo = false;
   private queue: Intent[] = [];
   playerId: string | null = null;
   mode: GameMode = 'multi';
@@ -34,18 +48,19 @@ export class NetClient {
   onEvent: EventHandler = () => undefined;
   onStatus: StatusHandler = () => undefined;
   onReject: (reason: string) => void = () => undefined;
+  onAuthLost: (reason: string) => void = () => undefined;
 
   connect(name?: string, tokenId?: string, mode: GameMode = this.mode): void {
+    this.stopped = false;
+    this.detach();
     this.mode = mode;
     const storedName = name ?? localStorage.getItem(NAME_KEY) ?? '';
     const storedToken = tokenId ?? localStorage.getItem(TOKEN_KEY) ?? 'cat';
     this.onStatus('connecting');
-    const ws = new WebSocket(this.socketUrl());
+    const ws = new WebSocket(socketUrl());
     this.ws = ws;
 
     ws.onopen = () => {
-      this.attempts = 0;
-      this.onStatus('online');
       ws.send(
         JSON.stringify({
           type: 'hello',
@@ -54,8 +69,11 @@ export class NetClient {
           mode,
           session: localStorage.getItem(sessionKey(mode)) ?? localStorage.getItem(SESSION_KEY) ?? undefined,
           authToken: mode === 'multi' ? authToken() : undefined,
+          soloKey: mode === 'solo' ? soloKey() : undefined,
+          fresh: mode === 'solo' ? this.freshSolo : undefined,
         }),
       );
+      this.freshSolo = false;
       for (const intent of this.queue.splice(0)) ws.send(JSON.stringify({ type: 'intent', intent }));
     };
 
@@ -67,6 +85,8 @@ export class NetClient {
         return;
       }
       if (msg.type === 'welcome') {
+        this.attempts = 0;
+        this.onStatus('online');
         this.playerId = msg.playerId ?? null;
         if (msg.session) {
           localStorage.setItem(sessionKey(mode), msg.session);
@@ -91,40 +111,22 @@ export class NetClient {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      if (this.stopped) return;
+      if (event.code === 4001 || event.code === 4002) {
+        this.stopped = true;
+        this.onStatus('offline', event.reason || 'signed out');
+        this.onAuthLost(event.reason || (event.code === 4002 ? 'You signed in on another device.' : 'Sign in again.'));
+        return;
+      }
       this.onStatus('offline');
       this.scheduleReconnect(storedName, storedToken, mode);
     };
     ws.onerror = () => ws.close();
   }
 
-  /**
-   * A deployed static frontend points at the separately hosted game server.
-   * The value is an HTTP(S) origin; it is converted to the matching WS scheme.
-   */
-  private socketUrl(): string {
-    const configured = import.meta.env.VITE_GAME_SERVER_URL?.trim();
-    if (configured) {
-      const url = new URL(configured);
-      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-      if (url.pathname === '/' || url.pathname === '') url.pathname = '/ws';
-      return url.toString();
-    }
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    return `${protocol}://${this.gameHost()}/ws`;
-  }
-
-  /**
-   * Node serves the client and WebSocket together; Vite proxies them. A plain
-   * static server on 8000 (or the build under /dist/) cannot proxy, so point
-   * the socket at the game server's default port.
-   */
-  private gameHost(): string {
-    const staticPreview = location.port === '8000' || location.pathname.startsWith('/dist/');
-    return staticPreview ? `${location.hostname}:8787` : location.host;
-  }
-
   private scheduleReconnect(name: string, tokenId: string, mode: GameMode): void {
+    if (this.stopped) return;
     if (this.reconnectTimer) return;
     this.attempts += 1;
     const delay = Math.min(8000, 500 * 2 ** Math.min(4, this.attempts));
@@ -138,6 +140,7 @@ export class NetClient {
   restart(name: string, tokenId: string, mode: GameMode): void {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(sessionKey(mode));
+    this.freshSolo = mode === 'solo';
     this.lastSeq = -1;
     this.playerId = null;
     this.connect(name, tokenId, mode);
@@ -161,9 +164,22 @@ export class NetClient {
   }
 
   close(): void {
+    this.stopped = true;
     if (this.reconnectTimer) window.clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
-    this.ws?.close();
+    this.detach();
+  }
+
+  /** Drops the socket without letting its close handler start a reconnect. */
+  private detach(): void {
+    const ws = this.ws;
+    this.ws = null;
+    if (!ws) return;
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onclose = null;
+    ws.onerror = null;
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
   }
 }
 
