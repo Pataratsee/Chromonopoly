@@ -284,9 +284,11 @@ server failed and the auth panel reported that it could not reach the server.
   animation frame. A background tab pauses `requestAnimationFrame`, which left
   the overlay covering the menu and swallowing every click.
 
-**Verified:** live health, CORS preflight, JSON auth rejection, account creation,
-Bearer-session lookup and an authenticated WebSocket welcome/state round-trip
-against the Render origin. Browser sign-in against Pages is verified below.
+**Verified live (2026-11-09):** Pages build `1085f9a` reached “Connected”, created
+account `LiveProbe77` through the real form, and joined the shared board at
+$1,500. Independently, account registration, Bearer-session lookup and an
+authenticated WebSocket welcome/state round-trip passed against Render. Render's
+health endpoint reports server commit `19768b8` (the last server-code change).
 
 ## Test and build status
 
