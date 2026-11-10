@@ -6,9 +6,9 @@ Executed on 2026-11-09 from `/home/christian/Desktop/LittleProjects/Chromonopoly
 
 | Command | Result | Log / artifact |
 |---|---|---|
-| `npm run build` | exit 0; model check, TypeScript, Vite and server bundle; client 1,100.99 kB / 319.35 kB gzip, CSS 47.68 kB / 10.86 kB gzip, server 241.0 kb | `build.log` |
+| `npm run build` | exit 0; model check, TypeScript, Vite and server bundle; client 1,100.99 kB / 319.35 kB gzip, CSS 47.68 kB / 10.86 kB gzip, server 242.1 kb | `build.log` |
 | `npm run typecheck` | exit 0 | `typecheck.log` |
-| `npx vitest run` | 12 files, 247/247 tests pass | `vitest.log` |
+| `npx vitest run` | 12 files, 248/248 tests pass after the save-migration test | `vitest.log` |
 | `npx playwright test -g "W2:\|W1:\|W3/W6:\|W5:"` | 4/4 pass | `playwright-final-a.log` |
 | `npx playwright test -g "W4:\|W7:\|W13:"` | 3/3 pass | `playwright-final-b.log` |
 | `npx playwright test -g "W9/W10/W11/W12:"` | 1/1 pass | `playwright-final-c.log` |
@@ -62,6 +62,16 @@ Performance: 75 FPS / 13.33 ms average / 13.4 ms p95 / no frame over 20 ms at 12
 unthrottled, 4× CPU, 2× GPU-workload and combined runs; cold cache-disabled load 705 ms. Raw data in
 `perf-low.json`; analysis and limitations in `docs/perf-report.md`.
 
+## Live deployment — 2026-11-10
+
+- GitHub Pages run `42729652927` completed successfully for `94dfbfb` and serves the new client.
+- The first Render deploy (`94dfbfb`) failed while restoring the Round 8 snapshot because old tiles
+  had `building` instead of `buildings[]`. The migration fix `d113086` deployed successfully and
+  reports `protocol:3` from live health.
+- The live Pages menu, new solo table and a `2 + 3` roll followed by Mr. Ledger's turn were
+  exercised against `d113086` with no new console exceptions or failed requests. Details:
+  `docs/round9-proof/live-deployment.md`.
+
 ## Limitations — not claimed as verified
 
 - **No physical low-end hardware.** Performance was measured in headless Chromium on this desktop
@@ -77,4 +87,8 @@ unthrottled, 4× CPU, 2× GPU-workload and combined runs; cold cache-disabled lo
 - **W13 depends on random bot events.** It passed three consecutive runs after the retarget fix, but
   the test does not force a specific card or purchase every time.
 - **Cold load is local and cache-disabled.** It is not a throttled-network field measurement.
-- No commit, push or deployment was performed.
+- **The full browser suite was not replayed after the live save-migration hotfix.** The eight
+  Playwright scenarios passed on `94dfbfb`; after Render failed to restore the old save, `d113086`
+  was verified with 248 unit tests, a production build and a live solo smoke test (menu, new table,
+  `2 + 3` roll, bot turn, clean console). Multiplayer was not separately smoke-tested live.
+- Commit, push and deployment were performed. See `docs/round9-proof/live-deployment.md`.

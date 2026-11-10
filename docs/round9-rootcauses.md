@@ -245,12 +245,31 @@ Chance, a 900 ms pause, zoom-out, then the buffered card “Bank pays you a divi
 ribbon reads “Chance / Mr. Ledger · Bank pays you a dividend of $50.” Proof: `w13-bot-turn.png`,
 `w13-bot-log.json`.
 
+## Live deployment migration — 2026-11-10
+
+Root cause: Render restored the shared world saved by Round 8. Round 8 tiles stored a single
+`building: BuildingType | null`; Round 9 reads `buildings: Building[]`. `World.restore()` called
+`groupBuildingCount()` before any migration, so startup threw
+`TypeError: Cannot read properties of undefined (reading 'length')` and exited 1 before the service
+could listen. The same save also contained human seats with no Round 9 reclaim token, so those
+seats could not be reopened.
+
+Change: `restoreTile()` converts a legacy building flag to one rank-1 building and defaults the
+missing tile fields. Restore fills every board index, marks restored seats offline and lets the
+first token-bearing join claim a legacy seat. Regression: `tests/world.test.ts` — “restores a Round
+8 building flag and lets its seat be claimed”.
+
+Evidence: Render build `94dfbfb` failed with the startup error above. Build `d113086` deployed
+successfully; live health reports `version:"d113086…"`, `protocol:3` and the restored players. The
+live Pages client loaded, started a solo table, rolled `2 + 3`, advanced to Mr. Ledger's turn and
+produced no console errors. Details: `docs/round9-proof/live-deployment.md`.
+
 ## Verification actually run
 
 - `npm run typecheck` — pass.
-- `npx vitest run` — 12 files, 247/247 tests pass.
+- `npx vitest run` — 12 files, 248/248 tests pass after the save-migration test.
 - `npm run build` — pass; model check, TypeScript, Vite and server bundle. Client 1,100.99 kB
-  (319.35 kB gzip), CSS 47.68 kB (10.86 kB gzip), server 241.0 kb.
+  (319.35 kB gzip), CSS 47.68 kB (10.86 kB gzip), server 242.1 kb.
 - Playwright Round 9 — eight browser scenarios across three grouped runs; see
   `docs/round9-proof/verification.md` for the command/log table and proof index.
 - 10,000-player market simulation — pass, final distribution above.
@@ -258,6 +277,8 @@ ribbon reads “Chance / Mr. Ledger · Bank pays you a dividend of $50.” Proof
   over 20 ms at 1280×720, including 4× CPU and 2× GPU workload runs; cold cache-disabled load 705 ms.
   See `docs/perf-report.md`.
 
-Not run: a physical low-end device, iOS/Safari, offline-sale browser elapsed-time test,
-server-restart reconnect, a browser screenshot isolating four simultaneous mixed-rank buildings,
-commit, push or deployment.
+Not run: a full Playwright replay after the live save-migration hotfix, a physical low-end device,
+iOS/Safari, offline-sale browser elapsed-time test, server-restart reconnect, a browser screenshot
+isolating four simultaneous mixed-rank buildings, or a live multiplayer smoke test after the
+migration. Commit, push and deployment were performed; see
+`docs/round9-proof/live-deployment.md`.
