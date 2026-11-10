@@ -225,6 +225,7 @@ wss.on('connection', (ws) => {
       soloKey?: string;
       fresh?: boolean;
       color?: string;
+      tile?: number;
     };
     try {
       msg = JSON.parse(String(raw));
@@ -305,6 +306,12 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'resync') {
       send(ws, { type: 'resync', state: client.world.publicState(), private: client.world.privateState(client.playerId) });
+      return;
+    }
+
+    if (msg.type === 'market') {
+      const tile = Number(msg.tile);
+      if (Number.isInteger(tile)) send(ws, { type: 'market', tile, candles: client.world.marketHistory(tile) });
       return;
     }
 

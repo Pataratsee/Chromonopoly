@@ -110,6 +110,8 @@ export interface PlayerPrivate extends PlayerPublic {
   costBasis: Record<string, number>;
   realizedPnl: number;
   unpaidRent: number;
+  /** This player's next court filing fee; doubles after every loss. */
+  courtFee: number;
 }
 
 export interface Pending {
@@ -136,6 +138,14 @@ export interface TradeOffer {
   expiresAt: number;
 }
 
+export interface Candle {
+  t: number;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+}
+
 export interface MarketFeedEntry {
   id: number;
   at: number;
@@ -159,6 +169,8 @@ export interface PublicState {
   /** Public-only logs grouped by player; private acts never enter this map. */
   playerLogs: Record<string, LogEntry[]>;
   marketFeed: MarketFeedEntry[];
+  /** Current 30-second candle per stock. Closed history is fetched on demand. */
+  candles: Record<number, Candle>;
   buildingCount: number;
   gameOver: null | { winnerId: string; at: number };
 }
@@ -176,6 +188,7 @@ export interface Suit {
   defendantId: string;
   claim: number;
   evidence: number;
+  fee: number;
   filedAt: number;
   status: 'pending' | 'closed' | 'dismissed';
 }
@@ -232,6 +245,7 @@ export type Intent =
   | { t: 'sue'; target: string; claim: number; key: string }
   | { t: 'settle'; suitId: string; key: string }
   | { t: 'court'; suitId: string; key: string }
+  | { t: 'withdrawSuit'; suitId: string; key: string }
   | { t: 'jailPay'; key: string }
   | { t: 'selectToken'; tokenId: string; key: string }
   | { t: 'selectColor'; color: string; key: string }
@@ -277,7 +291,7 @@ export interface GameEvent {
 }
 
 export interface ServerMessage {
-  type: 'state' | 'private' | 'welcome' | 'rejected' | 'event' | 'resync';
+  type: 'state' | 'private' | 'welcome' | 'rejected' | 'event' | 'resync' | 'market';
   seq?: number;
   state?: PublicState;
   private?: PrivateState;
@@ -287,6 +301,8 @@ export interface ServerMessage {
   reason?: string;
   key?: string;
   event?: GameEvent;
+  tile?: number;
+  candles?: Candle[];
 }
 
 export interface Settings {
@@ -309,4 +325,5 @@ export interface Settings {
   skyHour: number;
   fpsCounter: boolean;
   fastBots: boolean;
+  oneClickTrade: boolean;
 }

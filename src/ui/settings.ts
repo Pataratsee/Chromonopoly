@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   skyHour: 9,
   fpsCounter: false,
   fastBots: false,
+  oneClickTrade: false,
 };
 
 export function loadSettings(): Settings {

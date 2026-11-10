@@ -233,9 +233,11 @@ async function start(): Promise<void> {
       const changed = await waitForPositionChange(local, from);
       if (run !== turnRun) return;
       const target = changed ?? state?.players[local]?.position ?? moveTile ?? from;
-      const piece = tokens.positionOf(local) ?? board.tilePoint(from);
+      const piece = board.tilePoint(from);
       setFlowState('CAMERA_ZOOM_IN', `tile ${target}`);
+      stage.rig.lockOn(new THREE.Vector3(piece.x, 0.2, piece.z));
       stage.rig.focus(new THREE.Vector3(piece.x, 0.2, piece.z), CAMERA.followRadius);
+      stage.rig.lockOn(new THREE.Vector3(piece.x, 0.2, piece.z));
       await stage.rig.whenSettled(1700);
       if (run !== turnRun) return;
 
@@ -331,6 +333,9 @@ async function start(): Promise<void> {
   net.onState = applyState;
   net.onPrivate = (p) => {
     ui.setPrivate(p);
+    if (p.you.inJail && p.you.cash < 50 && state?.mode === 'solo' && state.activePlayerId === p.you.id && !turnActive) {
+      window.setTimeout(() => { if (!turnActive) void runTurn(); }, 1200);
+    }
     if (net.mode !== 'solo' || !state?.activePlayerId) activeId = p.you.id;
   };
   interface BotLogEntry { at: number; player?: string; event: string; detail?: string | number }
@@ -379,7 +384,8 @@ async function start(): Promise<void> {
     const changed = await waitForPositionChange(botId, from, 2200);
     const target = changed ?? state?.players[botId]?.position ?? from;
     const startPoint = board.tilePoint(from);
-    stage.rig.focus(new THREE.Vector3(startPoint.x * 0.55, 0.2, startPoint.z * 0.55), CAMERA.followRadius);
+    stage.rig.focus(new THREE.Vector3(startPoint.x, 0.2, startPoint.z), CAMERA.followRadius);
+    stage.rig.lockOn(new THREE.Vector3(startPoint.x, 0.2, startPoint.z));
     await stage.rig.whenSettled(900);
     followPieceId = botId;
     noteBot('follow', botId, `tile ${from}→${target}`);
@@ -650,7 +656,7 @@ async function start(): Promise<void> {
     buildings.update();
     if (followPieceId) {
       const piece = tokens.positionOf(followPieceId);
-      if (piece) stage.rig.track(piece);
+      if (piece) stage.rig.lockOn(piece);
     } else if (state && activeId && state.players[activeId]) {
       const p = state.players[activeId];
       if (p.inJail) {

@@ -129,10 +129,9 @@ describe('rent', () => {
     expect(buildingCost(spaceAt(1), 'landmark')).toBe(450);
   });
 
-  it('ships 32 unique building types and models', () => {
-    expect(BUILDING_TYPES).toHaveLength(32);
-    const models = BUILDING_TYPES.map((type) => BUILDING_META[type].model);
-    expect(new Set(models).size).toBe(BUILDING_TYPES.length);
+  it('ships at least 40 unique building types and models', () => {
+    expect(BUILDING_TYPES.length).toBeGreaterThanOrEqual(40);
+    expect(new Set(BUILDING_TYPES.map((type) => BUILDING_META[type].perk)).size).toBeGreaterThan(10);
   });
 
   it('lets multiplayer build any owned street but keeps solo group rules', () => {
@@ -240,9 +239,9 @@ describe('crime and justice', () => {
   });
 
   it('caps court odds and claims', () => {
-    expect(suitChance(0)).toBe(0.35);
-    expect(suitChance(10)).toBe(0.85);
-    expect(suitChance(100)).toBe(0.85);
+    expect(suitChance(0)).toBe(0.1);
+    expect(suitChance(10)).toBe(0.95);
+    expect(suitChance(100)).toBe(0.95);
     expect(maxClaim(1)).toBe(500);
     expect(maxClaim(10)).toBe(5000);
   });

@@ -92,7 +92,7 @@ describe('jail cascade', () => {
     expect(world.tiles[3]!.mortgaged).toBe(true);
     expect(a.player.jailOutcome).toBe('none');
     expect(a.player.cash).toBe(cashBefore + 25 + 30 + 30);
-    expect(a.player.jailReleaseCost).toBe(33 + 33);
+    expect(a.player.jailReleaseCost).toBe(Math.max(50, Math.round(a.player.cash * 0.05)));
   });
 
   it('releases on payment and restores every deed', () => {
@@ -109,7 +109,7 @@ describe('jail cascade', () => {
     expect(result.ok).toBe(true);
     expect(a.player.inJail).toBe(false);
     expect(world.tiles[1]!.mortgaged).toBe(false);
-    expect(a.player.cash).toBe(467);
+    expect(a.player.cash).toBe(450);
   });
 });
 
@@ -195,6 +195,8 @@ describe('court', () => {
     const a = world.join('Ada', 'dog');
     const b = world.join('Bo', 'cat');
     botless(world);
+    a.player.cash = 50_000;
+    b.player.cash = 50_000;
     a.player.findings[b.player.id] = 1;
     b.player.unpaidRent = 100;
     world.tiles[1]!.ownerId = b.player.id;
@@ -213,6 +215,8 @@ describe('court', () => {
     const a = world.join('Ada', 'dog');
     const b = world.join('Bo', 'cat');
     botless(world);
+    a.player.cash = 50_000;
+    b.player.cash = 50_000;
     a.player.findings[b.player.id] = 2;
     b.player.unpaidRent = 500;
     world.intent(a.player.id, { t: 'sue', target: b.player.id, claim: 500, key: 'suit' });

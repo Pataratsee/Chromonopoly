@@ -1,7 +1,10 @@
 import { PALETTE, money, QUALITY, type QualityKey } from '../config';
 import { SPACES, spaceAt } from '../game/board';
-import { BUILDING_CATEGORIES, BUILDING_META, buildingCost, buildingInvested, buildingRent, buildingTypesForMode, buildSlots, canBuild, evadeChance, mortgageValue, multiplayerRent, rentFor, robberyAmountIssues, robberyChance, unmortgageCost, upgradeCost, RULES } from '../game/rules';
-import type { ChanceRoll, CrimeOutcome, GameEvent, GameMode, PrivateState, PublicState, Settings, Suit, TradeOffer } from '../game/types';
+import { BUILDING_CATEGORIES, BUILDING_META, buildingCost, buildingInvested, buildingRent, buildingTypesForMode, buildSlots, canBuild, evadeChance, mortgageValue, multiplayerRent, rentFor, robberyAmountIssues, robberyChance, suitChance, unmortgageCost, upgradeCost, RULES } from '../game/rules';
+import { perksForOwner } from '../game/perks';
+import type { Candle, ChanceRoll, CrimeOutcome, GameEvent, GameMode, PrivateState, PublicState, Settings, Suit, TradeOffer } from '../game/types';
+import { maxBuyShares } from '../game/market';
+import { CandleChart } from './marketChart';
 import { soloKey } from '../net/client';
 import { apiFetch } from '../net/endpoint';
 import { normalizeUsername, usernameIssue } from '../game/username';
@@ -609,7 +612,7 @@ export class UI {
       { class: 'jail-card glass', id: 'jail-card' },
       h('b', {}, 'In jail'),
       h('span', { class: 'small muted' }, `${this.priv.you.jailCause ?? 'Jailed'} · ${this.priv.you.jailOutcome === 'all' ? 'all deeds sold' : this.priv.you.jailOutcome === 'some' ? `${this.priv.you.jailSold.length} sold` : 'deeds mortgaged'} · release ${money(this.priv.you.jailReleaseCost)}`),
-      h('button', { class: 'btn btn-sm btn-gold', onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, 'Pay release'),
+      h('button', { class: 'btn btn-sm btn-gold', disabled: this.priv.you.cash < this.priv.you.jailReleaseCost, title: this.priv.you.cash < this.priv.you.jailReleaseCost ? `Need ${money(this.priv.you.jailReleaseCost - this.priv.you.cash)} more cash` : `5% of cash, minimum ${money(RULES.jailFeeMin)}`, onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, `Pay ${money(this.priv.you.jailReleaseCost)} to get out`),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: () => this.openJailRecord(this.priv!.you.id) }, 'Public record'),
     );
     document.getElementById('hud')?.append(card);
@@ -841,7 +844,7 @@ export class UI {
       }
       for (const building of tile.buildings) {
         const row = h('div', { class: 'inline' },
-          h('span', { class: 'chip' }, `${BUILDING_META[building.type].name} · rank ${building.rank}`),
+          h('span', { class: 'chip', title: `${BUILDING_META[building.type].perk} Trade-off: ${BUILDING_META[building.type].tradeoff}` }, `${BUILDING_META[building.type].name} · rank ${building.rank}`),
           building.rank < 4 ? h('button', { class: 'btn btn-sm btn-ghost', onclick: () => this.send({ t: 'upgrade', tile: index, type: building.type, key: intentKey('upgrade') }) }, `Upgrade ${money(upgradeCost(space, building.type, (building.rank + 1) as 2 | 3 | 4))}`) : null,
           h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.send({ t: 'sellBuilding', tile: index, type: building.type, key: intentKey('sell') }) }, `Sell ${money(Math.round(buildingInvested(space, building) * RULES.sellRefund))}`),
         );
@@ -893,6 +896,8 @@ export class UI {
           img,
           h('div', { class: 'build-name' }, meta.name),
           h('p', { class: 'build-blurb' }, meta.blurb),
+          h('p', { class: 'build-perk' }, h('b', {}, 'Perk · '), meta.perk),
+          h('p', { class: 'build-tradeoff' }, h('b', {}, 'Trade-off · '), meta.tradeoff),
           h('div', { class: 'build-stats' }, h('span', {}, `Cost ${money(cost)}`), h('span', {}, `Income ${money(income)}`)),
           h(
             'button',
@@ -1021,223 +1026,148 @@ export class UI {
   // ---------------------------------------------------------------- market
 
   openMarket(select = 0): void {
-    const body = h('div', {});
-    const holdings = Object.entries(this.priv?.you.holdings ?? {}).filter(([, qty]) => qty > 0);
-    let holdingsValue = 0;
-    let unrealized = 0;
-    let grossMade = Math.max(0, this.priv?.you.realizedPnl ?? 0);
-    let grossLost = Math.max(0, -(this.priv?.you.realizedPnl ?? 0));
-    for (const [tile, qty] of holdings) {
-      const price = this.state?.prices[Number(tile)] ?? 0;
-      const basis = this.priv?.you.costBasis[tile] ?? 0;
-      const pnl = qty * price - basis;
-      holdingsValue += qty * price;
-      unrealized += pnl;
-      if (pnl >= 0) grossMade += pnl;
-      else grossLost += -pnl;
-    }
-    const realized = this.priv?.you.realizedPnl ?? 0;
-    const net = realized + unrealized;
-    const summary = h('div', { class: 'market-summary' },
-      h('div', { class: 'summary-head' }, h('span', {}, 'Portfolio summary'), h('b', { 'data-sum': 'count' }, `${holdings.length} holdings`)),
-      h('div', { class: 'summary-metrics' },
-        h('div', {}, h('span', {}, 'Cash'), h('b', { 'data-sum': 'cash' }, money(this.priv?.you.cash ?? 0))),
-        h('div', {}, h('span', {}, 'Holdings'), h('b', { 'data-sum': 'holdings' }, money(holdingsValue))),
-        h('div', {}, h('span', {}, 'Made'), h('b', { class: 'up', 'data-sum': 'made' }, `+${money(grossMade)}`)),
-        h('div', {}, h('span', {}, 'Lost'), h('b', { class: 'down', 'data-sum': 'lost' }, `-${money(grossLost)}`)),
-        h('div', { class: net >= 0 ? 'summary-net up' : 'summary-net down', 'data-sum': 'net' }, h('span', {}, 'Net P/L'), h('b', {}, `${net >= 0 ? '+' : ''}${money(net)}`)),
-      ),
-    );
-    const header = h('div', { class: 'inline', style: 'justify-content:space-between;margin-bottom:12px' });
-    const filterSeg = h('div', { class: 'segmented' });
-    let onlyOwned = false;
-    filterSeg.append(
-      h('button', { 'aria-pressed': 'true', onclick: (e: Event) => { onlyOwned = false; for (const b of filterSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === e.currentTarget)); list.innerHTML = ''; draw(); } }, 'All'),
-      h('button', { 'aria-pressed': 'false', onclick: (e: Event) => { onlyOwned = true; for (const b of filterSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === e.currentTarget)); list.innerHTML = ''; draw(); } }, 'My holdings'),
-    );
-    header.append(h('div', { class: 'note' }, `${money(this.priv?.you.cash ?? 0)} cash · prices move every few seconds`), filterSeg);
-    const list = h('div', { class: 'group' });
-    body.append(summary, header, list);
+    const stocks = SPACES.filter((space) => space.price > 0);
+    let tile = stocks.some((space) => space.index === select) ? select : stocks[0]!.index;
+    let history: Candle[] = [];
+    let pendingSide: 'buy' | 'sell' | null = null;
+    let pendingQty = 0;
+    let lastLive = 0;
+    const body = h('div', { class: 'market-terminal' });
+    const selector = h('select', { class: 'field market-select', 'aria-label': 'Choose a stock' },
+      ...stocks.map((space) => h('option', { value: String(space.index) }, `${space.name} · ${heap(space)}`)),
+    ) as HTMLSelectElement;
+    selector.value = String(tile);
+    const search = h('input', { class: 'field', placeholder: 'Filter stocks', 'aria-label': 'Filter stocks' }) as HTMLInputElement;
+    const chartCanvas = h('canvas', { class: 'market-chart', 'aria-label': 'Candlestick price chart' }) as HTMLCanvasElement;
+    const chart = new CandleChart(chartCanvas);
+    const priceEl = h('b', { class: 'terminal-price' }, '—');
+    const deltaEl = h('span', { class: 'small muted' }, 'live');
+    const qty = h('input', { class: 'field', type: 'number', min: '1', step: '1', value: '1', 'aria-label': 'Share quantity' }) as HTMLInputElement;
+    const confirmEl = h('p', { class: 'note terminal-confirm', 'aria-live': 'polite' }, '');
+    const buy = h('button', { class: 'btn btn-primary btn-block' }, 'Buy');
+    const sell = h('button', { class: 'btn btn-ghost btn-block' }, 'Sell');
+    const maxBuy = h('button', { class: 'btn btn-sm btn-ghost' }, 'Max Buy');
+    const maxSell = h('button', { class: 'btn btn-sm btn-ghost' }, 'Max Sell');
+    const liveBadge = h('button', { class: 'btn btn-sm btn-gold' }, 'Live');
+    const ownedBox = h('div', { class: 'terminal-owned' });
+    const otherBox = h('div', { class: 'terminal-holdings' });
+    const totals = h('div', { class: 'terminal-totals' });
+    const toast = h('p', { class: 'note', 'aria-live': 'polite' }, '');
+    const head = h('div', { class: 'market-head' }, h('div', { class: 'market-title' }, h('b', {}, 'Market'), h('span', { class: 'market-live-dot' }, 'LIVE')), selector, search, liveBadge);
+    const chartPanel = h('div', { class: 'market-chart-panel' }, chartCanvas, h('div', { class: 'chart-legend' }, priceEl, deltaEl));
+    const side = h('aside', { class: 'market-side' }, this.cashChip(), ownedBox, h('div', { class: 'trade-box' }, h('div', { class: 'stat-row' }, h('span', {}, 'Quantity'), qty), h('div', { class: 'inline' }, buy, sell), h('div', { class: 'inline' }, maxBuy, maxSell), confirmEl, toast), totals, otherBox);
+    body.append(head, h('div', { class: 'market-body' }, chartPanel, side));
 
-    const qtyFor = new Map<number, number>();
+    const priceNow = (): number => this.state?.prices[tile] ?? 0;
+    const heldNow = (): number => this.priv?.you.holdings[String(tile)] ?? 0;
     const draw = (): void => {
-      list.innerHTML = '';
-      for (const space of SPACES) {
-        if (!space.price) continue;
-        const tile = this.state?.tiles[space.index];
-        const held = this.priv?.you.holdings[String(space.index)] ?? 0;
-        if (onlyOwned && held === 0 && tile?.ownerId !== this.deps.net.playerId) continue;
-        const price = this.state?.prices[space.index] ?? 0;
-        const basis = this.priv?.you.costBasis[String(space.index)] ?? 0;
-        const pnl = held * price - basis;
-        const hist = this.history.get(space.index) ?? [];
-        const prev = hist.length > 1 ? hist[hist.length - 2]! : price;
-        const delta = price - prev;
-        const row = h('div', { class: 'market-row', 'data-market-tile': String(space.index) });
-        const avg = held > 0 ? basis / held : 0;
-        const value = held * price;
-        const spark = this.sparkline(hist);
-        spark.setAttribute('data-market-spark', '');
-        const qty = h('input', { type: 'number', min: '1', max: '1000', value: String(qtyFor.get(space.index) ?? 10), 'aria-label': `Quantity for ${space.name}` }) as HTMLInputElement;
-        qty.addEventListener('input', () => qtyFor.set(space.index, Math.max(1, Number(qty.value) || 1)));
-        row.append(
-          h(
-            'div',
-            {},
-            h('div', { class: 'row-title' }, space.name),
-            h(
-              'div',
-              { class: 'row-sub' },
-              `${heap(space)} · held ${held} shares (${Math.round(held / 10)}%)`,
-              held > 0
-                ? h('span', { class: pnl >= 0 ? 'up' : 'down' }, ` · basis ${money(Math.round(basis))} · P/L ${pnl >= 0 ? '+' : ''}${money(Math.round(pnl))}`)
-                : null,
-              tile?.ownerId === this.deps.net.playerId ? ' · yours' : '',
-            ),
-          ),
-          spark,
-          h(
-            'div',
-            { class: 'market-quote' },
-            h('div', { class: `market-price ${delta >= 0 ? 'up' : 'down'}`, 'data-market-price': '' }, money(price)),
-            h('div', { class: 'row-sub', style: 'text-align:right', 'data-market-delta': '' }, `${delta >= 0 ? '+' : ''}${money(delta)}`),
-          ),
-        );
-        if (held > 0) {
-          row.append(h('div', { class: 'holding-stats' },
-            h('div', {}, h('span', {}, 'Qty'), h('b', { 'data-market-qty': '' }, String(held))),
-            h('div', {}, h('span', {}, 'Avg cost'), h('b', { 'data-market-avg': '' }, money(avg))),
-            h('div', {}, h('span', {}, 'Value'), h('b', { 'data-market-value': '' }, money(value))),
-            h('div', { class: pnl >= 0 ? 'up' : 'down', 'data-market-pnl': '' }, h('span', {}, 'P/L'), h('b', {}, `${pnl >= 0 ? '+' : ''}${money(pnl)}`)),
-          ));
-        }
-        const controls = h('div', { class: 'inline' });
-        controls.append(
-          qty,
-          h(
-            'button',
-            {
-              class: 'btn btn-sm btn-ghost',
-              disabled: (this.priv?.you.cash ?? 0) < price,
-              onclick: () => this.send({ t: 'stock', tile: space.index, qty: Number(qty.value) || 1, key: intentKey('stock') }),
-            },
-            'Buy',
-          ),
-          h(
-            'button',
-            {
-              class: 'btn btn-sm btn-ghost',
-              disabled: held <= 0,
-              onclick: () => this.send({ t: 'stock', tile: space.index, qty: -(Number(qty.value) || 1), key: intentKey('stock') }),
-            },
-            'Sell',
-          ),
-          h(
-            'button',
-            { class: 'btn btn-sm btn-ghost', onclick: () => { const max = Math.max(1, Math.floor((this.priv?.you.cash ?? 0) / Math.max(1, price))); qty.value = String(max); } },
-            'Max buy',
-          ),
-          h(
-            'button',
-            { class: 'btn btn-sm btn-ghost', disabled: held <= 0, onclick: () => { qty.value = String(Math.max(1, held)); } },
-            'Sell all',
-          ),
-        );
-        row.append(controls);
-        list.append(row);
-      }
-      if (!list.children.length) list.append(h('p', { class: 'note' }, 'No holdings yet — buy shares to earn dividends when rent is paid.'));
-    };
-    draw();
-    this.openSheet('market', 'Stock market', 'Every street is a ticker. External owners cap at 50%.', body, { tall: true, wide: true });
-    // Live refresh in place: prices, arrows, sparklines and P/L move with the
-    // server tick without closing or rebuilding the panel.
-    this.marketLive = () => {
-      if (!this.sheet || this.currentSheet !== 'market') return;
-      const cash = this.priv?.you.cash ?? 0;
-      let heldValue = 0;
-      let unrealized = 0;
+      const price = priceNow();
+      const held = heldNow();
+      const basis = this.priv?.you.costBasis[String(tile)] ?? 0;
+      const pnl = held * price - basis;
+      priceEl.textContent = money(price);
+      const prev = this.state?.candles?.[tile]?.o ?? price;
+      deltaEl.textContent = `${price >= prev ? '▲' : '▼'} ${Math.abs(price - prev).toFixed(2)} live`;
+      deltaEl.className = price >= prev ? 'up' : 'down';
+      confirmEl.textContent = pendingSide && pendingQty > 0
+        ? `Confirm ${pendingSide} ${pendingQty} share${pendingQty === 1 ? '' : 's'} — one click to send.`
+        : '';
+      buy.disabled = price <= 0 || (this.priv?.you.cash ?? 0) < price;
+      sell.disabled = held <= 0;
+      maxBuy.disabled = maxBuyShares(this.priv?.you.cash ?? 0, price) <= 0;
+      maxSell.disabled = held <= 0;
+      ownedBox.replaceChildren(
+        h('div', { class: 'group-label' }, 'This stock'),
+        h('div', { class: 'stat-row' }, h('span', {}, 'Shares'), h('b', {}, String(held))),
+        h('div', { class: 'stat-row' }, h('span', {}, 'Average cost'), h('b', {}, money(held > 0 ? basis / held : 0))),
+        h('div', { class: 'stat-row' }, h('span', {}, 'Value'), h('b', {}, money(held * price))),
+        h('div', { class: `stat-row ${pnl >= 0 ? 'up' : 'down'}` }, h('span', {}, 'Profit / loss'), h('b', {}, `${pnl >= 0 ? '+' : ''}${money(pnl)} (${held > 0 ? ((pnl / Math.max(1, basis)) * 100).toFixed(1) : '0.0'}%)`)),
+      );
+      const holdings = Object.entries(this.priv?.you.holdings ?? {}).filter(([, q]) => q > 0);
+      otherBox.replaceChildren(h('div', { class: 'group-label' }, 'Other holdings'));
+      if (!holdings.length) otherBox.append(h('p', { class: 'note' }, 'No other shares yet.'));
       let made = Math.max(0, this.priv?.you.realizedPnl ?? 0);
       let lost = Math.max(0, -(this.priv?.you.realizedPnl ?? 0));
-      for (const [tile, qty] of Object.entries(this.priv?.you.holdings ?? {})) {
-        if (qty <= 0) continue;
-        const p = this.state?.prices[Number(tile)] ?? 0;
-        const basis = this.priv?.you.costBasis[tile] ?? 0;
-        heldValue += qty * p;
-        unrealized += qty * p - basis;
+      for (const [key, count] of holdings) {
+        if (Number(key) === tile) continue;
+        const p = this.state?.prices[Number(key)] ?? 0;
+        const b = this.priv?.you.costBasis[key] ?? 0;
+        const value = count * p;
+        const profit = value - b;
+        if (profit >= 0) made += profit; else lost += -profit;
+        otherBox.append(h('button', { class: 'terminal-row', onclick: () => choose(Number(key)) },
+          h('span', {}, spaceAt(Number(key)).name),
+          h('b', { class: profit >= 0 ? 'up' : 'down' }, `${profit >= 0 ? '+' : ''}${money(profit)}`),
+          h('span', { class: 'small muted' }, `${count} sh · ${money(value)}`),
+        ));
       }
-      const netPnl = (this.priv?.you.realizedPnl ?? 0) + unrealized;
-      const set = (key: string, text: string): void => {
-        const el = this.sheet?.querySelector(`[data-sum="${key}"] b, b[data-sum="${key}"]`);
-        if (el) el.textContent = text;
-      };
-      set('count', `${Object.values(this.priv?.you.holdings ?? {}).filter((q) => q > 0).length} holdings`);
-      set('cash', money(cash));
-      set('holdings', money(heldValue));
-      set('made', `+${money(made)}`);
-      set('lost', `-${money(lost)}`);
-      const netCell = this.sheet?.querySelector('[data-sum="net"]');
-      if (netCell) {
-        netCell.className = netPnl >= 0 ? 'summary-net up' : 'summary-net down';
-        const b = netCell.querySelector('b');
-        if (b) b.textContent = `${netPnl >= 0 ? '+' : ''}${money(netPnl)}`;
-      }
-      for (const row of this.sheet?.querySelectorAll<HTMLElement>('[data-market-tile]') ?? []) {
-        const index = Number(row.dataset.marketTile);
-        const price = this.state?.prices[index] ?? 0;
-        const hist = this.history.get(index) ?? [];
-        const prev = hist.length > 1 ? hist[hist.length - 2]! : price;
-        const delta = price - prev;
-        const priceEl = row.querySelector<HTMLElement>('[data-market-price]');
-        if (priceEl) {
-          priceEl.textContent = money(price);
-          priceEl.className = `market-price ${delta >= 0 ? 'up' : 'down'}`;
-        }
-        const deltaEl = row.querySelector<HTMLElement>('[data-market-delta]');
-        if (deltaEl) deltaEl.textContent = `${delta >= 0 ? '+' : ''}${money(delta)}`;
-        const oldSpark = row.querySelector('[data-market-spark]');
-        if (oldSpark) oldSpark.replaceWith(this.sparkline(hist));
-        const qtyEl = row.querySelector<HTMLElement>('[data-market-qty]');
-        const avgEl = row.querySelector<HTMLElement>('[data-market-avg]');
-        const valueEl = row.querySelector<HTMLElement>('[data-market-value]');
-        const pnlEl = row.querySelector<HTMLElement>('[data-market-pnl]');
-        if (qtyEl || avgEl || valueEl || pnlEl) {
-          const held = this.priv?.you.holdings[String(index)] ?? 0;
-          const basis = this.priv?.you.costBasis[String(index)] ?? 0;
-          const pnl = held * price - basis;
-          if (qtyEl) qtyEl.textContent = String(held);
-          if (avgEl) avgEl.textContent = money(held > 0 ? basis / held : 0);
-          if (valueEl) valueEl.textContent = money(held * price);
-          if (pnlEl) {
-            pnlEl.className = pnl >= 0 ? 'up' : 'down';
-            const b = pnlEl.querySelector('b');
-            if (b) b.textContent = `${pnl >= 0 ? '+' : ''}${money(pnl)}`;
-          }
-        }
-      }
+      totals.replaceChildren(
+        h('div', { class: 'stat-row' }, h('span', {}, 'Total made'), h('b', { class: 'up' }, `+${money(made)}`)),
+        h('div', { class: 'stat-row' }, h('span', {}, 'Total lost'), h('b', { class: 'down' }, `-${money(lost)}`)),
+        h('div', { class: 'stat-row' }, h('span', {}, 'Net'), h('b', { class: (made - lost) >= 0 ? 'up' : 'down' }, `${made - lost >= 0 ? '+' : ''}${money(made - lost)}`)),
+      );
+      chart.setData(history, this.state?.candles?.[tile] ?? null);
     };
-    void select;
-  }
-
-  private sparkline(values: number[]): SVGSVGElement {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'spark');
-    svg.setAttribute('viewBox', '0 0 90 26');
-    if (values.length < 2) return svg;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const span = max - min || 1;
-    const pts = values
-      .map((v, i) => `${(i / (values.length - 1)) * 90},${24 - ((v - min) / span) * 20}`)
-      .join(' ');
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    poly.setAttribute('points', pts);
-    poly.setAttribute('fill', 'none');
-    poly.setAttribute('stroke', values[values.length - 1]! >= values[0]! ? PALETTE.positive : PALETTE.negative);
-    poly.setAttribute('stroke-width', '1.8');
-    poly.setAttribute('stroke-linejoin', 'round');
-    svg.append(poly);
-    return svg;
+    const choose = (next: number): void => {
+      if (next === tile) return;
+      tile = next;
+      selector.value = String(next);
+      history = [];
+      pendingSide = null;
+      pendingQty = 0;
+      this.deps.net.requestMarket(next);
+      draw();
+    };
+    selector.addEventListener('change', () => choose(Number(selector.value)));
+    search.addEventListener('input', () => {
+      const text = search.value.trim().toLowerCase();
+      for (const option of [...selector.options]) {
+        option.hidden = !stocks.find((s) => s.index === Number(option.value))?.name.toLowerCase().includes(text);
+      }
+    });
+    const submit = (side: 'buy' | 'sell', amount: number): void => {
+      if (amount <= 0) return;
+      if (!this.settings.oneClickTrade && pendingSide === side && pendingQty === amount) {
+        this.send({ t: 'stock', tile, qty: side === 'buy' ? amount : -amount, key: intentKey('stock') });
+        pendingSide = null;
+        pendingQty = 0;
+      } else {
+        pendingSide = side;
+        pendingQty = amount;
+        qty.value = String(amount);
+      }
+      draw();
+    };
+    buy.addEventListener('click', () => submit('buy', Math.max(1, Math.round(Number(qty.value) || 1))));
+    sell.addEventListener('click', () => submit('sell', Math.max(1, Math.round(Number(qty.value) || 1))));
+    maxBuy.addEventListener('click', () => {
+      const max = maxBuyShares(this.priv?.you.cash ?? 0, priceNow());
+      qty.value = String(Math.max(1, max));
+      if (this.settings.oneClickTrade && max > 0) submit('buy', max);
+      else { pendingSide = max > 0 ? 'buy' : null; pendingQty = max; draw(); }
+    });
+    maxSell.addEventListener('click', () => {
+      const all = heldNow();
+      qty.value = String(Math.max(1, all));
+      if (this.settings.oneClickTrade && all > 0) submit('sell', all);
+      else { pendingSide = all > 0 ? 'sell' : null; pendingQty = all; draw(); }
+    });
+    liveBadge.addEventListener('click', () => chart.reset());
+    this.deps.net.onMarket = (next, candles) => {
+      if (next !== tile) return;
+      history = candles;
+      draw();
+    };
+    this.deps.net.requestMarket(tile);
+    draw();
+    this.openSheet('market', 'Market', 'Server candles · 30 seconds each · one-screen trading terminal', body, { tall: true, wide: true });
+    this.marketLive = () => {
+      if (!this.sheet || this.currentSheet !== 'market') return;
+      const now = performance.now();
+      if (now - lastLive < 120) return;
+      lastLive = now;
+      draw();
+    };
   }
 
   // ------------------------------------------------------------------ bank
@@ -1725,6 +1655,9 @@ export class UI {
       const dossier = this.priv?.you.dossier[p.id];
       const strength = dossier?.evidence ?? 0;
       const max = Math.max(100, strength * 500);
+      const courtPerks = perksForOwner(me, this.state?.tiles ?? {});
+      const odds = Math.round(Math.min(0.95, suitChance(strength) + courtPerks.courtOdds) * 100);
+      const fee = this.priv?.you.courtFee ?? RULES.courtFeeBase;
       const claim = h('input', { class: 'field', type: 'number', min: '100', max: String(max), step: '50', value: String(Math.min(500, max)) }) as HTMLInputElement;
       const row = h('div', { class: 'group', 'data-court-target': p.id });
       row.append(
@@ -1735,20 +1668,20 @@ export class UI {
             'div',
             { class: 'row-main' },
             h('div', { class: 'row-title' }, p.name),
-            h('div', { class: 'row-sub', 'data-court-evidence': '' }, dossier ? `Evidence strength ${strength} · claim up to ${money(max)}` : 'No evidence. Hire a detective first.'),
+            h('div', { class: 'row-sub', 'data-court-evidence': '' }, dossier ? `Evidence ${strength} · win chance ${odds}% · claim up to ${money(max)} · filing fee ${money(fee)} · potential ${money(Math.min(500, max) + fee)}` : 'No evidence. Hire a detective first.'),
           ),
         ),
         h(
           'div',
           { class: 'row' },
           claim,
-          h('button', { class: 'btn btn-sm btn-primary', 'data-sue': '', disabled: strength < 1, onclick: () => this.send({ t: 'sue', target: p.id, claim: Number(claim.value) || 100, key: intentKey('sue') }) }, 'Sue'),
+          h('button', { class: 'btn btn-sm btn-primary', 'data-sue': '', disabled: strength < 1 || (this.priv?.you.cash ?? 0) < fee, title: (this.priv?.you.cash ?? 0) < fee ? `Filing fee is ${money(fee)}` : `${odds}% win chance`, onclick: () => this.send({ t: 'sue', target: p.id, claim: Number(claim.value) || 100, key: intentKey('sue') }) }, strength < 1 ? 'Need evidence' : `File · ${money(fee)}`),
         ),
       );
       body.append(row);
     }
     body.append(
-      h('p', { class: 'note' }, 'A win pays the claim plus $200 costs; a loss costs you $150 and 10 reputation. Assets are locked while court is in session.'),
+      h('p', { class: 'note' }, `Filing costs ${money(this.priv?.you.courtFee ?? RULES.courtFeeBase)} now and doubles after a loss, resetting to ${money(RULES.courtFeeBase)} after a win. Withdrawing refunds 50%. A win pays the claim and refunds the fee. Assets are locked while court is in session.`),
     );
 
     if (this.priv?.you.jailRecord.length) {
@@ -1769,16 +1702,19 @@ export class UI {
       const dossier = this.priv.you.dossier[targetId];
       const strength = dossier?.evidence ?? 0;
       const max = Math.max(100, strength * 500);
+      const courtPerks = perksForOwner(this.priv.you.id, this.state?.tiles ?? {});
+      const odds = Math.round(Math.min(0.95, suitChance(strength) + courtPerks.courtOdds) * 100);
+      const fee = this.priv.you.courtFee;
       const evidence = row.querySelector<HTMLElement>('[data-court-evidence]');
       if (evidence) {
         evidence.textContent = dossier
-          ? `Evidence strength ${strength} · claim up to ${money(max)}`
+          ? `Evidence ${strength} · win chance ${odds}% · claim up to ${money(max)} · filing fee ${money(fee)} · potential ${money(Math.min(500, max) + fee)}`
           : 'No evidence. Hire a detective first.';
       }
       const claim = row.querySelector<HTMLInputElement>('input[type="number"]');
       if (claim) claim.max = String(max);
       const sue = row.querySelector<HTMLButtonElement>('[data-sue]');
-      if (sue) sue.disabled = strength < 1;
+      if (sue) { sue.disabled = strength < 1 || this.priv.you.cash < fee; sue.textContent = strength < 1 ? 'Need evidence' : `File · ${money(fee)}`; }
     }
   }
 
@@ -1795,7 +1731,7 @@ export class UI {
           'div',
           { class: 'row-main' },
           h('div', { class: 'row-title' }, `${plaintiff?.name ?? 'Player'} v. ${defendant?.name ?? 'Player'}`),
-          h('div', { class: 'row-sub' }, `Claim ${money(suit.claim)} · evidence ${suit.evidence} · ${mine ? 'you can settle' : 'awaiting defendant'}`),
+          h('div', { class: 'row-sub' }, `Claim ${money(suit.claim)} · evidence ${suit.evidence} · odds ${Math.round(Math.min(0.95, suitChance(suit.evidence) + perksForOwner(suit.plaintiffId, this.state?.tiles ?? {}).courtOdds) * 100)}% · fee ${money(suit.fee)} · ${mine ? 'you can settle' : 'awaiting defendant'}`),
         ),
       ),
     );
@@ -1807,6 +1743,9 @@ export class UI {
       );
     } else {
       actions.append(h('button', { class: 'btn btn-sm btn-primary', onclick: () => this.send({ t: 'court', suitId: suit.id, key: intentKey('court') }) }, 'Call the verdict'));
+    }
+    if (suit.plaintiffId === me) {
+      actions.append(h('button', { class: 'btn btn-sm btn-ghost', onclick: () => this.send({ t: 'withdrawSuit', suitId: suit.id, key: intentKey('withdraw') }) }, `Withdraw · refund ${money(Math.round(suit.fee * RULES.courtRefundRate))}`));
     }
     row.append(actions);
     return row;
@@ -1922,7 +1861,8 @@ export class UI {
       );
     }
     if (playerId === this.priv?.you.id && player.inJail) {
-      body.append(h('button', { class: 'btn btn-gold btn-block', style: 'margin-top:14px', onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, `Pay ${money(player.jailReleaseCost)} and restore deeds`));
+      const canPay = this.priv.you.cash >= player.jailReleaseCost;
+      body.append(h('button', { class: 'btn btn-gold btn-block', style: 'margin-top:14px', disabled: !canPay, title: canPay ? '5% of current cash, minimum $50' : `Need ${money(player.jailReleaseCost - this.priv.you.cash)} more cash`, onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, canPay ? `Pay ${money(player.jailReleaseCost)} to get out` : `Release costs ${money(player.jailReleaseCost)} — not enough cash`));
     }
     this.openSheet('jail', `${player.name}'s record`, 'Public jail ledger', body);
   }
@@ -1983,6 +1923,7 @@ export class UI {
       this.toggleRow('Show tile prices', s.showPrices, (v) => update({ showPrices: v })),
       this.toggleRow('FPS counter', s.fpsCounter, (v) => update({ fpsCounter: v })),
       this.toggleRow('Fast bot turns', s.fastBots, (v) => update({ fastBots: v })),
+      this.toggleRow('One-click trading', s.oneClickTrade, (v) => update({ oneClickTrade: v })),
     );
     body.append(gfx);
 
@@ -2315,12 +2256,21 @@ export class UI {
           window.dispatchEvent(new CustomEvent('chromonopoly:card', { detail: { deck: ev.deck ?? 'chance', text: ev.text ?? '' } }));
         }
         break;
-      case 'jail':
-        if (local) {
+      case 'jail': {
+        const text = ev.text ?? '';
+        const released = text === 'released' || text.includes('left') || text.startsWith('Rolling for doubles');
+        if (local && !released) {
           audio.play('jail');
-          this.ribbon(ev.text === 'released' ? 'Released' : 'Jailed', ev.text === 'released' ? 'Back on the board' : 'The bank took its share');
+          this.showBusted('YOU', Boolean(ev.chance));
+        } else if (bot && !released) {
+          this.showBusted(actor!.name.toUpperCase(), Boolean(ev.chance));
+        } else if (local) {
+          this.ribbon('Released', 'Back on the board');
+        } else if (!local && !bot && !released) {
+          this.ribbon(`${actor?.name ?? 'A player'} was arrested`, 'Jail record updated');
         }
         break;
+      }
       case 'theft':
         if (local) {
           audio.play(ev.text?.includes('fail') ? 'fail' : 'cash');
@@ -2421,6 +2371,26 @@ export class UI {
       this.tutorialStep = 2;
       this.showTutorialStep();
     }
+  }
+
+  private showBusted(name: string, afterWheel: boolean): void {
+    if (document.getElementById('busted-screen')) return;
+    const reduced = this.settings.reducedMotion;
+    const layer = h('div', { class: `busted-screen${reduced ? ' reduced' : ''}`, id: 'busted-screen', role: 'alertdialog', 'aria-label': `${name} busted` });
+    layer.append(
+      h('div', { class: 'busted-bars' }, ...Array.from({ length: 7 }, () => h('i', {}))),
+      h('div', { class: 'busted-lights' }, h('i', { class: 'blue' }), h('i', { class: 'red' })),
+      h('div', { class: 'busted-cuffs' }, h('i', {}), h('i', {})),
+      h('div', { class: 'busted-copy' }, h('span', {}, name), h('strong', {}, 'BUSTED'), h('small', {}, 'The table has been notified')),
+    );
+    document.body.append(layer);
+    const close = (): void => { layer.classList.add('out'); window.setTimeout(() => layer.remove(), 260); };
+    let armed = false;
+    window.setTimeout(() => { armed = true; }, 1000);
+    layer.addEventListener('click', () => { if (armed) close(); });
+    const key = (event: KeyboardEvent): void => { if (armed && (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ')) { window.removeEventListener('keydown', key); close(); } };
+    window.addEventListener('keydown', key);
+    window.setTimeout(() => { window.removeEventListener('keydown', key); close(); }, afterWheel ? 3000 : 2600);
   }
 
   private showCard(text: string, deck: string): void {

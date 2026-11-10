@@ -1,4 +1,4 @@
-import type { GameEvent, GameMode, Intent, PrivateState, PublicState, ServerMessage } from '../game/types';
+import type { Candle, GameEvent, GameMode, Intent, PrivateState, PublicState, ServerMessage } from '../game/types';
 import { normalizeUsername } from '../game/username';
 import { socketUrl } from './endpoint';
 
@@ -50,6 +50,8 @@ export class NetClient {
   onEvent: EventHandler = () => undefined;
   onStatus: StatusHandler = () => undefined;
   onReject: (reason: string) => void = () => undefined;
+  onMarket: (tile: number, candles: Candle[]) => void = () => undefined;
+  latency = 0;
   onJoinRejected: (reason: string) => void = () => undefined;
 
   connect(name?: string, tokenId?: string, mode: GameMode = this.mode): void {
@@ -108,6 +110,8 @@ export class NetClient {
         this.onPrivate(msg.private);
       } else if (msg.type === 'event' && msg.event) {
         this.onEvent(msg.event);
+      } else if (msg.type === 'market' && Number.isInteger(msg.tile) && msg.candles) {
+        this.onMarket(msg.tile!, msg.candles);
       } else if (msg.type === 'rejected') {
         this.onReject(msg.reason ?? 'Action refused');
       }
@@ -158,6 +162,10 @@ export class NetClient {
 
   resync(): void {
     this.ws?.send(JSON.stringify({ type: 'resync' }));
+  }
+
+  requestMarket(tile: number): void {
+    this.ws?.send(JSON.stringify({ type: 'market', tile }));
   }
 
   setIdentity(name: string, tokenId: string): void {

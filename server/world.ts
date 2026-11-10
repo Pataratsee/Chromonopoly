@@ -49,6 +49,8 @@ import type {
   TradeOffer,
 } from '../src/game/types';
 import type { Card } from '../src/game/rules';
+import { CANDLE_HISTORY, foldCandle, seedCandles, volatilityForPrice, tickMsForPrice, type Candle } from '../src/game/market';
+import { perksForOwner, protectedTheftAmount } from '../src/game/perks';
 
 const TOKEN_COLORS = ['#E23B3B', '#2F6FD0', '#37B36B', '#F79A3E', '#8A5A3B', '#E85C9E', '#6C7A89', '#F7D64A'];
 const BOT_NAMES = ['Ada Tycoon', 'Mr. Ledger', 'Penny Sharp', 'Count Deed', 'Vera Vault'];
@@ -86,6 +88,7 @@ export interface WorldSnapshot {
   trades?: TradeOffer[];
   marketFeed?: MarketFeedEntry[];
   marketSeq?: number;
+  candleHistory?: Record<number, Candle[]>;
 }
 
 export interface WorldOptions {
@@ -150,6 +153,8 @@ export class World {
   log: LogEntry[] = [];
   marketFeed: MarketFeedEntry[] = [];
   marketSeq = 0;
+  candleHistory: Record<number, Candle[]> = {};
+  private readonly nextQuoteAt: Record<number, number> = {};
   suits = new Map<string, Suit>();
   trades = new Map<string, TradeOffer>();
   seq = 0;
@@ -181,7 +186,16 @@ export class World {
     for (const s of SPACES) {
       this.tiles[s.index] = emptyTile();
       this.prices[s.index] = s.price ? s.price * RULES.stockStartMultiple : 0;
+      if (s.price) {
+        this.candleHistory[s.index] = seedCandles(this.prices[s.index]!, this.now());
+        this.nextQuoteAt[s.index] = this.now() + tickMsForPrice(this.prices[s.index]!);
+      }
     }
+  }
+
+  /** Closed 30-second candles for the chart. The server owns every bucket. */
+  marketHistory(tile: number): Candle[] {
+    return (this.candleHistory[tile] ?? []).slice(-CANDLE_HISTORY);
   }
 
   // ---------------------------------------------------------------- players
@@ -257,6 +271,7 @@ export class World {
       lastTheftAt: 0,
       murderReadyAt: 0,
       extraRoll: false,
+      courtFee: RULES.courtFeeBase,
       intents: new Map(),
       findings: {},
       prefs: {},
@@ -386,6 +401,9 @@ export class World {
         ]),
       ),
       marketFeed: this.marketFeed.slice(-40),
+      candles: Object.fromEntries(
+        Object.entries(this.candleHistory).map(([tile, history]) => [Number(tile), history[history.length - 1]!]),
+      ),
       buildingCount: this.buildingCount,
       gameOver: this.gameOver,
     };
@@ -405,6 +423,7 @@ export class World {
       costBasis: p.costBasis,
       realizedPnl: p.realizedPnl ?? 0,
       unpaidRent: p.unpaidRent,
+      courtFee: p.courtFee ?? RULES.courtFeeBase,
     };
     const suits = [...this.suits.values()].filter(
       (s) => s.plaintiffId === playerId || s.defendantId === playerId,
@@ -437,7 +456,7 @@ export class World {
       trades,
       pending: p.pending,
       netWorth: net,
-      loanCap: loanCap(net),
+      loanCap: Math.round(loanCap(net) * (1 + perksForOwner(playerId, this.tiles).loanLimit)),
       playerLog: [...ownActs, ...p.notices, ...ownPublic].sort((a, b) => a.at - b.at).slice(-100),
     };
   }
@@ -513,6 +532,8 @@ export class World {
         return this.settle(p, intent.suitId);
       case 'court':
         return this.court(p, intent.suitId);
+      case 'withdrawSuit':
+        return this.withdrawSuit(p, intent.suitId);
       case 'jailPay':
         return this.payJail(p);
       case 'recordWipe':
@@ -558,7 +579,8 @@ export class World {
     }
 
     if (p.loan > 0) {
-      const interest = loanInterest(p.loan);
+      const loanPerks = perksForOwner(p.id, this.tiles);
+      const interest = Math.max(1, Math.ceil(loanInterest(p.loan) * (1 - Math.min(0.5, loanPerks.loanInterest))));
       if (p.cash < interest) {
         if (!this.raiseCash(p, interest)) {
           this.bankrupt(p, null);
@@ -582,6 +604,10 @@ export class World {
         p.jailTurns = 0;
         this.logLine(`${p.name} rolls doubles and walks free.`, 'crime');
         this.emit({ kind: 'jail', playerId: p.id, text: 'released' });
+      } else if (p.cash < RULES.jailFeeMin) {
+        // No cash for even the minimum release fee: keep rolling until doubles.
+        this.logLine(`${p.name} cannot afford release and rolls for doubles.`, 'crime');
+        this.emit({ kind: 'jail', playerId: p.id, text: 'Rolling for doubles — no release fee' });
       } else {
         p.jailTurns -= 1;
         if (p.jailTurns <= 0) {
@@ -673,7 +699,9 @@ export class World {
           return;
         }
         if (state.ownerId === p.id || state.mortgaged) return;
-        const rent = rentFor(tile, this.tiles, dice, state.ownerId, this.mode === 'multi' ? p.cash : null);
+        const baseRent = rentFor(tile, this.tiles, dice, state.ownerId, this.mode === 'multi' ? p.cash : null);
+        const ownerPerks = perksForOwner(state.ownerId, this.tiles);
+        const rent = Math.max(0, Math.round(baseRent * (1 + ownerPerks.rentBoost + ownerPerks.traffic + ownerPerks.transport)));
         p.pending = {
           kind: 'rent',
           tile,
@@ -825,12 +853,10 @@ export class World {
     this.seq += 1;
   }
 
+  /** Release always costs 5% of current cash, never less than $50. The server owns it. */
   private jailReleaseCost(p: ServerPlayer): number {
-    let total = 0;
-    for (const [idx, t] of Object.entries(this.tiles)) {
-      if (t.ownerId === p.id && t.mortgaged) total += unmortgageCost(spaceAt(Number(idx)));
-    }
-    return total;
+    const rate = Math.max(0.01, RULES.jailFeeRate - perksForOwner(p.id, this.tiles).jailFee);
+    return Math.max(RULES.jailFeeMin, Math.round(p.cash * rate));
   }
 
   // --------------------------------------------------------------- purchases
@@ -1450,7 +1476,7 @@ export class World {
     p.lastTheftAt = this.now();
     const repBefore = p.reputation;
     p.reputation = applyReputation(p.reputation, -RULES.theftAttemptRep);
-    const percent = playerTheftChance() * 100;
+    const percent = Math.min(0.95, playerTheftChance() + perksForOwner(p.id, this.tiles).theftBonus) * 100;
     const rollPercent = (this.rollTest() ?? this.rng()) * 100;
     const success = rollPercent < percent;
     const chance: ChanceRoll = {
@@ -1461,7 +1487,8 @@ export class World {
       result: success ? 'Clean getaway' : 'Caught',
     };
     if (success) {
-      const amount = Math.min(RULES.playerTheftCap, Math.floor(victim.cash * 0.25));
+      const raw = Math.min(RULES.playerTheftCap, Math.floor(victim.cash * 0.25));
+      const amount = protectedTheftAmount(raw, perksForOwner(victim.id, this.tiles));
       victim.cash -= amount;
       p.cash += amount;
       p.reputation = applyReputation(p.reputation, -Math.round(amount / 100));
@@ -1764,6 +1791,9 @@ export class World {
     if (strength < 1) return { ok: false, reason: 'You need evidence strength of at least 1. Hire a detective.' };
     const max = maxClaim(strength);
     if (claim < 100 || claim > max) return { ok: false, reason: `Claim must be between 100 and ${max}.` };
+    const fee = Math.max(RULES.courtFeeBase, p.courtFee ?? RULES.courtFeeBase);
+    if (p.cash < fee) return { ok: false, reason: `Filing this suit costs ${fee}; you cannot afford it.` };
+    p.cash -= fee;
     const id = uid('suit');
     const suit: Suit = {
       id,
@@ -1771,13 +1801,14 @@ export class World {
       defendantId: victim.id,
       claim: Math.round(claim),
       evidence: strength,
+      fee,
       filedAt: this.now(),
       status: 'pending',
     };
     this.suits.set(id, suit);
     this.lockAssets(p.id, id, true);
     this.lockAssets(victim.id, id, true);
-    this.logLine(`${p.name} sues ${victim.name} for ${claim} (evidence ${strength}).`, 'court');
+    this.logLine(`${p.name} sues ${victim.name} for ${claim} (evidence ${strength}, fee ${fee}).`, 'court');
     this.seq += 1;
     return { ok: true };
   }
@@ -1812,7 +1843,8 @@ export class World {
     const suit = this.suits.get(suitId);
     if (!suit || suit.status !== 'pending') return { ok: false, reason: 'No open suit.' };
     if (suit.plaintiffId !== p.id && suit.defendantId !== p.id) return { ok: false, reason: 'Not your case.' };
-    const chanceValue = suitChance(suit.evidence);
+    const courtPerks = perksForOwner(p.id, this.tiles);
+    const chanceValue = Math.min(0.95, suitChance(suit.evidence) + courtPerks.courtOdds);
     const rollPercent = (this.rollTest() ?? this.rng()) * 100;
     const plaintiffWins = rollPercent < chanceValue * 100;
     const chance: ChanceRoll = {
@@ -1827,14 +1859,16 @@ export class World {
     if (!plaintiff || !defendant) return { ok: false, reason: 'A party has left the board.' };
 
     if (plaintiffWins) {
-      this.charge(defendant, suit.claim + RULES.suitFees, plaintiff.id);
+      this.charge(defendant, suit.claim, plaintiff.id);
+      plaintiff.cash += suit.fee;
+      plaintiff.courtFee = RULES.courtFeeBase;
       plaintiff.reputation = applyReputation(plaintiff.reputation, RULES.suitWinRep);
       defendant.reputation = applyReputation(defendant.reputation, -RULES.suitLossRep);
-      this.logLine(`Verdict: ${plaintiff.name} wins ${suit.claim + RULES.suitFees} from ${defendant.name}.`, 'court');
+      this.logLine(`Verdict: ${plaintiff.name} wins ${suit.claim} from ${defendant.name}; filing fee refunded.`, 'court');
     } else {
-      this.charge(plaintiff, RULES.suitLoss, defendant.id);
+      plaintiff.courtFee = Math.min(5_120_000, suit.fee * 2);
       plaintiff.reputation = applyReputation(plaintiff.reputation, -RULES.suitLossRep);
-      this.logLine(`Verdict: ${plaintiff.name} loses and pays ${RULES.suitLoss}. Frivolous suit.`, 'court');
+      this.logLine(`Verdict: ${plaintiff.name} loses the filing fee; the next suit costs ${plaintiff.courtFee}.`, 'court');
     }
     suit.status = 'closed';
     this.lockAssets(suit.plaintiffId, suit.id, false);
@@ -1851,15 +1885,32 @@ export class World {
     return { ok: true };
   }
 
+  private withdrawSuit(p: ServerPlayer, suitId: string): { ok: boolean; reason?: string } {
+    const suit = this.suits.get(suitId);
+    if (!suit || suit.status !== 'pending') return { ok: false, reason: 'No open suit.' };
+    if (suit.plaintiffId !== p.id) return { ok: false, reason: 'Only the plaintiff can withdraw.' };
+    const refund = Math.round(suit.fee * RULES.courtRefundRate);
+    p.cash += refund;
+    suit.status = 'dismissed';
+    this.lockAssets(suit.plaintiffId, suit.id, false);
+    this.lockAssets(suit.defendantId, suit.id, false);
+    this.logLine(`${p.name} withdraws the suit; ${refund} of the filing fee is refunded.`, 'court');
+    this.seq += 1;
+    return { ok: true };
+  }
+
   private payJail(p: ServerPlayer): { ok: boolean; reason?: string } {
     if (!p.inJail) return { ok: false, reason: 'You are not in jail.' };
     const cost = this.jailReleaseCost(p);
-    if (p.cash < cost) return { ok: false, reason: `You need ${cost} to restore your properties.` };
+    if (p.cash < cost) return { ok: false, reason: `You need ${cost} to pay the 5% release fee.` };
     p.cash -= cost;
     for (const t of Object.values(this.tiles)) {
       if (t.ownerId === p.id) t.mortgaged = false;
     }
     p.inJail = false;
+    p.jailCause = null;
+    p.jailOutcome = null;
+    p.jailSold = [];
     p.jailTurns = 0;
     p.jailReleaseCost = 0;
     this.logLine(`${p.name} pays ${cost} and walks free.`, 'crime');
@@ -1872,22 +1923,30 @@ export class World {
   /** Stock prices evolve even while everyone is offline. */
   tick(dtMs: number): void {
     this.tickTimer += dtMs;
-    if (this.tickTimer < 5000) return;
+    if (this.tickTimer < 250) return;
     this.tickTimer = 0;
+    const now = this.now();
+    let quoted = false;
     for (const space of SPACES) {
       if (!space.price) continue;
+      if (now < (this.nextQuoteAt[space.index] ?? 0)) continue;
+      this.nextQuoteAt[space.index] = now + tickMsForPrice(this.prices[space.index]!);
       const fund = fundamental(space.index, this.tiles);
       const before = this.prices[space.index]!;
+      const vol = volatilityForPrice(before);
       const next = clampPrice(
-        before * (1 + RULES.stockDrift * 0.5 + (this.rng() * 2 - 1) * RULES.stockNoise + Math.max(-0.04, Math.min(0.04, (this.volumes[space.index] ?? 0) / 1000))),
+        before * (1 + RULES.stockDrift * 0.15 + (this.rng() * 2 - 1) * vol + Math.max(-0.04, Math.min(0.04, (this.volumes[space.index] ?? 0) / 1000))),
         fund,
       );
       this.prices[space.index] = next;
       this.recordPrice(space.index, before, next);
       this.volumes[space.index] = 0;
+      quoted = true;
     }
-    this.seq += 1;
-    this.dirty = true;
+    if (quoted) {
+      this.seq += 1;
+      this.dirty = true;
+    }
   }
 
   expirePending(): void {
@@ -1937,8 +1996,18 @@ export class World {
     this.intent(p.id, { t: 'roll', key: `bot-roll-${now}` });
   }
 
+  /** A jailed player with no release fee rolls automatically, once per turn. */
+  private autoRollBrokeJailbirds(): void {
+    if (this.mode !== 'solo' || !this.activePlayerId) return;
+    const active = this.players.get(this.activePlayerId);
+    if (!active || active.bankrupt || !active.inJail || active.cash >= RULES.jailFeeMin) return;
+    if (this.now() - active.lastRollAt < 1600) return;
+    this.botTakeTurn(active, this.now());
+  }
+
   runBots(): void {
     const now = this.now();
+    this.autoRollBrokeJailbirds();
     if (this.mode === 'solo') {
       this.decideBotTrades(now);
       const active = this.activePlayerId ? this.players.get(this.activePlayerId) : null;
@@ -2083,6 +2152,13 @@ export class World {
 
   private recordPrice(tile: number, before: number, after: number): void {
     if (Math.abs(after - before) < 0.005) return;
+    const history = this.candleHistory[tile] ?? seedCandles(after, this.now());
+    const { candle, closed } = foldCandle(history[history.length - 1], this.now(), after);
+    if (closed && history[history.length - 1]?.t !== closed.t) history.push(closed);
+    if (history[history.length - 1]?.t !== candle.t) history.push(candle);
+    else history[history.length - 1] = candle;
+    if (history.length > CANDLE_HISTORY + 8) history.splice(0, history.length - CANDLE_HISTORY);
+    this.candleHistory[tile] = history;
     this.marketSeq += 1;
     const percent = before > 0 ? ((after - before) / before) * 100 : 0;
     this.marketFeed.push({
@@ -2115,6 +2191,7 @@ export class World {
       trades: [...this.trades.values()],
       marketFeed: this.marketFeed,
       marketSeq: this.marketSeq,
+      candleHistory: this.candleHistory,
     };
   }
 
@@ -2133,6 +2210,13 @@ export class World {
     this.trades = new Map((snap.trades ?? []).map((t) => [t.id, t]));
     this.marketFeed = snap.marketFeed ?? [];
     this.marketSeq = snap.marketSeq ?? 0;
+    this.candleHistory = {};
+    for (const space of SPACES) {
+      if (!space.price) continue;
+      this.candleHistory[space.index] = snap.candleHistory?.[space.index]?.slice(-CANDLE_HISTORY)
+        ?? seedCandles(this.prices[space.index]!, this.now());
+      this.nextQuoteAt[space.index] = this.now() + tickMsForPrice(this.prices[space.index]!);
+    }
     this.buildingCount = groupBuildingCount(this.tiles);
     this.players.clear();
     for (const raw of snap.players ?? []) {
@@ -2146,6 +2230,7 @@ export class World {
         acts: p.acts ?? [],
         costBasis: p.costBasis ?? {},
         realizedPnl: p.realizedPnl ?? 0,
+        courtFee: p.courtFee ?? RULES.courtFeeBase,
         inHospital: p.inHospital ?? false,
         hospitalTurns: p.hospitalTurns ?? 0,
         jailCause: p.jailCause ?? null,

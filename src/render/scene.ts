@@ -17,6 +17,7 @@ export class CameraRig {
   private snapStart = 0;
   private snapDuration = 0;
   private readonly followPoint = new THREE.Vector3();
+  private locked = false;
   manualUntil = 0;
 
   constructor(
@@ -48,6 +49,7 @@ export class CameraRig {
   focus(point: THREE.Vector3, radius?: number): void {
     // Keep the subject in the middle: the old framingY deliberately pushed a
     // followed piece above centre, which is the complaint this fixes.
+    this.locked = false;
     this.wantTarget.set(point.x, point.y + 0.12, point.z);
     this.clampPivot(this.wantTarget);
     if (radius) this.wantRadius = THREE.MathUtils.clamp(radius, CAMERA.minRadius, CAMERA.maxRadius);
@@ -56,6 +58,7 @@ export class CameraRig {
 
   /** Tight framing of the centre dice pad before a roll. */
   focusDice(): void {
+    this.locked = false;
     this.wantTarget.set(0, 0.25, 0.62);
     this.wantPitch = 0.76;
     this.wantRadius = 8.4;
@@ -63,6 +66,7 @@ export class CameraRig {
   }
 
   reset(): void {
+    this.locked = false;
     this.wantYaw = CAMERA.yaw;
     this.wantPitch = CAMERA.pitch;
     this.wantRadius = CAMERA.radius;
@@ -74,6 +78,15 @@ export class CameraRig {
   track(point: THREE.Vector3): void {
     this.wantTarget.set(point.x, point.y + 0.12, point.z);
     this.clampPivot(this.wantTarget);
+  }
+
+  /**
+   * Follow the active piece exactly, including edge tiles. Board-centred pivot
+   * clamps still apply everywhere else (orbit, zoom, focus, reset).
+   */
+  lockOn(point: THREE.Vector3): void {
+    this.locked = true;
+    this.wantTarget.set(point.x, THREE.MathUtils.clamp(point.y + 0.12, -2.4, 0.4), point.z);
   }
 
   /** Resolves after the camera has really reached its requested framing. */
@@ -131,7 +144,8 @@ export class CameraRig {
       this.radius += (this.wantRadius - this.radius) * k;
       this.target.lerp(this.wantTarget, k);
     }
-    this.clampPivot(this.target);
+    if (!this.locked) this.clampPivot(this.target);
+    else this.target.y = THREE.MathUtils.clamp(this.target.y, -2.4, 0.4);
     const sin = Math.sin(this.pitch);
     this.camera.position.set(
       this.target.x + Math.sin(this.yaw) * Math.cos(this.pitch) * this.radius,

@@ -2,28 +2,35 @@ import * as THREE from 'three';
 import type { SkyState } from './sky';
 
 /**
- * The floating island is background architecture, not a loadable game object.
- * It is built from low-poly vertex-coloured surfaces and one instanced petal
- * mesh. Nothing here samples a reflection or uploads a texture.
+ * Solid floating island with a flat harvest plaza. Only sky/clouds use
+ * transparency; the rock is a closed opaque volume. Decorations never hide.
  */
-const GRASS = new THREE.MeshStandardMaterial({ color: '#4f7b4a', roughness: 1, flatShading: true });
-const GRASS_LIGHT = new THREE.MeshStandardMaterial({ color: '#6b9455', roughness: 1, flatShading: true });
-const ROCK = new THREE.MeshStandardMaterial({ color: '#6e6656', roughness: 1, flatShading: true });
-const ROCK_DARK = new THREE.MeshStandardMaterial({ color: '#514c42', roughness: 1, flatShading: true });
-const STONE = new THREE.MeshStandardMaterial({ color: '#b6ad96', roughness: 0.92, flatShading: true });
-const SAND = new THREE.MeshStandardMaterial({ color: '#cfc09a', roughness: 1 });
-const WOOD = new THREE.MeshStandardMaterial({ color: '#7f3e2e', roughness: 0.72, flatShading: true });
-const RED = new THREE.MeshStandardMaterial({ color: '#c84432', roughness: 0.58, flatShading: true });
-const DARK_WOOD = new THREE.MeshStandardMaterial({ color: '#4e3428', roughness: 0.8, flatShading: true });
-const PINK = new THREE.MeshStandardMaterial({ color: '#f2a5b8', roughness: 0.88, flatShading: true });
-const PINK_LIGHT = new THREE.MeshStandardMaterial({ color: '#ffd0dc', roughness: 0.9, flatShading: true });
-const BAMBOO = new THREE.MeshStandardMaterial({ color: '#7e9c48', roughness: 0.8, flatShading: true });
-const GLOW = new THREE.MeshStandardMaterial({ color: '#f7c979', emissive: '#f0a33b', emissiveIntensity: 1.2, roughness: 0.5 });
-const WATER = new THREE.MeshStandardMaterial({ color: '#3f7d87', roughness: 0.25, metalness: 0.05 });
-const GRAVEL = new THREE.MeshStandardMaterial({ color: '#d7d0bd', roughness: 1 });
-const SEA = new THREE.MeshStandardMaterial({ color: '#356b78', roughness: 0.55, metalness: 0.08 });
-const CLOUD = new THREE.MeshStandardMaterial({ color: '#eef1e8', roughness: 1, transparent: true, opacity: 0.72, depthWrite: false });
-const PETAL = new THREE.MeshBasicMaterial({ color: '#ffc0ce', side: THREE.DoubleSide });
+const GRASS = new THREE.MeshStandardMaterial({ color: '#687a3f', roughness: 1, flatShading: true });
+const PLAZA = new THREE.MeshStandardMaterial({ color: '#b98a58', roughness: 1, flatShading: true });
+const PLAZA_EDGE = new THREE.MeshStandardMaterial({ color: '#8d6237', roughness: 1, flatShading: true });
+const ROCK = new THREE.MeshStandardMaterial({ color: '#7b5b42', roughness: 1, flatShading: true });
+const ROCK_DARK = new THREE.MeshStandardMaterial({ color: '#553d2c', roughness: 1, flatShading: true });
+const ROCK_LIGHT = new THREE.MeshStandardMaterial({ color: '#967354', roughness: 1, flatShading: true });
+const BARK = new THREE.MeshStandardMaterial({ color: '#5a3b27', roughness: 0.95, flatShading: true });
+const ORANGE = new THREE.MeshStandardMaterial({ color: '#d9782c', roughness: 0.92, flatShading: true });
+const RED = new THREE.MeshStandardMaterial({ color: '#a83b29', roughness: 0.92, flatShading: true });
+const GOLD = new THREE.MeshStandardMaterial({ color: '#d9a63a', roughness: 0.92, flatShading: true });
+const BROWN = new THREE.MeshStandardMaterial({ color: '#8b5a2b', roughness: 0.95, flatShading: true });
+const WOOD = new THREE.MeshStandardMaterial({ color: '#7a4b2a', roughness: 0.9, flatShading: true });
+const DARK_WOOD = new THREE.MeshStandardMaterial({ color: '#4a2f1d', roughness: 0.9, flatShading: true });
+const HAY = new THREE.MeshStandardMaterial({ color: '#c9a24b', roughness: 1, flatShading: true });
+const BARN_RED = new THREE.MeshStandardMaterial({ color: '#8f2f26', roughness: 0.9, flatShading: true });
+const WHITE = new THREE.MeshStandardMaterial({ color: '#efe6d0', roughness: 0.9, flatShading: true });
+const CORN = new THREE.MeshStandardMaterial({ color: '#c7a341', roughness: 1, flatShading: true });
+const TURKEY = new THREE.MeshStandardMaterial({ color: '#6b3d22', roughness: 1, flatShading: true });
+const TURKEY_WING = new THREE.MeshStandardMaterial({ color: '#a4552c', roughness: 1, flatShading: true });
+const APPLE = new THREE.MeshStandardMaterial({ color: '#b6402c', roughness: 0.8, flatShading: true });
+const MUSHROOM = new THREE.MeshStandardMaterial({ color: '#d9c7a2', roughness: 1, flatShading: true });
+const FLOWER = new THREE.MeshStandardMaterial({ color: '#d9a63a', roughness: 1, flatShading: true });
+const FIRE = new THREE.MeshStandardMaterial({ color: '#f08b2e', emissive: '#d35a10', emissiveIntensity: 1.6, roughness: 0.6 });
+const SEA = new THREE.MeshStandardMaterial({ color: '#4f6f67', roughness: 0.75, metalness: 0.04 });
+const CLOUD = new THREE.MeshStandardMaterial({ color: '#f0e5cf', roughness: 1, transparent: true, opacity: 0.55, depthWrite: false });
+const LEAF = new THREE.MeshBasicMaterial({ color: '#c9662a', side: THREE.DoubleSide });
 
 function jitter(seed: number): number {
   return (Math.sin(seed * 12.9898) * 43758.5453) % 1;
@@ -33,33 +40,32 @@ function box(parent: THREE.Object3D, w: number, h: number, d: number, material: 
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
   mesh.position.set(x, y, z);
   mesh.rotation.y = ry;
-  mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
   return mesh;
 }
 
-function irregularRing(radius: number, segments: number, y: number, seed: number, wobble: number): THREE.Vector3[] {
-  const out: THREE.Vector3[] = [];
+function ring(radius: number, segments: number, y: number, seed: number, wobble: number): THREE.Vector3[] {
+  const points: THREE.Vector3[] = [];
   for (let i = 0; i < segments; i += 1) {
     const angle = (i / segments) * Math.PI * 2;
     const r = radius + jitter(i + seed * 31) * wobble;
-    out.push(new THREE.Vector3(Math.cos(angle) * r, y + jitter(i * 3 + seed) * 0.22, Math.sin(angle) * r));
+    points.push(new THREE.Vector3(Math.cos(angle) * r, y, Math.sin(angle) * r));
   }
-  return out;
+  return points;
 }
 
-function stripMesh(top: THREE.Vector3[], bottom: THREE.Vector3[], material: THREE.Material): THREE.Mesh {
+function strip(top: THREE.Vector3[], bottom: THREE.Vector3[], material: THREE.Material): THREE.Mesh {
   const positions: number[] = [];
-  const segments = top.length;
-  for (let i = 0; i < segments; i += 1) {
-    const next = (i + 1) % segments;
+  for (let i = 0; i < top.length; i += 1) {
+    const next = (i + 1) % top.length;
     const a = top[i]!;
     const b = top[next]!;
     const c = bottom[i]!;
     const d = bottom[next]!;
-    positions.push(a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);
-    positions.push(b.x, b.y, b.z, c.x, c.y, c.z, d.x, d.y, d.z);
+    // Outward winding: top edge, bottom edge, top edge; then second triangle.
+    positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    positions.push(b.x, b.y, b.z, d.x, d.y, d.z, c.x, c.y, c.z);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -69,12 +75,13 @@ function stripMesh(top: THREE.Vector3[], bottom: THREE.Vector3[], material: THRE
   return mesh;
 }
 
-function capMesh(ring: THREE.Vector3[], center: THREE.Vector3, material: THREE.Material): THREE.Mesh {
+function cap(points: THREE.Vector3[], center: THREE.Vector3, material: THREE.Material, inward = false): THREE.Mesh {
   const positions: number[] = [];
-  for (let i = 0; i < ring.length; i += 1) {
-    const a = ring[i]!;
-    const b = ring[(i + 1) % ring.length]!;
-    positions.push(center.x, center.y, center.z, a.x, a.y, a.z, b.x, b.y, b.z);
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    if (inward) positions.push(center.x, center.y, center.z, b.x, b.y, b.z, a.x, a.y, a.z);
+    else positions.push(center.x, center.y, center.z, a.x, a.y, a.z, b.x, b.y, b.z);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -84,210 +91,203 @@ function capMesh(ring: THREE.Vector3[], center: THREE.Vector3, material: THREE.M
   return mesh;
 }
 
-function cliff(): THREE.Group {
+function solidIsland(): THREE.Group {
   const group = new THREE.Group();
-  const ring0 = irregularRing(14.6, 54, -0.32, 1, 0.75);
-  const ring1 = irregularRing(14.25, 54, -1.8, 2, 0.95);
-  const ring2 = irregularRing(13.3, 54, -3.5, 3, 1.25);
-  const ring3 = irregularRing(11.1, 54, -5.9, 4, 1.5);
-  const ring4 = irregularRing(7.2, 54, -8.3, 5, 1.6);
-  const tip = irregularRing(1.4, 54, -11.2, 6, 0.6);
-  group.add(stripMesh(ring0, ring1, GRASS));
-  group.add(stripMesh(ring1, ring2, ROCK));
-  group.add(stripMesh(ring2, ring3, ROCK_DARK));
-  group.add(stripMesh(ring3, ring4, ROCK));
-  group.add(stripMesh(ring4, tip, ROCK_DARK));
+  const rings = [
+    ring(13.4, 56, -0.42, 1, 0.55),
+    ring(13.1, 56, -1.8, 2, 0.8),
+    ring(12.3, 56, -3.6, 3, 1.0),
+    ring(10.6, 56, -5.8, 4, 1.2),
+    ring(7.1, 56, -8.4, 5, 1.25),
+    ring(3.2, 56, -10.6, 6, 0.9),
+  ];
+  const materials = [ROCK_LIGHT, ROCK, ROCK_DARK, ROCK, ROCK_DARK];
+  for (let i = 0; i < rings.length - 1; i += 1) group.add(strip(rings[i]!, rings[i + 1]!, materials[i]!));
+  const tip = new THREE.Vector3(0, -12.1, 0);
+  group.add(strip(rings[rings.length - 1]!, new Array(56).fill(tip), ROCK_DARK));
+  // Closed top and bottom. The top cap is under the plaza, so no z-fighting.
+  group.add(cap(rings[0]!, new THREE.Vector3(0, -0.42, 0), GRASS));
+  group.add(cap(rings[rings.length - 1]!, tip.clone().add(new THREE.Vector3(0, 0.01, 0)), ROCK_DARK, true));
   return group;
 }
 
-function topSurface(): THREE.Mesh {
-  // Three concentric shells: a grassy crown and a lighter inner lawn.
-  const outer = irregularRing(14.4, 54, -0.34, 9, 0.6);
-  const inner = irregularRing(10.5, 54, -0.28, 10, 0.45);
-  const crown = capMesh(outer, new THREE.Vector3(0, -0.34, 0), GRASS);
-  const lawn = capMesh(inner, new THREE.Vector3(0, -0.27, 0), GRASS_LIGHT);
-  crown.add(lawn);
-  return crown;
-}
-
-function sakura(parent: THREE.Group, radius: number, angle: number, scale: number, seed: number): void {
+function plaza(): THREE.Group {
   const group = new THREE.Group();
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  group.position.set(x, -0.26, z);
-  group.scale.setScalar(scale);
-  box(group, 0.34, 2.4, 0.34, DARK_WOOD, 0, 1.2, 0);
-  for (const [dx, dy, dz, size] of [
-    [0, 2.75, 0, 1.7],
-    [-0.9, 2.5, 0.25, 1.3],
-    [0.85, 2.55, -0.2, 1.2],
-    [0.25, 2.25, 0.95, 1.15],
-    [-0.3, 2.2, -0.95, 1.05],
-  ] as const) {
-    const blossom = box(group, size, size * 0.65, size, seed % 2 ? PINK : PINK_LIGHT, dx, dy, dz, (seed + dx) * 0.6);
-    blossom.castShadow = false;
-  }
-  parent.add(group);
+  const lawn = new THREE.Mesh(new THREE.CircleGeometry(9.9, 48), GRASS);
+  lawn.rotation.x = -Math.PI / 2;
+  lawn.position.y = -0.40;
+  group.add(lawn);
+  const packed = new THREE.Mesh(new THREE.CircleGeometry(7.65, 48), PLAZA);
+  packed.rotation.x = -Math.PI / 2;
+  packed.position.y = -0.34;
+  group.add(packed);
+  const edge = new THREE.Mesh(new THREE.RingGeometry(7.55, 7.8, 48), PLAZA_EDGE);
+  edge.rotation.x = -Math.PI / 2;
+  edge.position.y = -0.325;
+  group.add(edge);
+  return group;
 }
 
-function stoneLantern(parent: THREE.Group, radius: number, angle: number, scale: number): void {
-  const group = new THREE.Group();
-  group.position.set(Math.cos(angle) * radius, -0.25, Math.sin(angle) * radius);
-  group.rotation.y = -angle;
-  group.scale.setScalar(scale);
-  box(group, 0.62, 0.22, 0.62, STONE, 0, 0.11, 0);
-  box(group, 0.26, 1.05, 0.26, STONE, 0, 0.74, 0);
-  box(group, 0.72, 0.18, 0.72, STONE, 0, 1.34, 0);
-  box(group, 0.52, 0.6, 0.52, GLOW, 0, 1.7, 0);
-  box(group, 0.92, 0.16, 0.92, STONE, 0, 2.06, 0);
-  box(group, 0.16, 0.32, 0.16, STONE, 0, 2.3, 0);
-  parent.add(group);
-}
-
-function torii(parent: THREE.Group): void {
+function tree(parent: THREE.Group, angle: number, radius: number, scale: number, seed: number): void {
   const g = new THREE.Group();
-  g.position.set(-8.6, -0.26, 7.9);
-  g.rotation.y = -0.6;
-  box(g, 0.56, 4.4, 0.56, RED, -1.9, 2.2, 0);
-  box(g, 0.56, 4.4, 0.56, RED, 1.9, 2.2, 0);
-  box(g, 4.9, 0.42, 0.55, RED, 0, 3.75, 0);
-  box(g, 5.5, 0.3, 0.72, DARK_WOOD, 0, 4.15, 0);
-  box(g, 4.3, 0.3, 0.4, RED, 0, 3.05, 0);
+  g.position.set(Math.cos(angle) * radius, -0.36, Math.sin(angle) * radius);
+  g.scale.setScalar(scale);
+  box(g, 0.38, 2.6, 0.38, BARK, 0, 1.3, 0);
+  const colors = [ORANGE, RED, GOLD, BROWN];
+  for (let i = 0; i < 4; i += 1) {
+    const blob = box(g, 1.6 - i * 0.18, 1.1, 1.5 - i * 0.12, colors[(seed + i) % colors.length]!, (jitter(seed + i) - 0.5) * 1.1, 2.6 + i * 0.5, (jitter(seed + i + 2) - 0.5) * 0.9, seed * 0.4);
+    blob.castShadow = false;
+  }
   parent.add(g);
 }
 
-function pagoda(parent: THREE.Group): void {
+function bareTree(parent: THREE.Group, angle: number, radius: number, scale: number): void {
   const g = new THREE.Group();
-  g.position.set(9.4, -0.26, -7.5);
-  g.rotation.y = 0.55;
-  box(g, 2.8, 0.35, 2.8, STONE, 0, 0.18, 0);
-  let y = 0.35;
-  let size = 2.25;
-  for (let tier = 0; tier < 4; tier += 1) {
-    box(g, size * 0.72, 1.1, size * 0.72, DARK_WOOD, 0, y + 0.55, 0);
-    box(g, size, 0.18, size, RED, 0, y + 1.18, 0);
-    // Black roof edges make the silhouette read without a texture.
-    box(g, size * 1.08, 0.1, size * 1.08, ROCK_DARK, 0, y + 1.3, 0);
-    y += 1.4;
-    size *= 0.83;
+  g.position.set(Math.cos(angle) * radius, -0.36, Math.sin(angle) * radius);
+  g.scale.setScalar(scale);
+  box(g, 0.34, 3.2, 0.34, BARK, 0, 1.6, 0);
+  for (const [x, z, ry] of [[0.5, 0, 0.5], [-0.4, 0.3, -0.6], [0, -0.5, 0]] as const) {
+    const limb = box(g, 0.16, 1.5, 0.16, BARK, x, 2.6, z, ry);
+    limb.rotation.z = x * 0.4;
   }
-  box(g, 0.16, 1.3, 0.16, STONE, 0, y + 0.6, 0);
   parent.add(g);
 }
 
-function koiPond(parent: THREE.Group): void {
-  const pond = new THREE.Mesh(new THREE.CircleGeometry(2.4, 22), WATER);
-  pond.rotation.x = -Math.PI / 2;
-  pond.position.set(-8.9, -0.19, -7.6);
-  parent.add(pond);
-  const rim = new THREE.Mesh(new THREE.RingGeometry(2.35, 2.75, 22), SAND);
-  rim.rotation.x = -Math.PI / 2;
-  rim.position.set(-8.9, -0.18, -7.6);
-  parent.add(rim);
-  const bridge = new THREE.Group();
-  bridge.position.set(-8.9, -0.12, -7.6);
-  bridge.rotation.y = 0.45;
-  for (let i = 0; i < 6; i += 1) box(bridge, 4.4, 0.14, 0.48, WOOD, 0, 0.38 + Math.sin((i / 5) * Math.PI) * 0.22, -1.15 + i * 0.46);
-  for (const x of [-1.8, 1.8]) box(bridge, 0.12, 0.85, 0.12, RED, x, 0.85, 0);
-  parent.add(bridge);
-  // Koi are flat colour dabs, two per pond.
-  for (const [x, z, c] of [[-9.7, -8.1, '#f0b24c'], [-8.2, -7.2, '#f2e5d4']] as const) {
-    const fish = new THREE.Mesh(new THREE.CircleGeometry(0.34, 8), new THREE.MeshBasicMaterial({ color: c }));
-    fish.rotation.x = -Math.PI / 2;
-    fish.position.set(x, -0.16, z);
-    parent.add(fish);
-  }
-}
-
-function zenGarden(parent: THREE.Group): void {
+function pumpkin(parent: THREE.Group, angle: number, radius: number, scale: number): void {
   const g = new THREE.Group();
-  g.position.set(8.6, -0.24, 8.1);
-  box(g, 5.5, 0.16, 4.5, GRAVEL, 0, 0, 0);
-  for (let i = 0; i < 5; i += 1) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.42 + i * 0.35, 0.46 + i * 0.35, 18), STONE);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(-0.8, 0.1, 0);
-    g.add(ring);
-  }
-  box(g, 0.9, 0.6, 0.9, ROCK_DARK, 0.9, 0.3, 0.2);
-  box(g, 0.45, 0.9, 0.45, ROCK, 1.5, 0.45, -0.6);
+  g.position.set(Math.cos(angle) * radius, -0.3, Math.sin(angle) * radius);
+  g.scale.setScalar(scale);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), ORANGE);
+  body.scale.y = 0.72;
+  body.position.y = 0.3;
+  g.add(body);
+  box(g, 0.09, 0.24, 0.09, BARK, 0, 0.66, 0);
   parent.add(g);
 }
 
-function path(parent: THREE.Group): void {
-  for (let i = 0; i < 26; i += 1) {
-    const angle = -2.5 + i * 0.095;
-    const radius = 7.2 + (i % 3) * 0.42;
-    const stone = new THREE.Mesh(new THREE.CircleGeometry(0.42, 6), STONE);
-    stone.rotation.x = -Math.PI / 2;
-    stone.position.set(Math.cos(angle) * radius, -0.255, Math.sin(angle) * radius);
-    parent.add(stone);
+function hayBale(parent: THREE.Group, angle: number, radius: number): void {
+  const bale = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.25, 1.25), HAY);
+  bale.rotation.z = Math.PI / 2;
+  bale.position.set(Math.cos(angle) * radius, 0.3, Math.sin(angle) * radius);
+  bale.rotation.y = angle + 0.2;
+  parent.add(bale);
+}
+
+function scarecrow(parent: THREE.Group): void {
+  const g = new THREE.Group();
+  g.position.set(9.9, -0.34, 2.0);
+  g.rotation.y = 1.1;
+  box(g, 0.18, 2.3, 0.18, WOOD, 0, 1.15, 0);
+  box(g, 1.5, 0.15, 0.15, WOOD, 0, 1.7, 0);
+  box(g, 0.9, 0.7, 0.3, RED, 0, 1.45, 0);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), HAY);
+  head.position.y = 2.2;
+  g.add(head);
+  box(g, 0.8, 0.1, 0.8, BROWN, 0, 2.5, 0);
+  parent.add(g);
+}
+
+function barn(parent: THREE.Group): void {
+  const g = new THREE.Group();
+  g.position.set(-10.6, -0.36, -3.0);
+  g.rotation.y = 0.5;
+  box(g, 3.4, 2.3, 2.7, BARN_RED, 0, 1.15, 0);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 4), DARK_WOOD);
+  roof.rotation.y = Math.PI / 4;
+  roof.position.y = 2.85;
+  g.add(roof);
+  box(g, 1.1, 1.35, 0.08, WHITE, 0, 0.78, 1.36);
+  box(g, 0.08, 1.35, 1.0, WHITE, 1.71, 0.78, 0);
+  parent.add(g);
+}
+
+function fence(parent: THREE.Group, start: number, count: number, radius: number): void {
+  for (let i = 0; i < count; i += 1) {
+    const angle = start + i * 0.055;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    box(parent, 0.11, 0.9, 0.11, WOOD, x, 0.38, z, -angle);
+    if (i < count - 1) box(parent, 0.09, 0.1, 0.75, WOOD, x + Math.cos(angle) * 0.0, 0.5, z, -angle);
   }
 }
 
-function benchBonsaiChime(parent: THREE.Group): void {
-  const bench = new THREE.Group();
-  bench.position.set(6.7, -0.26, 11.2);
-  bench.rotation.y = 0.35;
-  box(bench, 1.8, 0.14, 0.5, WOOD, 0, 0.55, 0);
-  box(bench, 0.16, 0.5, 0.16, DARK_WOOD, -0.68, 0.27, 0);
-  box(bench, 0.16, 0.5, 0.16, DARK_WOOD, 0.68, 0.27, 0);
-  parent.add(bench);
-
-  const bonsai = new THREE.Group();
-  bonsai.position.set(11.1, -0.26, 7.8);
-  box(bonsai, 0.8, 0.28, 0.6, DARK_WOOD, 0, 0.14, 0);
-  box(bonsai, 0.22, 0.85, 0.22, DARK_WOOD, 0.1, 0.65, 0);
-  box(bonsai, 1.3, 0.5, 0.8, PINK, 0.05, 1.15, 0);
-  box(bonsai, 0.8, 0.3, 0.6, PINK_LIGHT, -0.55, 1.2, 0.1);
-  parent.add(bonsai);
-
-  const chime = new THREE.Group();
-  chime.position.set(10.2, -0.25, 10.6);
-  box(chime, 0.12, 2.4, 0.12, DARK_WOOD, 0, 1.2, 0);
-  box(chime, 1.5, 0.12, 0.12, DARK_WOOD, 0, 2.25, 0);
-  for (const [x, z] of [[-0.6, 0], [0.6, 0], [0, 0.52]] as const) {
-    box(chime, 0.03, 0.65, 0.03, DARK_WOOD, x, 1.9, z);
-    box(chime, 0.22, 0.26, 0.22, GLOW, x, 1.52, z);
+function turkey(parent: THREE.Group, angle: number, radius: number): void {
+  const g = new THREE.Group();
+  g.position.set(Math.cos(angle) * radius, -0.33, Math.sin(angle) * radius);
+  g.rotation.y = -angle;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.9), TURKEY);
+  body.scale.set(1, 0.9, 1.2);
+  body.position.y = 0.38;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), TURKEY);
+  head.position.set(0, 0.78, 0.3);
+  g.add(head);
+  const beak = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.22), GOLD);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, 0.78, 0.52);
+  g.add(beak);
+  for (const [x, z, r] of [[0.48, 0, 0.4], [-0.48, 0, -0.4], [0, 0.4, 0.15]] as const) {
+    const wing = new THREE.Mesh(new THREE.CircleGeometry(0.45, 7), TURKEY_WING);
+    wing.position.set(x, 0.45, z);
+    wing.rotation.y = r;
+    g.add(wing);
   }
-  parent.add(chime);
+  parent.add(g);
 }
 
-function bamboo(parent: THREE.Group): void {
-  const stems = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 3.4, 0.12), BAMBOO, 18);
-  const leaves = new THREE.InstancedMesh(new THREE.BoxGeometry(0.55, 0.08, 0.18), BAMBOO, 36);
-  const dummy = new THREE.Object3D();
-  for (let i = 0; i < 18; i += 1) {
-    const angle = -0.25 + (i % 9) * 0.13;
-    const radius = 12.3 + Math.floor(i / 9) * 0.55;
-    dummy.position.set(Math.cos(angle) * radius, 1.45, Math.sin(angle) * radius);
-    dummy.rotation.set(0, angle + 0.4, (jitter(i) - 0.5) * 0.08);
-    dummy.scale.set(1, 0.8 + jitter(i + 2) * 0.45, 1);
-    dummy.updateMatrix();
-    stems.setMatrixAt(i, dummy.matrix);
-    if (i < 36) {
-      dummy.position.y = 2.3 + (i % 5) * 0.18;
-      dummy.rotation.set(0.5, angle * 2, 0.45);
-      dummy.scale.setScalar(1);
-      dummy.updateMatrix();
-      leaves.setMatrixAt(i, dummy.matrix);
-    }
+function campfire(parent: THREE.Group): void {
+  const g = new THREE.Group();
+  g.position.set(8.6, -0.33, -4.7);
+  for (let i = 0; i < 6; i += 1) {
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), ROCK_LIGHT);
+    stone.position.set(Math.cos(i * 1.05) * 0.7, 0.1, Math.sin(i * 1.05) * 0.7);
+    g.add(stone);
   }
-  stems.instanceMatrix.needsUpdate = true;
-  leaves.instanceMatrix.needsUpdate = true;
-  parent.add(stems, leaves);
+  for (let i = 0; i < 3; i += 1) {
+    const log = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 1.2), DARK_WOOD);
+    log.rotation.z = Math.PI / 2;
+    log.rotation.y = i * 1.1;
+    log.position.y = 0.22;
+    g.add(log);
+  }
+  const fire = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.1, 0.6), FIRE);
+  fire.position.y = 0.75;
+  g.add(fire);
+  parent.add(g);
+}
+
+function harvestTable(parent: THREE.Group): void {
+  const g = new THREE.Group();
+  g.position.set(-4.8, -0.34, 9.3);
+  g.rotation.y = 0.2;
+  box(g, 2.6, 0.16, 1.1, WOOD, 0, 0.8, 0);
+  for (const x of [-1.0, 1.0]) for (const z of [-0.4, 0.4]) box(g, 0.12, 0.8, 0.12, DARK_WOOD, x, 0.4, z);
+  for (const [x, color] of [[-0.7, ORANGE], [0, GOLD], [0.7, APPLE]] as const) {
+    const fruit = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, 0.26), color);
+    fruit.position.set(x, 0.95, 0);
+    g.add(fruit);
+  }
+  parent.add(g);
+}
+
+function cornStalks(parent: THREE.Group): void {
+  for (let i = 0; i < 7; i += 1) {
+    const x = 9.4 + (i % 3) * 0.32;
+    const z = 6.7 + Math.floor(i / 3) * 0.35;
+    box(parent, 0.06, 1.9, 0.06, CORN, x, 0.6, z);
+    box(parent, 0.08, 0.35, 0.06, GOLD, x + 0.08, 1.25, z, 0.4);
+  }
 }
 
 function clouds(parent: THREE.Group): void {
-  const count = 46;
-  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), CLOUD, count);
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), CLOUD, 28);
   const dummy = new THREE.Object3D();
-  for (let i = 0; i < count; i += 1) {
-    const angle = (i / count) * Math.PI * 2 + jitter(i) * 0.4;
-    const radius = 12 + jitter(i + 10) * 30;
-    dummy.position.set(Math.cos(angle) * radius, -13 - jitter(i + 3) * 5, Math.sin(angle) * radius);
+  for (let i = 0; i < 28; i += 1) {
+    const angle = (i / 28) * Math.PI * 2 + jitter(i) * 0.3;
+    const radius = 17 + jitter(i + 10) * 30;
+    dummy.position.set(Math.cos(angle) * radius, -14 - jitter(i + 3) * 3, Math.sin(angle) * radius);
     dummy.rotation.set(0, jitter(i + 4) * Math.PI, 0);
-    dummy.scale.set(3 + jitter(i + 5) * 6, 0.8 + jitter(i + 6) * 1.2, 1.8 + jitter(i + 7) * 3);
+    dummy.scale.set(3.5 + jitter(i + 5) * 5, 0.7 + jitter(i + 6) * 0.8, 2 + jitter(i + 7) * 2.5);
     dummy.updateMatrix();
     mesh.setMatrixAt(i, dummy.matrix);
   }
@@ -296,35 +296,15 @@ function clouds(parent: THREE.Group): void {
   parent.add(mesh);
 }
 
-function mountainSilhouette(parent: THREE.Group): void {
-  for (let i = 0; i < 9; i += 1) {
-    const angle = (i / 9) * Math.PI * 2;
-    const radius = 58 + (i % 3) * 15;
-    const height = 7 + jitter(i) * 11;
-    const width = 7 + jitter(i + 1) * 7;
-    const positions = [
-      -width, 0, -width, width, 0, -width, 0, height, 0,
-      width, 0, -width, width, 0, width, 0, height, 0,
-      width, 0, width, -width, 0, width, 0, height, 0,
-      -width, 0, width, -width, 0, -width, 0, height, 0,
-    ];
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.computeVertexNormals();
-    const peak = new THREE.Mesh(geometry, i % 2 ? ROCK : ROCK_DARK);
-    peak.position.set(Math.cos(angle) * radius, -19, Math.sin(angle) * radius);
-    peak.rotation.y = angle;
-    parent.add(peak);
-  }
-}
-
 export class IslandLayer {
   readonly group = new THREE.Group();
-  private readonly petals: THREE.InstancedMesh;
+  private readonly leaves: THREE.InstancedMesh;
   private readonly dummy = new THREE.Object3D();
   private readonly detail: THREE.Group;
-  private readonly lanterns: THREE.MeshStandardMaterial[] = [GLOW];
-  private detailVisible = true;
+  private leafClock = 0;
+  private lastScale = 0;
+  private readonly fire: THREE.Mesh;
+  private readonly fireMaterial: THREE.MeshStandardMaterial;
 
   constructor(scene: THREE.Scene) {
     this.group.name = 'floating-island';
@@ -332,80 +312,101 @@ export class IslandLayer {
     sea.rotation.x = -Math.PI / 2;
     sea.position.y = -18;
     this.group.add(sea);
+    this.group.add(solidIsland());
+    this.group.add(plaza());
 
-    this.group.add(cliff());
-    this.group.add(topSurface());
     this.detail = new THREE.Group();
     this.detail.name = 'island-detail';
-    for (let i = 0; i < 11; i += 1) {
-      const angle = (i / 11) * Math.PI * 2 + 0.16;
-      sakura(this.detail, 9.2 + (i % 3) * 1.35, angle, 0.8 + (i % 4) * 0.09, i);
+    const treeAngles = [0.1, 0.55, 1.0, 1.6, 2.2, 2.75, 3.3, 3.9, 4.5, 5.05, 5.65];
+    treeAngles.forEach((angle, i) => tree(this.detail, angle, 10.6 + (i % 3) * 1.15, 0.82 + (i % 4) * 0.08, i));
+    bareTree(this.detail, 1.32, 11.8, 1.05);
+    bareTree(this.detail, 4.18, 11.3, 0.92);
+    for (let i = 0; i < 11; i += 1) pumpkin(this.detail, 0.3 + i * 0.52, 9.2 + (i % 4) * 0.42, 0.8 + (i % 3) * 0.15);
+    hayBale(this.detail, 2.45, 10.2);
+    hayBale(this.detail, 2.62, 10.5);
+    hayBale(this.detail, 3.2, 11.1);
+    scarecrow(this.detail);
+    barn(this.detail);
+    fence(this.detail, 5.25, 7, 10.2);
+    fence(this.detail, 5.75, 5, 10.9);
+    turkey(this.detail, 1.7, 9.35);
+    turkey(this.detail, 1.95, 9.7);
+    turkey(this.detail, 4.75, 9.5);
+    campfire(this.detail);
+    harvestTable(this.detail);
+    cornStalks(this.detail);
+    for (let i = 0; i < 9; i += 1) {
+      const shroom = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), i % 3 ? MUSHROOM : APPLE);
+      const angle = 3.5 + i * 0.36;
+      shroom.position.set(Math.cos(angle) * 8.9, -0.24, Math.sin(angle) * 8.9);
+      this.detail.add(shroom);
+      const flower = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), FLOWER);
+      flower.position.set(Math.cos(angle + 0.2) * 8.65, -0.22, Math.sin(angle + 0.2) * 8.65);
+      this.detail.add(flower);
     }
-    for (let i = 0; i < 8; i += 1) stoneLantern(this.detail, 8.2 + (i % 2) * 1.5, (i / 8) * Math.PI * 2 + 0.38, 0.68);
-    torii(this.detail);
-    pagoda(this.detail);
-    koiPond(this.detail);
-    zenGarden(this.detail);
-    path(this.detail);
-    benchBonsaiChime(this.detail);
-    bamboo(this.detail);
     this.group.add(this.detail);
 
-    mountainSilhouette(this.group);
-    clouds(this.group);
+    const fire = this.detail.children.find((child) => child instanceof THREE.Group && child.children.some((c) => c instanceof THREE.Mesh && (c.material as THREE.Material) === FIRE));
+    this.fire = (fire?.children.find((c) => c instanceof THREE.Mesh && (c.material as THREE.Material) === FIRE) as THREE.Mesh | undefined) ?? new THREE.Mesh();
+    this.fireMaterial = FIRE;
 
-    this.petals = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.12, 0.06), PETAL, 90);
-    for (let i = 0; i < 90; i += 1) {
-      this.dummy.position.set((jitter(i) - 0.5) * 24, 2 + jitter(i + 1) * 8, (jitter(i + 2) - 0.5) * 24);
+    clouds(this.group);
+    this.leaves = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.14, 0.07), LEAF, 48);
+    for (let i = 0; i < 48; i += 1) {
+      this.dummy.position.set((jitter(i) - 0.5) * 23, 1.5 + jitter(i + 1) * 7, (jitter(i + 2) - 0.5) * 23);
       this.dummy.updateMatrix();
-      this.petals.setMatrixAt(i, this.dummy.matrix);
+      this.leaves.setMatrixAt(i, this.dummy.matrix);
     }
-    this.petals.instanceMatrix.needsUpdate = true;
-    this.petals.frustumCulled = false;
-    this.group.add(this.petals);
+    this.leaves.instanceMatrix.needsUpdate = true;
+    this.leaves.frustumCulled = false;
+    this.group.add(this.leaves);
     scene.add(this.group);
   }
 
   setSky(state: SkyState): void {
-    // Cosmetic only: lantern emitted light and cloud brightness, never board lights.
-    const night = state.night > 0.4;
-    const glow = night ? 2.2 : 0.85;
-    for (const mat of this.lanterns) mat.emissiveIntensity = glow;
-    CLOUD.opacity = night ? 0.38 : 0.72;
+    this.fireMaterial.emissiveIntensity = state.night > 0.4 ? 2.6 : 1.4;
+    CLOUD.opacity = state.night > 0.4 ? 0.3 : 0.55;
   }
 
   update(dt: number, time: number, camera: THREE.Camera): void {
+    // Decoration push: one group transform, never per object.
     const distance = camera.position.length();
-    const near = distance < 31;
-    if (near !== this.detailVisible) {
-      this.detailVisible = near;
-      this.detail.visible = near;
+    const push = 1 + THREE.MathUtils.clamp((distance - 24) / 60, 0, 0.15);
+    if (Math.abs(push - this.lastScale) > 0.001) {
+      this.lastScale = push;
+      this.detail.scale.setScalar(push);
     }
-    for (let i = 0; i < 90; i += 1) {
-      const speed = 0.16 + (i % 7) * 0.018;
-      const y = 8 - ((time * speed + i * 0.37) % 9);
-      const x = (jitter(i) - 0.5) * 24 + Math.sin(time * 0.35 + i) * 0.8;
-      const z = (jitter(i + 2) - 0.5) * 24 + Math.cos(time * 0.28 + i) * 0.5;
-      this.dummy.position.set(x, y, z);
-      this.dummy.rotation.set(0.3 + Math.sin(time + i) * 0.4, time * 0.8 + i, Math.cos(time + i) * 0.4);
+    this.leafClock += dt;
+    if (this.leafClock < 1 / 18) return;
+    const step = this.leafClock;
+    this.leafClock = 0;
+    for (let i = 0; i < 48; i += 1) {
+      const speed = 0.32 + (i % 7) * 0.04;
+      const y = 8.5 - ((time * speed + i * 0.41) % 9.2);
+      this.dummy.position.set(
+        (jitter(i) - 0.5) * 22 + Math.sin(time * 0.5 + i) * 0.9,
+        y,
+        (jitter(i + 2) - 0.5) * 22 + Math.cos(time * 0.42 + i) * 0.7,
+      );
+      this.dummy.rotation.set(0.4 + Math.sin(time + i) * 0.7, time * 1.1 + i, Math.cos(time + i) * 0.7);
       this.dummy.scale.setScalar(1);
       this.dummy.updateMatrix();
-      this.petals.setMatrixAt(i, this.dummy.matrix);
+      this.leaves.setMatrixAt(i, this.dummy.matrix);
     }
-    this.petals.instanceMatrix.needsUpdate = true;
-    void dt;
+    this.leaves.instanceMatrix.needsUpdate = true;
+    this.fire.scale.y = 0.9 + Math.sin(time * 7) * 0.1;
+    void step;
   }
 
-  audit(): { triangles: number; details: number; petals: number; skyOnly: true } {
+  audit(): { triangles: number; details: number; petals: number; solid: boolean; japaneseProps: number; skyOnly: true } {
     let triangles = 0;
     this.group.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
-      const geometry = object.geometry;
-      const index = geometry.getIndex();
-      const position = geometry.getAttribute('position');
+      const index = object.geometry.getIndex();
+      const position = object.geometry.getAttribute('position');
       const count = index ? index.count : position?.count ?? 0;
       triangles += Math.floor(count / 3) * (object instanceof THREE.InstancedMesh ? object.count : 1);
     });
-    return { triangles, details: this.detail.children.length, petals: this.petals.count, skyOnly: true };
+    return { triangles, details: this.detail.children.length, petals: this.leaves.count, solid: true, japaneseProps: 0, skyOnly: true };
   }
 }
