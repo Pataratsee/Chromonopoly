@@ -255,7 +255,7 @@ export class Sky {
     this.sun.position.set(Math.cos(sunAngle) * 125, sunHeight * 125, -42);
     this.sun.material.color.copy(this.sunTint);
     this.sun.material.opacity = THREE.MathUtils.clamp((sunHeight + 0.18) * 1.5, 0, 1);
-    // Keep the moon on the city-facing side of the sky; at 125 units it sat
+    // Keep the moon on the island-facing side of the sky; at 125 units it sat
     // behind the default camera and could never be seen at night.
     this.moon.position.set(-55, 24 + -sunHeight * 8, -95);
     this.moon.material.opacity = THREE.MathUtils.clamp((-sunHeight + 0.08) * 1.8, 0, 0.9);

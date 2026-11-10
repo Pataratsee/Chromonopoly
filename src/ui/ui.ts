@@ -1,19 +1,27 @@
 import { PALETTE, money, QUALITY, type QualityKey } from '../config';
 import { SPACES, spaceAt } from '../game/board';
-import { BUILDING_CATEGORIES, BUILDING_META, buildingCost, buildingRent, buildingTypesForMode, canBuild, evadeChance, mortgageValue, rentFor, robberyAmountIssues, robberyChance, unmortgageCost, RULES } from '../game/rules';
+import { BUILDING_CATEGORIES, BUILDING_META, buildingCost, buildingInvested, buildingRent, buildingTypesForMode, buildSlots, canBuild, evadeChance, mortgageValue, multiplayerRent, rentFor, robberyAmountIssues, robberyChance, unmortgageCost, upgradeCost, RULES } from '../game/rules';
 import type { ChanceRoll, CrimeOutcome, GameEvent, GameMode, PrivateState, PublicState, Settings, Suit, TradeOffer } from '../game/types';
-import { authToken, setAuthToken, soloKey } from '../net/client';
+import { soloKey } from '../net/client';
 import { apiFetch } from '../net/endpoint';
+import { normalizeUsername, usernameIssue } from '../game/username';
 import type { ModelAsset } from '../render/models';
 import type { ThumbnailStudio } from '../render/thumbnails';
 import { audio } from '../audio/audio';
 import { DEFAULT_SETTINGS, clearRestartFlag, isRestarting, loadSettings, saveSettings } from './settings';
 import type { NetClient } from '../net/client';
 import { intentKey } from '../net/client';
-import { rotationAt, segmentsForDisplay, segmentAtRotation, spinPlan, wheelColor, wheelZones } from './chanceWheel';
+import { rotationAt, segmentsForDisplay, segmentAtRotation, spinPlan, wheelColor, wheelZones, WheelStateMachine } from './chanceWheel';
 import './styles.css';
 
 void PALETTE;
+
+declare global {
+  interface Window {
+    __chanceWheel?: WheelStateMachine;
+    __chanceTransitions?: Array<{ state: string; at: number }>;
+  }
+}
 
 type Child = Node | string | null | undefined | false;
 function h<K extends keyof HTMLElementTagNameMap>(
@@ -115,10 +123,7 @@ export class UI {
   private logPlayer: string | null = null;
   private marketLive: (() => void) | null = null;
   private menuPanel: HTMLElement | null = null;
-  private authStatusEl: HTMLElement | null = null;
-  private authPoll: number | null = null;
-  private authBusy = false;
-  private accountName = '';
+  private menuError = '';
 
   constructor(private readonly deps: UIDeps) {
     this.root = document.getElementById('ui') as HTMLElement;
@@ -141,7 +146,18 @@ export class UI {
   }
 
   mount(): void {
-    this.deps.net.onAuthLost = (reason) => this.authLost(reason);
+    this.deps.net.onJoinRejected = (reason) => {
+      this.menuError = reason;
+      document.getElementById('hud')?.classList.add('hidden');
+      this.renderMenu();
+      this.toast(reason, 'bad');
+    };
+    this.deps.net.onStatus = (status, reason) => {
+      const dot = document.getElementById('net-dot');
+      dot?.classList.toggle('off', status !== 'online');
+      if (status === 'offline') this.ribbon('Connection lost — retrying', reason ?? 'Your seat is held while the browser reconnects.');
+      else if (status === 'online') this.ribbon(this.state?.mode === 'solo' ? 'Your table is ready' : 'Shared world');
+    };
     this.root.append(this.buildHud());
     this.tableStage = h('div', { class: 'table-stage', id: 'table-stage' });
     this.root.append(this.tableStage);
@@ -250,11 +266,12 @@ export class UI {
       'div',
       { class: `crime-result ${outcome.success ? 'good' : 'bad'}`, id: 'crime-result', role: 'dialog', 'aria-live': 'assertive' },
       h('div', { class: 'crime-result-card glass-strong' },
-        h('div', { class: 'crime-result-kicker' }, outcome.kind === 'robbery' ? 'Bank robbery' : outcome.kind === 'murder' ? 'Murder attempt' : outcome.kind === 'detective' ? 'Detective report' : 'Underworld job'),
+        h('div', { class: 'crime-result-kicker' }, outcome.kind === 'robbery' ? 'Bank robbery' : outcome.kind === 'murder' ? 'Murder attempt' : outcome.kind === 'detective' ? 'Detective report' : outcome.kind === 'wipe' ? 'Record wipe' : 'Underworld job'),
         h('h3', {}, outcome.success ? 'Success' : 'Failure'),
         h('p', { class: 'crime-result-detail' }, outcome.detail),
         outcome.amount !== 0 ? h('div', { class: 'stat-row' }, h('span', {}, outcome.amount > 0 ? 'Gained' : 'Lost'), h('b', {}, money(Math.abs(outcome.amount)))) : null,
         outcome.targetName ? h('div', { class: 'stat-row' }, h('span', {}, 'Target'), h('b', {}, outcome.targetName)) : null,
+        outcome.taken?.length ? h('div', { class: 'stat-row' }, h('span', {}, 'Properties transferred'), h('b', {}, outcome.taken.join(', '))) : null,
         outcome.reputationDelta ? h('div', { class: 'stat-row' }, h('span', {}, 'Reputation'), h('b', {}, `${outcome.reputationDelta > 0 ? '+' : ''}${outcome.reputationDelta}`)) : null,
         h('button', { class: 'btn btn-gold btn-block', onclick: () => layer.remove() }, 'Continue'),
       ),
@@ -279,14 +296,17 @@ export class UI {
     this.showHomePanel(panel);
 
     const preview = h('canvas', { id: 'menu-preview' }) as HTMLCanvasElement;
-    const previewLoading = h('div', { class: 'menu-preview-loading', id: 'menu-preview-loading' }, h('i', {}), h('span', {}, 'Waking the city…'));
+    const previewLoading = h('div', { class: 'menu-preview-loading', id: 'menu-preview-loading' }, h('i', {}), h('span', {}, 'Loading island…'));
     const tokenName = h('b', { id: 'menu-token-name' }, this.assetName(this.selectedToken));
     const right = h(
       'div',
       { class: 'menu-right' },
       preview,
       previewLoading,
-      h('div', { class: 'menu-preview-foot' }, tokenName, h('span', {}, 'Click to change your piece')),
+      h('div', { class: 'preview-corner tl glass' }, 'LIVE 3D'),
+      h('div', { class: 'preview-corner tr glass' }, 'YOUR PIECE'),
+      h('div', { class: 'preview-corner bl glass' }, tokenName),
+      h('div', { class: 'preview-corner br glass' }, 'TAP TO CHANGE'),
     );
     card.append(left, right);
     const menu = h('div', { class: 'menu' }, card);
@@ -305,38 +325,50 @@ export class UI {
   }
 
   private showHomePanel(panel: HTMLElement): void {
-    this.stopAuthPoll();
-    this.authStatusEl = null;
+    const name = h('input', { class: 'field', id: 'player-name', maxlength: '16', placeholder: 'Your name', autocomplete: 'nickname', spellcheck: 'false' }) as HTMLInputElement;
+    name.value = localStorage.getItem('chromonopoly.name') ?? '';
+    const error = h('p', { class: 'auth-error', role: 'alert', style: this.menuError ? '' : 'display:none' }, this.menuError);
+    this.menuError = '';
+    const commit = (): string | null => {
+      const clean = normalizeUsername(name.value);
+      const issue = usernameIssue(clean);
+      if (issue) {
+        error.textContent = issue;
+        error.style.display = '';
+        this.toast(issue, 'bad');
+        name.focus();
+        return null;
+      }
+      localStorage.setItem('chromonopoly.name', clean);
+      error.style.display = 'none';
+      return clean;
+    };
+    const solo = h('button', { class: 'mode-btn solo', id: 'solo-btn' },
+      h('span', { class: 'mode-eyebrow' }, '3 AI rivals'),
+      h('b', {}, 'Single Player'),
+      h('span', { class: 'mode-note' }, 'A proper table. One player acts at a time.'));
+    const multi = h('button', { class: 'mode-btn multi', id: 'multi-btn' },
+      h('span', { class: 'mode-eyebrow' }, 'No password · shared board'),
+      h('b', {}, 'Multiplayer'),
+      h('span', { class: 'mode-note' }, 'Click once and you are on the board.'));
+    solo.addEventListener('click', () => { if (commit()) this.showSoloPanel(panel); });
+    multi.addEventListener('click', () => {
+      const clean = commit();
+      if (clean) this.join(clean, 'multi');
+    });
+    name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const clean = commit(); if (clean) this.join(clean, 'multi'); } });
     panel.replaceChildren(
-      h('div', { class: 'menu-actions' },
-        h(
-          'button',
-          { class: 'mode-btn solo', id: 'solo-btn' },
-          h('span', { class: 'mode-eyebrow' }, 'No account · 3 AI'),
-          h('b', {}, 'Single Player'),
-          h('span', { class: 'mode-note' }, 'A proper table. One player acts at a time.'),
-        ),
-        h(
-          'button',
-          { class: 'mode-btn multi', id: 'multi-btn' },
-          h('span', { class: 'mode-eyebrow' }, 'Account · shared board'),
-          h('b', {}, 'Multiplayer'),
-          h('span', { class: 'mode-note' }, 'Sign in after this and join everyone in the shared city.'),
-        ),
-      ),
-      h(
-        'div',
-        { class: 'menu-footer' },
+      h('div', { class: 'name-field' }, h('label', { for: 'player-name' }, 'Your name'), name, error),
+      h('p', { class: 'note' }, '3–16 letters, numbers, spaces or underscores. Saved on this browser. Your name is reserved while you are connected or own something on the board.'),
+      h('div', { class: 'menu-actions' }, solo, multi),
+      h('div', { class: 'menu-footer' },
         h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openSettings() }, 'Settings'),
         h('button', { class: 'btn btn-ghost btn-sm', onclick: () => this.openHelp() }, 'How to play'),
       ),
     );
-    panel.querySelector('#solo-btn')?.addEventListener('click', () => this.showSoloPanel(panel));
-    panel.querySelector('#multi-btn')?.addEventListener('click', () => void this.beginMultiplayer(panel));
   }
 
   private async showSoloPanel(panel: HTMLElement): Promise<void> {
-    this.stopAuthPoll();
     panel.replaceChildren(h('div', { class: 'menu-loading' }, h('i', {}), h('span', {}, 'Checking your table…')));
     const key = soloKey();
     let save: SoloMeta | null = null;
@@ -391,188 +423,12 @@ export class UI {
   }
 
   private startSolo(fresh: boolean): void {
-    const name = localStorage.getItem('chromonopoly.username') || 'Tycoon';
-    this.join(name, 'solo', fresh);
-  }
-
-  private async beginMultiplayer(panel: HTMLElement): Promise<void> {
-    this.stopAuthPoll();
-    if (!authToken()) {
-      this.showAuthPanel(panel, 'login');
+    const name = normalizeUsername(localStorage.getItem('chromonopoly.name') ?? '');
+    if (usernameIssue(name)) {
+      if (this.menuPanel) this.showHomePanel(this.menuPanel);
       return;
     }
-    panel.replaceChildren(h('div', { class: 'menu-loading' }, h('i', {}), h('span', {}, 'Restoring your session…')));
-    try {
-      const res = await apiFetch('/api/auth/session', { headers: { authorization: `Bearer ${authToken()}` } });
-      if (res.ok) {
-        const data = (await res.json()) as { account?: { username?: string } };
-        this.accountName = data.account?.username ?? '';
-        this.join(this.accountName, 'multi');
-        return;
-      }
-      if (res.status === 401) {
-        setAuthToken('');
-        this.showAuthPanel(panel, 'login', 'Your session expired. Sign in again.');
-        return;
-      }
-      throw new Error('The server could not restore your session.');
-    } catch (error) {
-      this.showAuthPanel(panel, 'login', error instanceof Error ? error.message : 'Cannot reach the game server.');
-    }
-  }
-
-  private showAuthPanel(panel: HTMLElement, requestedMode: 'login' | 'create', message = ''): void {
-    this.stopAuthPoll();
-    this.authBusy = false;
-    let mode = requestedMode;
-    const error = h('p', { class: 'auth-error', role: 'alert' }, message);
-    const status = h('div', { class: 'auth-status connecting', role: 'status' }, h('i', {}), h('span', {}, 'Checking server…'));
-    this.authStatusEl = status;
-    const tabs = h('div', { class: 'segmented auth-tabs' });
-    const loginTab = h('button', { 'aria-pressed': 'true', onclick: () => switchMode('login') }, 'Log in');
-    const createTab = h('button', { 'aria-pressed': 'false', onclick: () => switchMode('create') }, 'Create account');
-    tabs.append(loginTab, createTab);
-    const username = h('input', { class: 'field', id: 'auth-username', maxlength: '16', placeholder: 'Username', autocomplete: 'username' }) as HTMLInputElement;
-    username.value = localStorage.getItem('chromonopoly.username') ?? '';
-    const password = h('input', { class: 'field', id: 'auth-password', type: 'password', maxlength: '128', placeholder: 'Password', autocomplete: 'current-password' }) as HTMLInputElement;
-    const submit = h('button', { class: 'btn btn-gold btn-block', id: 'auth-submit' }, 'Log in');
-    const hint = h('p', { class: 'note auth-hint' }, 'Username: 3–16 letters, numbers or underscores · password: 6+ characters');
-    const switchMode = (next: 'login' | 'create'): void => {
-      mode = next;
-      loginTab.setAttribute('aria-pressed', String(next === 'login'));
-      createTab.setAttribute('aria-pressed', String(next === 'create'));
-      submit.textContent = next === 'login' ? 'Log in' : 'Create account';
-      password.autocomplete = next === 'login' ? 'current-password' : 'new-password';
-      error.textContent = '';
-      error.style.display = 'none';
-    };
-    const fail = (text: string): void => {
-      error.style.display = '';
-      error.textContent = text;
-      this.toast(text, 'bad');
-    };
-    const runAuth = async (): Promise<void> => {
-      if (this.authBusy) return;
-      const user = username.value.trim();
-      const pass = password.value;
-      if (!user) { fail('Enter a username.'); username.focus(); return; }
-      if (!/^[A-Za-z0-9_]{3,16}$/.test(user)) { fail('Username must be 3–16 letters, numbers or underscores.'); username.focus(); return; }
-      if (!pass) { fail('Enter a password.'); password.focus(); return; }
-      if (pass.length < 6) { fail('Password must be at least 6 characters.'); password.focus(); return; }
-      if (pass.length > 128) { fail('Password must be 128 characters or fewer.'); password.focus(); return; }
-      this.authBusy = true;
-      submit.disabled = true;
-      submit.textContent = mode === 'login' ? 'Signing in…' : 'Creating account…';
-      try {
-        const res = await apiFetch(`/api/auth/${mode === 'login' ? 'login' : 'register'}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ username: user, password: pass }),
-        });
-        let data: { token?: string; account?: { username?: string }; error?: string } = {};
-        try { data = (await res.json()) as typeof data; } catch { /* non-JSON server error */ }
-        if (!res.ok || !data.token) throw new Error(data.error ?? (res.status === 429 ? 'Too many attempts. Wait a moment and try again.' : 'Could not sign in.'));
-        setAuthToken(data.token);
-        this.accountName = data.account?.username ?? user;
-        localStorage.setItem('chromonopoly.username', this.accountName);
-        this.stopAuthPoll();
-        this.join(this.accountName, 'multi');
-      } catch (err) {
-        const text = err instanceof Error ? err.message : 'Could not sign in.';
-        fail(text);
-        if (text === 'Cannot reach the game server.') this.setAuthStatus('offline', text);
-      } finally {
-        this.authBusy = false;
-        if (submit.isConnected) {
-          submit.disabled = false;
-          submit.textContent = mode === 'login' ? 'Log in' : 'Create account';
-        }
-      }
-    };
-    submit.addEventListener('click', () => void runAuth());
-    password.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') void runAuth(); });
-    error.style.display = message ? '' : 'none';
-    const authCard = h('div', { class: 'auth-card liquid' }, status, error, tabs, username, password, submit, hint);
-    panel.replaceChildren(
-      h('button', { class: 'menu-back', onclick: () => this.showHomePanel(panel) }, '← Main menu'),
-      h('div', { class: 'menu-section-title' }, 'Multiplayer'),
-      authCard,
-    );
-    if (mode === 'create') switchMode('create');
-    void this.pollAuthHealth(0);
-  }
-
-  private setAuthStatus(state: 'connecting' | 'online' | 'offline', text: string): void {
-    const el = this.authStatusEl;
-    if (!el) return;
-    el.className = `auth-status ${state}`;
-    const label = el.querySelector('span');
-    if (label) label.textContent = text;
-    let retry = el.querySelector('button');
-    if (state === 'offline' && !retry) {
-      retry = h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { this.stopAuthPoll(); void this.pollAuthHealth(0); } }, 'Retry');
-      el.append(retry);
-    } else if (state !== 'offline' && retry) retry.remove();
-  }
-
-  private async pollAuthHealth(attempt: number): Promise<void> {
-    if (!this.authStatusEl) return;
-    this.authStatusEl.className = 'auth-status connecting';
-    const label = this.authStatusEl.querySelector('span');
-    if (label) label.textContent = attempt === 0 ? 'Checking server…' : 'Connecting…';
-    let delay = 10_000;
-    // Render's free tier documents cold starts of 50 seconds or more. A short
-    // timeout here made a waking server look permanently unreachable.
-    const waking = window.setTimeout(() => {
-      if (label?.isConnected) label.textContent = 'Waking server…';
-    }, 5000);
-    try {
-      const res = await apiFetch('/api/health');
-      if (!res.ok) throw new Error('Health check failed');
-      this.setAuthStatus('online', 'Connected');
-    } catch {
-      this.setAuthStatus('offline', 'Cannot reach server');
-      delay = Math.min(15_000, 2500 * 2 ** Math.min(3, attempt));
-    } finally {
-      window.clearTimeout(waking);
-    }
-    if (!this.authStatusEl) return;
-    this.authPoll = window.setTimeout(() => void this.pollAuthHealth(attempt + 1), delay);
-  }
-
-  private stopAuthPoll(): void {
-    if (this.authPoll !== null) window.clearTimeout(this.authPoll);
-    this.authPoll = null;
-  }
-
-  private authLost(reason: string): void {
-    setAuthToken('');
-    this.accountName = '';
-    this.closeSheet(false);
-    this.stopAuthPoll();
-    document.getElementById('hud')?.classList.add('hidden');
-    this.renderMenu();
-    if (this.menuPanel) this.showAuthPanel(this.menuPanel, 'login', reason);
-    this.toast(reason, 'bad');
-  }
-
-  private async logout(): Promise<void> {
-    const token = authToken();
-    if (!token) return;
-    try {
-      await apiFetch('/api/auth/logout', { method: 'POST', headers: { authorization: `Bearer ${token}` } }, 10_000);
-    } catch {
-      // Offline: the local session still ends; the server revokes on next login.
-    }
-    setAuthToken('');
-    this.accountName = '';
-    this.deps.net.close();
-    // The server also closes the socket, but a signed-out tab must land on the
-    // sign-in panel even when that close event never arrives.
-    this.closeSheet(false);
-    document.getElementById('hud')?.classList.add('hidden');
-    this.renderMenu();
-    if (this.menuPanel) this.showAuthPanel(this.menuPanel, 'login', 'Signed out.');
+    this.join(name, 'solo', fresh);
   }
 
   private assetName(id: string): string {
@@ -580,7 +436,6 @@ export class UI {
   }
 
   private join(name: string, mode: GameMode, fresh = false): void {
-    this.stopAuthPoll();
     localStorage.setItem('chromonopoly.name', name);
     this.deps.net.setIdentity(name, this.selectedToken);
     audio.resume();
@@ -598,7 +453,6 @@ export class UI {
     this.stopPreview = null;
     const badge = document.getElementById('mode-badge');
     if (badge) badge.textContent = mode === 'solo' ? 'Solo table' : 'Shared world';
-    this.accountName = mode === 'multi' ? name : '';
     this.ribbon(mode === 'solo' ? 'Your table is ready' : 'Shared world', mode === 'solo' ? 'Turn-based · three AI rivals' : 'One board · everyone plays at once');
   }
 
@@ -669,6 +523,7 @@ export class UI {
     // rows in place so the dossier status does not stay stale behind the modal.
     if (this.currentSheet === 'court') this.refreshCourt();
     if (this.currentSheet === 'bank') this.refreshTransient();
+    if (this.sheet) this.refreshTransient();
   }
 
   private updateHud(me: { name: string; color: string; cash: number; isBot: boolean }): void {
@@ -797,13 +652,14 @@ export class UI {
     const owner = pending.ownerId ? this.state?.players[pending.ownerId] : null;
     const box = h('div', { class: 'pending glass', id: 'pending-sheet' });
     box.append(
+      this.cashChip(),
       h('div', { class: 'pending-title' }, pending.kind === 'buy' ? `Buy ${space.name}?` : `Rent due at ${space.name}`),
       h(
         'div',
         { class: 'pending-sub' },
         pending.kind === 'buy'
           ? `List price ${money(pending.amount)} · ${GROUP_LABEL[space.group ?? 'corner']}`
-          : `${owner?.name ?? 'The owner'} asks ${money(pending.amount)}${this.state?.tiles[pending.tile]?.building ? ' with a building' : ''}`,
+          : `${owner?.name ?? 'The owner'} asks ${money(pending.amount)}${this.state?.tiles[pending.tile]?.buildings.length ? ' with buildings' : ''}`,
       ),
     );
     if (pending.kind === 'buy') {
@@ -817,7 +673,7 @@ export class UI {
         ),
       );
     } else {
-      const chance = evadeChance(this.state?.tiles[pending.tile]?.building ? 1 : 0);
+      const chance = evadeChance(this.state?.tiles[pending.tile]?.buildings.length ?? 0);
       box.append(
         h(
           'div',
@@ -841,6 +697,16 @@ export class UI {
     if (!this.priv) return;
     const bank = document.getElementById('bank-outstanding');
     if (bank) bank.textContent = money(this.priv.you.loan);
+    for (const chip of document.querySelectorAll<HTMLElement>('[data-live-cash]')) {
+      this.countMoney(chip, this.priv.you.cash);
+    }
+  }
+
+  /** One live cash readout, repeated at the top of every spending surface. */
+  private cashChip(): HTMLElement {
+    const value = h('b', { 'data-live-cash': '', class: 'sheet-cash-value' }, money(this.priv?.you.cash ?? 0));
+    if (this.priv) this.countMoney(value, this.priv.you.cash);
+    return h('div', { class: 'sheet-cash glass', 'aria-label': 'Your cash' }, h('span', {}, 'CASH'), value);
   }
 
   // ---------------------------------------------------------------- sheets
@@ -857,7 +723,7 @@ export class UI {
       'div',
       { class: `sheet${opts.tall ? ' tall' : ''}${opts.wide ? ' wide' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('div', { class: 'grabber' }),
-      h('div', { class: 'sheet-head' }, h('div', {}, h('h2', { class: 'sheet-title' }, title), subtitle ? h('p', { class: 'sheet-sub' }, subtitle) : null), h('div', { class: 'spacer' }), closeBtn),
+      h('div', { class: 'sheet-head' }, h('div', {}, h('h2', { class: 'sheet-title' }, title), subtitle ? h('p', { class: 'sheet-sub' }, subtitle) : null), h('div', { class: 'spacer' }), this.cashChip(), closeBtn),
       h('div', { class: 'sheet-body' }, body),
     );
     this.sheet = sheet;
@@ -892,8 +758,8 @@ export class UI {
     body.append(this.propertyCard(index));
     const actions = this.propertyActions(index);
     if (actions) body.append(actions);
-    if (tile?.building) {
-      body.append(h('p', { class: 'note' }, `${BUILDING_META[tile.building].blurb} Buildings cap at ${RULES.maxBuildings} city-wide; ${this.state?.buildingCount ?? 0} built.`));
+    if (tile?.buildings.length) {
+      body.append(h('p', { class: 'note' }, `Buildings: ${tile.buildings.map((b) => `${BUILDING_META[b.type].name} rank ${b.rank}`).join(', ')}. Board cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
     }
     if (tile?.lockedBy) body.append(h('p', { class: 'note bad' }, 'These deeds are locked while a lawsuit is pending.'));
     this.openSheet('tile', space.name, owner ? `Owned by ${owner.name}${tile?.mortgaged ? ' · mortgaged' : ''}` : 'Available to buy', body);
@@ -928,10 +794,21 @@ export class UI {
         table.append(h('tr', {}, h('td', {}, 'Rent'), h('td', {}, '4x dice')));
         table.append(h('tr', {}, h('td', {}, 'Both utilities'), h('td', {}, '10x dice')));
       }
-      if (tile?.building) {
-        table.append(h('tr', { class: 'highlight' }, h('td', {}, `${BUILDING_META[tile.building].name} rent`), h('td', {}, money(buildingRent(space, tile.building, this.state!.tiles)))));
+      for (const building of tile?.buildings ?? []) {
+        table.append(h('tr', { class: 'highlight' }, h('td', {}, `${BUILDING_META[building.type].name} rank ${building.rank}`), h('td', {}, money(buildingRent(space, building.type, this.state!.tiles)))));
       }
       body.append(table);
+    }
+    if (this.state?.mode === 'multi' && space.type === 'property' && tile?.ownerId) {
+      const m = multiplayerRent(index, this.state.tiles, this.priv?.you.cash ?? 1000);
+      const factors = m.buildings
+        ? `highest rank ${m.highestRank} × ${m.buildings} building${m.buildings === 1 ? '' : 's'} (+10% each after the first) × prestige ${m.prestige.toFixed(2)}`
+        : 'no buildings — printed base rent';
+      body.append(
+        h('p', { class: 'note rent-formula', 'data-rent-example': '' },
+          `Why this rent: ${factors}, charged as a share of the payer's cash (minimum ${money(RULES.multiRentMin)}). At your ${money(this.priv?.you.cash ?? 1000)} cash this deed asks ${money(m.rent)} (${(m.percent * 100).toFixed(2)}%).`,
+        ),
+      );
     }
     if (space.buildCost) {
       body.append(
@@ -943,7 +820,7 @@ export class UI {
     if (space.tax) body.append(h('div', { class: 'stat-row' }, h('span', {}, 'Tax'), h('b', {}, money(space.tax))));
     body.append(
       h('div', { class: 'deed-foot' },
-        h('span', { class: 'deed-kind' }, tile?.building ? BUILDING_META[tile.building].name : tile?.mortgaged ? 'Mortgaged' : 'Open lot'),
+        h('span', { class: 'deed-kind' }, tile?.buildings.length ? `${tile.buildings.length}/${buildSlots(space)} slots` : tile?.mortgaged ? 'Mortgaged' : 'Open lot'),
         h('b', { class: 'deed-price' }, money(space.price)),
       ),
     );
@@ -957,17 +834,22 @@ export class UI {
     const mine = tile?.ownerId === this.deps.net.playerId;
     const actions = h('div', { class: 'actions' });
     if (mine && tile) {
-      if (!tile.building) {
+      if (space.type === 'property' && this.state?.mode !== 'solo') {
+        actions.append(h('button', { class: 'btn btn-primary', onclick: () => this.openBuild(index) }, `Build · ${tile.buildings.length}/${buildSlots(space)} slots`));
+      } else if (!tile.buildings.length) {
         actions.append(h('button', { class: 'btn btn-primary', onclick: () => this.openBuild(index) }, 'Build here'));
-      } else {
-        actions.append(
-          h('button', { class: 'btn btn-ghost', onclick: () => this.openBuild(index) }, `Replace ${BUILDING_META[tile.building].name}`),
-          h('button', { class: 'btn btn-danger', onclick: () => this.send({ t: 'sellBuilding', tile: index, key: intentKey('sell') }) }, `Sell for ${money(Math.round(buildingCost(space, tile.building) * RULES.sellRefund))}`),
+      }
+      for (const building of tile.buildings) {
+        const row = h('div', { class: 'inline' },
+          h('span', { class: 'chip' }, `${BUILDING_META[building.type].name} · rank ${building.rank}`),
+          building.rank < 4 ? h('button', { class: 'btn btn-sm btn-ghost', onclick: () => this.send({ t: 'upgrade', tile: index, type: building.type, key: intentKey('upgrade') }) }, `Upgrade ${money(upgradeCost(space, building.type, (building.rank + 1) as 2 | 3 | 4))}`) : null,
+          h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.send({ t: 'sellBuilding', tile: index, type: building.type, key: intentKey('sell') }) }, `Sell ${money(Math.round(buildingInvested(space, building) * RULES.sellRefund))}`),
         );
+        actions.append(row);
       }
       if (tile.mortgaged) {
         actions.append(h('button', { class: 'btn btn-ghost', onclick: () => this.send({ t: 'unmortgage', tile: index, key: intentKey('unmortgage') }) }, `Unmortgage ${money(unmortgageCost(space))}`));
-      } else if (!tile.building) {
+      } else if (!tile.buildings.length) {
         actions.append(h('button', { class: 'btn btn-ghost', onclick: () => this.send({ t: 'mortgage', tile: index, key: intentKey('mortgage') }) }, `Mortgage ${money(mortgageValue(space))}`));
       }
       actions.append(h('button', { class: 'btn btn-ghost', onclick: () => this.openMarket(index) }, 'Trade stock'));
@@ -991,7 +873,7 @@ export class UI {
     const mode = this.state?.mode ?? 'multi';
     const body = h('div', {});
     const check = this.state ? canBuild(index, this.state.tiles, this.deps.net.playerId ?? '', this.state.buildingCount, mode) : { ok: false as const, reason: '…' };
-    body.append(h('p', { class: 'note' }, `One building per tile. Replacing refunds 50%. ${mode === 'solo' ? 'Solo needs the full colour group and uses houses and hotels.' : 'Multiplayer can build on any owned street.'} City cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
+    body.append(h('p', { class: 'note' }, `${mode === 'solo' ? 'Solo needs the full colour group and uses houses and hotels.' : `${buildSlots(space)} build slots, ${tile?.buildings.length ?? 0} used. Each type is built once and upgraded rank 1→4 (costs 1x, 3x, 9x, 27x). Selling refunds 50%.`} Board cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
     if (!check.ok) body.append(h('p', { class: 'note warn' }, check.reason));
     for (const category of BUILDING_CATEGORIES) {
       const types = buildingTypesForMode(mode).filter((type) => BUILDING_META[type].category === category.id);
@@ -1001,8 +883,7 @@ export class UI {
       for (const type of types) {
         const meta = BUILDING_META[type];
         const cost = buildingCost(space, type);
-        const refund = tile?.building ? Math.round(buildingCost(space, tile.building) * RULES.sellRefund) : 0;
-        const affordable = (this.priv?.you.cash ?? 0) + refund >= cost;
+        const affordable = (this.priv?.you.cash ?? 0) >= cost;
         const income = this.state ? buildingRent(space, type, this.state.tiles) : 0;
         const img = h('img', { alt: meta.name, loading: 'lazy' }) as HTMLImageElement;
         void this.deps.studio.thumb(meta.model, 'building').then((src) => { img.src = src; });
@@ -1023,7 +904,7 @@ export class UI {
                 this.closeSheet();
               },
             },
-            tile?.building === type ? 'Built' : affordable ? (tile?.building ? 'Replace' : 'Build') : 'Too dear',
+            tile?.buildings.some((b) => b.type === type) ? 'Built' : affordable ? 'Build' : 'Too dear',
           ),
         );
         grid.append(card);
@@ -1366,6 +1247,8 @@ export class UI {
     const loan = this.priv?.you.loan ?? 0;
     const cap = this.priv?.loanCap ?? 0;
     const interest = Math.ceil(loan * 0.02);
+    const blocked = loan > 0;
+    const blockedReason = blocked ? 'Repay your outstanding loan before taking another.' : '';
     const group = h('div', { class: 'group' });
     group.append(
       h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Outstanding loan'), h('div', { class: 'row-sub' }, `${money(interest)} interest due each roll`)), h('b', { id: 'bank-outstanding' }, money(loan))),
@@ -1392,7 +1275,8 @@ export class UI {
     const repay = h('input', { class: 'field', type: 'number', min: '1', step: '50', value: String(Math.min(200, loan)) }) as HTMLInputElement;
     body.append(
       h('div', { class: 'group-label' }, 'Borrow'),
-      h('div', { class: 'inline' }, amount, h('button', { class: 'btn btn-primary', onclick: () => this.send({ t: 'loan', amount: Math.max(200, Number(amount.value) || 200), key: intentKey('loan') }) }, 'Borrow')),
+      ...(blocked ? [h('p', { class: 'note warn', role: 'status' }, blockedReason)] : []),
+      h('div', { class: 'inline' }, amount, h('button', { class: 'btn btn-primary', disabled: blocked, title: blockedReason, onclick: () => this.send({ t: 'loan', amount: Math.max(200, Number(amount.value) || 200), key: intentKey('loan') }) }, 'Borrow')),
       h('div', { class: 'group-label', style: 'margin-top:18px' }, 'Repay'),
       h('div', { class: 'inline' }, repay, h('button', { class: 'btn btn-ghost', disabled: loan <= 0, onclick: () => this.send({ t: 'repayLoan', amount: Math.max(1, Number(repay.value) || 1), key: intentKey('repay') }) }, 'Repay')),
     );
@@ -1434,7 +1318,7 @@ export class UI {
       for (const tile of side.properties) {
         const s = spaceAt(tile);
         const st = this.state?.tiles[tile];
-        parts.push(`${s.name}${st?.mortgaged ? ' (mortgaged)' : st?.building ? ` · ${BUILDING_META[st.building].name}` : ''}`);
+        parts.push(`${s.name}${st?.mortgaged ? ' (mortgaged)' : st?.buildings.length ? ` · ${st.buildings.map((b) => `${BUILDING_META[b.type].name} r${b.rank}`).join(', ')}` : ''}`);
       }
       return parts.join(' · ') || 'nothing';
     };
@@ -1457,7 +1341,7 @@ export class UI {
           const tile = this.state!.tiles[space.index]!;
           group.append(
             h('div', { class: 'deed-wrap', 'data-tile': String(space.index) },
-              h('div', { class: 'deed-owner' }, h('span', { class: 'dot', style: `background:${this.state?.players[tile.ownerId!]?.color ?? PALETTE.ink}` }), `${this.state?.players[tile.ownerId!]?.name ?? 'Unknown'} · ${tile.mortgaged ? 'mortgaged' : tile.building ? BUILDING_META[tile.building].name : 'open lot'}`),
+              h('div', { class: 'deed-owner' }, h('span', { class: 'dot', style: `background:${this.state?.players[tile.ownerId!]?.color ?? PALETTE.ink}` }), `${this.state?.players[tile.ownerId!]?.name ?? 'Unknown'} · ${tile.mortgaged ? 'mortgaged' : tile.buildings.length ? `${tile.buildings.length} buildings` : 'open lot'}`),
               this.propertyCard(space.index),
               this.propertyActions(space.index),
             ),
@@ -1544,7 +1428,7 @@ export class UI {
           cb.checked = selected.has(space.index);
           cb.addEventListener('change', () => { if (cb.checked) selected.add(space.index); else selected.delete(space.index); });
           const st = this.state?.tiles[space.index];
-          propList.append(h('label', { class: 'trade-prop' }, cb, h('span', {}, space.name), h('i', {}, st?.mortgaged ? 'mortgaged' : st?.building ? BUILDING_META[st.building].name : '')));
+          propList.append(h('label', { class: 'trade-prop' }, cb, h('span', {}, space.name), h('i', {}, st?.mortgaged ? 'mortgaged' : st?.buildings.length ? `${st.buildings.length} buildings` : '')));
         }
         return h('div', { class: 'trade-side' }, h('div', { class: 'trade-side-head' }, h('b', {}, title), h('label', { class: 'trade-cash' }, 'Cash', cashInput)), propList);
       };
@@ -1599,6 +1483,21 @@ export class UI {
     body.append(h('div', { class: 'group-label' }, 'Public jail record'));
     const pub = h('div', { class: 'group' });
     if (me.jailCause) pub.append(h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, me.jailCause), h('div', { class: 'row-sub' }, `Outcome: ${me.jailOutcome === 'all' ? 'all deeds sold' : me.jailOutcome === 'some' ? `${me.jailSold.length} deed(s) sold` : 'no deeds sold — mortgaged'}`))));
+    if (this.state?.mode === 'multi') {
+      body.append(h('div', { class: 'group-label' }, 'Reputation record wipe'));
+      const canAfford = me.cash >= RULES.wipeCost;
+      const wipe = h('div', { class: 'group' },
+        h('div', { class: 'row' },
+          h('div', { class: 'row-main' },
+            h('div', { class: 'row-title' }, `Erase every private and public record · ${money(RULES.wipeCost)}`),
+            h('div', { class: 'row-sub' }, `${Math.round(RULES.wipeChance * 100)}% chance · resets reputation to ${RULES.wipeReputation} · dismisses your open cases · failure keeps the record and loses the fee`),
+          ),
+          h('button', { class: 'btn btn-sm btn-danger', id: 'wipe-record', disabled: !canAfford, onclick: () => this.openWipeWarning() }, canAfford ? 'Review wipe' : `Need ${money(RULES.wipeCost)}`),
+        ),
+      );
+      if (!canAfford) wipe.append(h('p', { class: 'note warn' }, `You need ${money(RULES.wipeCost - me.cash)} more cash before a record wipe can be bought.`));
+      body.append(wipe);
+    }
     for (const entry of [...me.jailRecord].reverse().slice(0, 10)) {
       pub.append(h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, spaceAt(entry.tile).name), h('div', { class: 'row-sub' }, new Date(entry.at).toLocaleString())), h('b', {}, money(entry.amount))));
     }
@@ -1614,6 +1513,32 @@ export class UI {
       body.append(reports);
     }
     this.openSheet('reputation', 'Reputation', 'Private actions, public consequences', body, { tall: true });
+  }
+
+  private openWipeWarning(): void {
+    const me = this.priv?.you;
+    if (!me) return;
+    const affordable = me.cash >= RULES.wipeCost;
+    const body = h('div', {});
+    body.append(
+      h('div', { class: 'warning-banner' }, h('b', {}, 'This spends real cash on a coin-flip.'), h('span', {}, `${money(RULES.wipeCost)} is charged before the server rolls.`)),
+      h('div', { class: 'stat-row' }, h('span', {}, 'Cost'), h('b', {}, money(RULES.wipeCost))),
+      h('div', { class: 'stat-row' }, h('span', {}, 'Chance to erase the record'), h('b', {}, `${Math.round(RULES.wipeChance * 100)}%`)),
+      h('div', { class: 'stat-row' }, h('span', {}, 'If it succeeds'), h('b', {}, `Private acts, jail record and unpaid-rent evidence cleared · reputation ${RULES.wipeReputation} · open cases dismissed`)),
+      h('div', { class: 'stat-row' }, h('span', {}, 'If it fails'), h('b', {}, `The ${money(RULES.wipeCost)} fee is gone · every record stays`)),
+      h('p', { class: 'note bad' }, 'This is explicit and irreversible. The server rolls exactly the displayed 15% after charging the fee.'),
+    );
+    if (!affordable) body.append(h('p', { class: 'note warn' }, `You need ${money(RULES.wipeCost)} cash to buy a wipe.`));
+    body.append(
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn btn-danger', disabled: !affordable, onclick: () => {
+          this.send({ t: 'recordWipe', key: intentKey('wipe') });
+          this.closeSheet();
+        } }, `Pay ${money(RULES.wipeCost)} and spin`),
+        h('button', { class: 'btn btn-ghost', onclick: () => this.openReputation() }, 'Cancel'),
+      ),
+    );
+    this.openSheet('wipe', 'Confirm record wipe', 'Explicit confirmation · server rolls 15%', body);
   }
 
   // ----------------------------------------------------------------- crime
@@ -1765,9 +1690,9 @@ export class UI {
     body.append(
       h('div', { class: 'warning-banner' }, h('b', {}, 'This can erase a player from the board.'), h('span', {}, `Target: ${target.name}`)),
       h('div', { class: 'stat-row' }, h('span', {}, 'Success chance'), h('b', {}, `${Math.round(RULES.murderChance * 100)}%`)),
-      h('div', { class: 'stat-row' }, h('span', {}, 'If it succeeds'), h('b', {}, 'Hospital · all deeds sold · $0')),
-      h('div', { class: 'stat-row' }, h('span', {}, 'If caught (70%)'), h('b', {}, 'Jail · $1,000 fine · reputation loss')),
-      h('p', { class: 'note bad' }, 'The attempt itself costs 15 reputation. A success costs 45. A caught failure costs another 25 and sends you to jail, where the jail property-sale roll applies. The odds are displayed here exactly as the server rolls them.'),
+      h('div', { class: 'stat-row' }, h('span', {}, 'If it succeeds'), h('b', {}, 'Hospital 3 turns · $0 cash · every deed and building transfers to you')),
+      h('div', { class: 'stat-row' }, h('span', {}, 'If it fails and you are caught (70% of failures)'), h('b', {}, 'Jail · $1,000 fine · reputation loss')),
+      h('p', { class: 'note bad' }, 'The attempt itself costs 15 reputation (−45 more on success). A caught failure costs another 25 and sends you to jail, where the jail property-sale roll applies. The odds are displayed here exactly as the server rolls them.'),
     );
     body.append(
       h(
@@ -2056,6 +1981,8 @@ export class UI {
       this.toggleRow('Colourblind palette', s.colorblind, (v) => update({ colorblind: v })),
       this.uiScaleRow(),
       this.toggleRow('Show tile prices', s.showPrices, (v) => update({ showPrices: v })),
+      this.toggleRow('FPS counter', s.fpsCounter, (v) => update({ fpsCounter: v })),
+      this.toggleRow('Fast bot turns', s.fastBots, (v) => update({ fastBots: v })),
     );
     body.append(gfx);
 
@@ -2065,7 +1992,7 @@ export class UI {
     sky.append(
       this.toggleRow('Day cycle', s.skyRunning, (v) => update({ skyRunning: v })),
       this.sliderRow('Time of day', s.skyHour, (v) => update({ skyHour: v }), undefined, 0, 24, 0.25, (v) => `${String(Math.floor(v)).padStart(2, '0')}:${v % 1 ? '30' : '00'} · ${v < 5 ? 'Night' : v < 8 ? 'Sunrise' : v < 17 ? 'Day' : v < 20 ? 'Sunset' : 'Night'}`),
-      h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Current sky'), h('div', { class: 'row-sub' }, 'The board keeps its own fixed light rig; only the city and sky change.')), h('span', { class: 'chip' }, phase)),
+      h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Current sky'), h('div', { class: 'row-sub' }, 'The board keeps its own fixed light rig; only the island and sky change.')), h('span', { class: 'chip' }, phase)),
     );
     const presets = h('div', { class: 'inline', style: 'padding: 10px 14px;gap:8px;flex-wrap:wrap' });
     for (const [label, hour] of [['Sunrise', 6.5], ['Noon', 12], ['Sunset', 18.5], ['Night', 23]] as const) {
@@ -2101,16 +2028,6 @@ export class UI {
         h('button', { class: `btn btn-sm ${solo ? 'btn-danger' : 'btn-ghost'}`, disabled: !solo, title: solo ? 'Start a fresh solo table' : 'Restart applies to solo tables only', onclick: () => this.restartSession() }, 'Restart'),
       ),
     );
-    if (authToken() && !solo) {
-      session.append(
-        h(
-          'div',
-          { class: 'row' },
-          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Log out'), h('div', { class: 'row-sub' }, 'End this session on this browser. Your account and table stay saved.')),
-          h('button', { class: 'btn btn-sm btn-ghost', id: 'logout-btn', onclick: () => void this.logout() }, 'Log out'),
-        ),
-      );
-    }
     body.append(session);
 
     body.append(
@@ -2256,7 +2173,7 @@ export class UI {
       { title: '3 · Manage property', text: 'Open Properties to see your deeds. Open a deed to build, upgrade, mortgage, unmortgage or sell. Mortgaged deeds show a 3D MORTGAGED sign above the tile.', target: '[data-dock="Properties"]' },
       { title: '4 · Rent, jail and cards', text: 'Landing on another player rent opens a payment offer. Evading is a chance roll. Jail mortgages your deeds until you pay release or serve the sentence. Chance and Chest cards flip at the centre.', target: '.rail' },
       { title: '5 · Trade', text: 'In Properties → Trade, offer cash and properties. Both sides lock while the offer is open. The other side can accept, decline or counter; an accepted swap is atomic.', target: '[data-dock="Properties"]' },
-      { title: '6 · Build the skyline', text: 'Buildings create rent, and matching types reward a full colour group. Watch cash, holdings and net worth as the city grows.', target: '#dock' },
+      { title: '6 · Build the skyline', text: 'Buildings create rent, and matching types reward a full colour group. Watch cash, holdings and net worth as the skyline grows.', target: '#dock' },
       { title: 'You are ready', text: 'The table is yours. Roll, buy, build and outlast the bots. A full game ends when one player owns the board.', target: undefined },
     ];
     const step = steps[this.tutorialStep];
@@ -2313,7 +2230,12 @@ export class UI {
     }
   }
 
+  private lastToast = { text: '', at: 0 };
+
   toast(text: string, kind: 'good' | 'bad' | '' = ''): void {
+    const now = performance.now();
+    if (text === this.lastToast.text && now - this.lastToast.at < 1200) return;
+    this.lastToast = { text, at: now };
     const t = h('div', { class: `toast ${kind}` }, text);
     this.toasts.append(t);
     setTimeout(() => {
@@ -2329,8 +2251,8 @@ export class UI {
     const local = Boolean(ev.playerId && ev.playerId === me) || Boolean(ev.targetId && ev.targetId === me) || ev.kind === 'win';
     // Solo tables show bot cards and purchases on the human's screen too.
     const bot = Boolean(actor?.isBot) && this.state?.mode === 'solo' && !local;
-    if (ev.outcome && ev.playerId === me) this.showOutcome(ev.outcome);
-    if (ev.chance && local) this.queueChance(ev.chance);
+    if (ev.chance && local) this.queueChance(ev.chance, ev.playerId === me ? ev.outcome : undefined);
+    else if (ev.outcome && ev.playerId === me) this.showOutcome(ev.outcome);
     switch (ev.kind) {
       case 'roll':
         if (local) {
@@ -2338,6 +2260,9 @@ export class UI {
           this.showDice(dice);
           window.dispatchEvent(new CustomEvent('chromonopoly:dice', { detail: dice }));
           if (actor) this.ribbon(`You rolled ${dice[0]} + ${dice[1]}`);
+        } else if (bot) {
+          const dice = ev.dice ?? [1, 1];
+          this.ribbon(`${actor!.name} rolled ${dice[0] + dice[1]}`, `${dice[0]} + ${dice[1]}`);
         }
         break;
       case 'move':
@@ -2355,7 +2280,10 @@ export class UI {
           audio.play('purchase');
           this.ribbon(ev.text === 'offer' ? 'Property for sale' : 'Sold!', ev.text === 'offer' ? 'The table is waiting on you' : '');
         } else if (bot) {
-          this.ribbon(`${actor!.name} bought a property`, ev.tile !== undefined ? spaceAt(ev.tile).name : '');
+          this.ribbon(
+            ev.text === 'offer' ? `${actor!.name} has first refusal` : `${actor!.name} bought a property`,
+            ev.tile !== undefined ? spaceAt(ev.tile).name : '',
+          );
         }
         break;
       case 'rent':
@@ -2364,7 +2292,10 @@ export class UI {
           else if (ev.text === 'caught') this.ribbon('Caught evading');
           else this.ribbon(`Rent due: ${money(ev.amount ?? 0)}`);
         } else if (bot) {
-          this.ribbon(`${actor!.name} paid rent`, money(ev.amount ?? 0));
+          this.ribbon(
+            ev.text === 'evaded' ? `${actor!.name} slipped away` : ev.text === 'caught' ? `${actor!.name} was caught evading` : `${actor!.name} paid rent`,
+            ev.text === 'evaded' || ev.text === 'caught' ? 'Reputation takes the hit' : money(ev.amount ?? 0),
+          );
         }
         break;
       case 'build':
@@ -2432,6 +2363,7 @@ export class UI {
         break;
       case 'turn':
         if (local) this.ribbon('Your turn', 'Roll when you are ready');
+        else if (bot) this.ribbon(`${actor!.name}'s turn`, 'Passing the dice');
         break;
       case 'win':
         audio.play('victory');
@@ -2511,8 +2443,15 @@ export class UI {
     window.setTimeout(close, 3200);
   }
 
-  private queueChance(spec: ChanceRoll): void {
-    this.chanceQueue = this.chanceQueue.then(() => this.showChance(spec)).catch(() => undefined);
+  private queueChance(spec: ChanceRoll, outcome?: CrimeOutcome): void {
+    // The outcome card is a consequence of the stopped wheel. Showing it at
+    // event-arrival time covered the wheel and let a result appear before LANDED.
+    this.chanceQueue = this.chanceQueue
+      .then(async () => {
+        await this.showChance(spec);
+        if (outcome) this.showOutcome(outcome);
+      })
+      .catch(() => undefined);
   }
 
   private showChance(spec: ChanceRoll): Promise<void> {
@@ -2565,12 +2504,25 @@ export class UI {
       ),
     );
     document.body.append(overlay);
+    const machine = new WheelStateMachine();
+    window.__chanceWheel = machine;
+    const setState = (state: 'READY' | 'SPINNING' | 'LANDED' | 'RESULT_SHOWN' | 'CLOSED'): void => {
+      machine.transition(state);
+      overlay.dataset.state = state;
+      overlay.dataset.stateAt = String(Math.round(machine.snapshot().at));
+      window.__chanceTransitions = machine.transitions.map((entry) => ({ ...entry }));
+      if (new URLSearchParams(location.search).has('e2e')) console.debug('[wheel]', state, Math.round(machine.snapshot().at));
+    };
+    overlay.dataset.state = 'IDLE';
+    window.__chanceTransitions = machine.transitions.map((entry) => ({ ...entry }));
+    setState('READY');
     return new Promise((resolve) => {
       let done = false;
       let spun = false;
       const close = (): void => {
         if (done) return;
         done = true;
+        setState('CLOSED');
         document.body.classList.remove('chance-active');
         overlay.classList.add('closing');
         window.setTimeout(() => {
@@ -2582,6 +2534,7 @@ export class UI {
         if (spun) return;
         spun = true;
         spin.disabled = true;
+        setState('SPINNING');
         const plan = spinPlan(0, spec.rollPercent);
         const started = performance.now();
         let lastSegment = segmentAtRotation(plan.from, zones);
@@ -2601,11 +2554,19 @@ export class UI {
             return;
           }
           dial.style.transform = `rotate(${plan.from + plan.total}deg)`;
-          result.textContent = spec.result ?? (spec.success ? 'Success' : 'Failure');
-          result.classList.add(spec.success ? 'good' : 'bad');
+          setState('LANDED');
           spin.classList.add('hidden');
-          proceed.classList.remove('hidden');
-          proceed.focus();
+          // The wheel is fully stopped before the outcome is rendered. The
+          // dwell makes the LANDED frame observable and gives the pointer a
+          // beat to settle before the result card appears.
+          window.setTimeout(() => {
+            if (done) return;
+            setState('RESULT_SHOWN');
+            result.textContent = spec.result ?? (spec.success ? 'Success' : 'Failure');
+            result.classList.add(spec.success ? 'good' : 'bad');
+            proceed.classList.remove('hidden');
+            proceed.focus();
+          }, 1000);
         };
         requestAnimationFrame(tick);
       });

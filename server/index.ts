@@ -1,21 +1,17 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import bcrypt from 'bcryptjs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { World, type TestSetup } from './world.ts';
-import { Store, type Account } from './db.ts';
+import { Store } from './db.ts';
 import type { GameEvent, GameMode, Intent, ServerMessage } from '../src/game/types.ts';
+import { normalizeUsername, usernameIssue } from '../src/game/username.ts';
 
-// Hosts such as Render inject PORT; CHROMONOPOLY_PORT keeps local/test ports explicit.
 const PORT = Number(process.env.CHROMONOPOLY_PORT ?? process.env.PORT ?? 8787) || 8787;
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
-const BCRYPT_COST = 11;
-const LOGIN_WINDOW_MS = 5 * 60 * 1000;
-const LOGIN_MAX = 10;
 const BUILD = process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? 'dev';
-const PROTOCOL = 2;
+const PROTOCOL = 3;
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -31,6 +27,7 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
   '.wasm': 'application/wasm',
+  '.ktx2': 'image/ktx2',
 };
 
 const store = new Store();
@@ -43,11 +40,8 @@ interface Client {
 }
 
 const clients = new Map<WebSocket, Client>();
-/** One live socket per account. A second sign-in takes the seat over. */
-const accountSockets = new Map<string, WebSocket>();
 const events: GameEvent[] = [];
 const soloWorlds = new Map<string, { world: World; touched: number; saved?: number }>();
-const loginAttempts = new Map<string, number[]>();
 
 function clientsIn(world: World): Client[] {
   return [...clients.values()].filter((c) => c.world === world);
@@ -77,23 +71,17 @@ function newWorld(mode: GameMode): World {
 }
 
 let publicWorld = newWorld('multi');
-
-const saved = store.loadWorld();
-if (saved) {
-  publicWorld.restore(saved);
+const savedWorld = store.loadWorld();
+if (savedWorld) {
+  publicWorld.restore(savedWorld);
   publicWorld.purgeBots();
-  // A multiplayer seat must map to a surviving password account. This is the
-  // second line of defence after the one-time database purge.
-  publicWorld.purgeUnauthenticated(store.accountIds());
-  console.log(`restored public world with ${publicWorld.players.size} account players, seq ${publicWorld.seq}`);
+  console.log(`restored shared board with ${publicWorld.players.size} names, seq ${publicWorld.seq}`);
 }
 
 const BOT_TOKENS = ['dog', 'taxi', 'penguin', 'chest', 'locomotive', 'panda'];
 
 function fillSoloBots(world: World): void {
-  while ([...world.players.values()].filter((p) => p.isBot).length < 3) {
-    world.addBot(BOT_TOKENS);
-  }
+  while ([...world.players.values()].filter((p) => p.isBot).length < 3) world.addBot(BOT_TOKENS);
 }
 
 function send(ws: WebSocket, message: ServerMessage): void {
@@ -103,7 +91,7 @@ function send(ws: WebSocket, message: ServerMessage): void {
 function cors(req: IncomingMessage, res: ServerResponse): void {
   res.setHeader('access-control-allow-origin', req.headers.origin ?? '*');
   res.setHeader('vary', 'Origin');
-  res.setHeader('access-control-allow-headers', 'content-type, authorization');
+  res.setHeader('access-control-allow-headers', 'content-type');
   res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
   res.setHeader('access-control-max-age', '86400');
 }
@@ -111,44 +99,6 @@ function cors(req: IncomingMessage, res: ServerResponse): void {
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
   res.end(JSON.stringify(body));
-}
-
-async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
-  let raw = '';
-  for await (const chunk of req) {
-    raw += chunk;
-    if (raw.length > 10_000) throw new Error('Request too large');
-  }
-  try {
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    throw new Error('Invalid JSON');
-  }
-}
-
-function bearer(req: IncomingMessage): string {
-  const value = String(req.headers.authorization ?? '');
-  return value.startsWith('Bearer ') ? value.slice(7) : '';
-}
-
-function publicAccount(account: Account): { id: string; username: string } {
-  return { id: account.id, username: account.username };
-}
-
-function validUsername(username: string): boolean {
-  return /^[A-Za-z0-9_]{3,16}$/.test(username);
-}
-
-function loginLimit(key: string): boolean {
-  const now = Date.now();
-  const recent = (loginAttempts.get(key) ?? []).filter((at) => now - at < LOGIN_WINDOW_MS);
-  if (recent.length >= LOGIN_MAX) {
-    loginAttempts.set(key, recent);
-    return false;
-  }
-  recent.push(now);
-  loginAttempts.set(key, recent);
-  return true;
 }
 
 const server = createServer(async (req, res) => {
@@ -163,10 +113,10 @@ const server = createServer(async (req, res) => {
     json(res, 200, {
       ok: true,
       players: publicWorld.players.size,
+      online: [...publicWorld.players.values()].filter((p) => p.online).length,
       seq: publicWorld.seq,
       soloTables: soloWorlds.size,
       uptime: process.uptime(),
-      accounts: store.topAccounts(1000).length,
       version: BUILD,
       protocol: PROTOCOL,
     });
@@ -180,86 +130,6 @@ const server = createServer(async (req, res) => {
       return;
     }
     json(res, 200, store.soloMeta(key));
-    return;
-  }
-
-  if (url.pathname === '/api/auth/register' && req.method === 'POST') {
-    try {
-      const data = await body(req);
-      const username = String(data.username ?? '').trim();
-      const password = String(data.password ?? '');
-      if (!validUsername(username)) {
-        json(res, 400, { error: 'Username must be 3–16 letters, numbers or underscores.' });
-        return;
-      }
-      if (password.length < 6 || password.length > 128) {
-        json(res, 400, { error: 'Password must be at least 6 characters.' });
-        return;
-      }
-      const hash = await bcrypt.hash(password, BCRYPT_COST);
-      const account = store.createAccount(username, hash);
-      const token = store.createSession(account.id);
-      json(res, 201, { account: publicAccount(account), token });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not create the account.';
-      json(res, /UNIQUE/i.test(message) ? 409 : 400, {
-        error: /UNIQUE/i.test(message) ? 'That username is already taken.' : message,
-      });
-    }
-    return;
-  }
-
-  if (url.pathname === '/api/auth/login' && req.method === 'POST') {
-    try {
-      const data = await body(req);
-      const username = String(data.username ?? '').trim();
-      const password = String(data.password ?? '');
-      const ip = String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? 'unknown').split(',')[0]!.trim();
-      if (!loginLimit(`${ip}:${username.toLowerCase()}`)) {
-        json(res, 429, { error: 'Too many login attempts. Wait a few minutes and try again.' });
-        return;
-      }
-      const account = store.findAuthAccount(username);
-      const valid = account ? await bcrypt.compare(password, account.password_hash) : false;
-      if (!account || !valid) {
-        json(res, 401, { error: 'Wrong username or password.' });
-        return;
-      }
-      // A new login is the only session for this account; old tabs must not
-      // keep a stale seat alive after the user signs in on another device.
-      const token = store.replaceSession(account.id);
-      json(res, 200, { account: publicAccount(account), token });
-    } catch (error) {
-      json(res, 400, { error: error instanceof Error ? error.message : 'Login failed.' });
-    }
-    return;
-  }
-
-  if (url.pathname === '/api/auth/session' && req.method === 'GET') {
-    const account = store.sessionAccount(bearer(req));
-    if (!account) {
-      json(res, 401, { error: 'Sign in again.' });
-      return;
-    }
-    json(res, 200, { account: publicAccount(account) });
-    return;
-  }
-
-  if (url.pathname === '/api/auth/logout' && req.method === 'POST') {
-    const token = bearer(req);
-    const account = store.sessionAccount(token);
-    store.revokeSession(token);
-    if (account) {
-      const socket = accountSockets.get(account.id);
-      if (socket) socket.close(4001, 'signed out');
-      accountSockets.delete(account.id);
-    }
-    json(res, 200, { ok: true });
-    return;
-  }
-
-  if (url.pathname === '/api/leaderboard') {
-    json(res, 200, store.topAccounts(10));
     return;
   }
 
@@ -277,6 +147,7 @@ const server = createServer(async (req, res) => {
     json(res, 200, { ok: true });
     return;
   }
+
   if (url.pathname === '/api/test/scenario') {
     const loopback = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
     if (process.env.CHROMONOPOLY_TEST !== '1' || !loopback || req.method !== 'POST') {
@@ -288,7 +159,11 @@ const server = createServer(async (req, res) => {
     try {
       const parsed = JSON.parse(raw) as { session?: string; setup?: TestSetup; mode?: GameMode };
       if (!parsed.session || !parsed.setup) throw new Error('session and setup are required');
-      const targetWorld = parsed.mode === 'solo' ? soloWorlds.get(parsed.session)?.world : publicWorld;
+      const targetWorld = parsed.mode === 'solo'
+        ? [...soloWorlds.values()].map((entry) => entry.world).find((world) =>
+            [...world.players.values()].some((player) => player.session === parsed.session),
+          )
+        : publicWorld;
       if (!targetWorld) throw new Error('no world for that session');
       const result = targetWorld.testSetup(parsed.session, parsed.setup);
       json(res, result.ok ? 200 : 400, result);
@@ -298,8 +173,6 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // Never let an unknown API route fall through to the SPA shell: an HTML 200
-  // once made an old server look healthy while every real API call was broken.
   if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
     json(res, 404, { error: 'Unknown API route.' });
     return;
@@ -347,8 +220,8 @@ wss.on('connection', (ws) => {
       name?: string;
       tokenId?: string;
       session?: string;
+      playerToken?: string;
       mode?: GameMode;
-      authToken?: string;
       soloKey?: string;
       fresh?: boolean;
       color?: string;
@@ -362,10 +235,11 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'hello') {
       const mode: GameMode = msg.mode === 'solo' ? 'solo' : 'multi';
-      const account = mode === 'multi' ? store.sessionAccount(String(msg.authToken ?? '')) : null;
-      if (mode === 'multi' && !account) {
-        send(ws, { type: 'rejected', reason: 'Sign in to join multiplayer.' });
-        ws.close(4001, 'authentication required');
+      const name = normalizeUsername(String(msg.name ?? ''));
+      const issue = usernameIssue(name);
+      if (issue) {
+        send(ws, { type: 'rejected', reason: issue });
+        ws.close(4003, issue);
         return;
       }
       const tokenId = String(msg.tokenId ?? 'cat');
@@ -388,31 +262,39 @@ wss.on('connection', (ws) => {
           if (saved) world.restore(saved);
         }
       }
-      const name = account?.username ?? (String(msg.name ?? '').trim() || 'Tycoon');
-      if (account) {
-        const existing = accountSockets.get(account.id);
-        if (existing && existing !== ws) {
-          existing.close(4002, 'Signed in on another device.');
-        }
-        accountSockets.set(account.id, ws);
-      }
-      // A restored single-player table already holds its human seat; reuse that
-      // seat instead of seating a second copy of the player.
       const seated = mode === 'solo' ? [...world.players.values()].find((p) => !p.isBot) : undefined;
-      const { player, session } = world.join(name, tokenId, seated?.session ?? msg.session, account?.id, color);
+      let joined: ReturnType<World['join']>;
+      try {
+        joined = world.join(
+          name,
+          tokenId,
+          mode === 'solo' ? seated?.session ?? msg.session : msg.session,
+          mode === 'multi' ? String(msg.playerToken ?? '') : undefined,
+          color,
+        );
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'That name is already taken.';
+        send(ws, { type: 'rejected', reason });
+        ws.close(4003, reason);
+        return;
+      }
       if (mode === 'solo') {
         if (!known) fillSoloBots(world);
-        const key = soloSave || session;
+        const key = soloSave || joined.session;
         const entry = soloWorlds.get(key) ?? { world, touched: Date.now() };
         entry.world = world;
         entry.touched = Date.now();
         soloWorlds.set(key, entry);
+      } else {
+        joined.player.online = true;
+        joined.player.offlineSince = 0;
+        world.processOfflineSales(joined.player.id);
       }
-      client = { ws, playerId: player.id, world, mode };
+      client = { ws, playerId: joined.player.id, world, mode };
       clients.set(ws, client);
-      send(ws, { type: 'welcome', playerId: player.id, session, mode });
+      send(ws, { type: 'welcome', playerId: joined.player.id, session: joined.session, mode });
       send(ws, { type: 'state', state: world.publicState() });
-      send(ws, { type: 'private', private: world.privateState(player.id) });
+      send(ws, { type: 'private', private: world.privateState(joined.player.id) });
       return;
     }
 
@@ -444,8 +326,8 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (!client) return;
     if (client.mode === 'multi') {
-      const account = [...accountSockets.entries()].find(([, socket]) => socket === ws);
-      if (account) accountSockets.delete(account[0]);
+      client.world.disconnect(client.playerId);
+      store.saveWorld(publicWorld.snapshot());
     }
     clients.delete(ws);
     client = null;
@@ -471,18 +353,20 @@ setInterval(() => {
         try {
           send(c.ws, { type: 'private', private: world.privateState(c.playerId) });
         } catch {
-          // A disconnect owns this client. The next tick will skip it.
+          // Disconnected clients are cleaned up by their close handler.
         }
       }
     }
   }
+
+  // One job for every disconnected name. No per-player timers.
+  publicWorld.processOfflineSales();
 
   if (publicWorld.dirty) {
     publicWorld.dirty = false;
     store.saveWorld(publicWorld.snapshot());
   }
 
-  // Autosave every single-player table to its browser key, at most every 1.5 s.
   for (const [key, entry] of soloWorlds) {
     if (!entry.world.dirty || Date.now() - (entry.saved ?? 0) < 1500) continue;
     entry.world.dirty = false;

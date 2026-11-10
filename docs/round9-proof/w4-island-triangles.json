@@ -1,0 +1,74 @@
+{
+  "audit": {
+    "triangles": 4392,
+    "details": 58,
+    "petals": 90,
+    "skyOnly": true
+  },
+  "views": [
+    {
+      "angle": 0,
+      "stats": {
+        "triangles": 4392,
+        "details": 58,
+        "petals": 90,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 95,
+        "calls": 480,
+        "triangles": 39472,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "angle": 1,
+      "stats": {
+        "triangles": 4392,
+        "details": 58,
+        "petals": 90,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 113,
+        "calls": 477,
+        "triangles": 39466,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "angle": 2,
+      "stats": {
+        "triangles": 4392,
+        "details": 58,
+        "petals": 90,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 131,
+        "calls": 478,
+        "triangles": 39468,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "angle": 3,
+      "stats": {
+        "triangles": 4392,
+        "details": 58,
+        "petals": 90,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 150,
+        "calls": 478,
+        "triangles": 39468,
+        "points": 900,
+        "lines": 0
+      }
+    }
+  ]
+}

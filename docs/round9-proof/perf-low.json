@@ -1,0 +1,96 @@
+{
+  "measuredAt": "2026-11-09T23:46:35.729Z",
+  "machine": "local",
+  "viewport": "1280x720",
+  "quality": "low",
+  "mode": "solo table, HUD visible",
+  "coldLoad": {
+    "wallMs": 705,
+    "cacheDisabled": true,
+    "timing": {
+      "domContentLoaded": 100,
+      "load": 100,
+      "readyMark": 428,
+      "now": 704
+    }
+  },
+  "runs": [
+    {
+      "label": "Low · 1280x720 · unthrottled",
+      "cpuThrottle": 1,
+      "gpuPixelRatio": 1,
+      "samples": 449,
+      "durationMs": 6000,
+      "averageMs": 13.33,
+      "fps": 75,
+      "p95Ms": 13.4,
+      "over20ms": 0,
+      "over33ms": 0,
+      "render": {
+        "frame": 665,
+        "calls": 453,
+        "triangles": 39178,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "label": "Low · 1280x720 · 4× CPU",
+      "cpuThrottle": 4,
+      "gpuPixelRatio": 1,
+      "samples": 449,
+      "durationMs": 6000,
+      "averageMs": 13.33,
+      "fps": 75,
+      "p95Ms": 13.4,
+      "over20ms": 0,
+      "over33ms": 0,
+      "render": {
+        "frame": 1163,
+        "calls": 453,
+        "triangles": 39178,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "label": "Low · 1280x720 · 2× GPU workload",
+      "cpuThrottle": 1,
+      "gpuPixelRatio": 1.4142135623730951,
+      "samples": 449,
+      "durationMs": 6000,
+      "averageMs": 13.33,
+      "fps": 75,
+      "p95Ms": 13.4,
+      "over20ms": 0,
+      "over33ms": 0,
+      "render": {
+        "frame": 1661,
+        "calls": 453,
+        "triangles": 39178,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "label": "Low · 1280x720 · 4× CPU + 2× GPU",
+      "cpuThrottle": 4,
+      "gpuPixelRatio": 1.4142135623730951,
+      "samples": 449,
+      "durationMs": 6000,
+      "averageMs": 13.33,
+      "fps": 75,
+      "p95Ms": 13.4,
+      "over20ms": 0,
+      "over33ms": 0,
+      "render": {
+        "frame": 2158,
+        "calls": 453,
+        "triangles": 39178,
+        "points": 900,
+        "lines": 0
+      }
+    }
+  ],
+  "errors": []
+}

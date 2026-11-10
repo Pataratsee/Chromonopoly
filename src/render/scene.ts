@@ -16,6 +16,7 @@ export class CameraRig {
   private snapFrom: { yaw: number; pitch: number; radius: number; target: THREE.Vector3 } | null = null;
   private snapStart = 0;
   private snapDuration = 0;
+  private readonly followPoint = new THREE.Vector3();
   manualUntil = 0;
 
   constructor(
@@ -48,6 +49,7 @@ export class CameraRig {
     // Keep the subject in the middle: the old framingY deliberately pushed a
     // followed piece above centre, which is the complaint this fixes.
     this.wantTarget.set(point.x, point.y + 0.12, point.z);
+    this.clampPivot(this.wantTarget);
     if (radius) this.wantRadius = THREE.MathUtils.clamp(radius, CAMERA.minRadius, CAMERA.maxRadius);
     this.manualUntil = performance.now() + CAMERA.followResumeMs * 2;
   }
@@ -71,6 +73,7 @@ export class CameraRig {
   /** Explicitly follow a moving token without the manual-camera cooldown. */
   track(point: THREE.Vector3): void {
     this.wantTarget.set(point.x, point.y + 0.12, point.z);
+    this.clampPivot(this.wantTarget);
   }
 
   /** Resolves after the camera has really reached its requested framing. */
@@ -93,10 +96,23 @@ export class CameraRig {
   /** Camera follows a point unless the player just orbited manually. */
   follow(point: THREE.Vector3, dt: number): void {
     if (performance.now() < this.manualUntil) return;
-    this.wantTarget.lerp(new THREE.Vector3(point.x, point.y + 0.12, point.z), Math.min(1, dt * CAMERA.followLerp));
+    this.followPoint.set(point.x, point.y + 0.12, point.z);
+    this.wantTarget.lerp(this.followPoint, Math.min(1, dt * CAMERA.followLerp));
+    this.clampPivot(this.wantTarget);
     // Follow is a close three-quarter shot: damp toward the tight radius so a
     // piece is large and centred, never a dot in the middle of the board.
     this.wantRadius = THREE.MathUtils.damp(this.wantRadius, CAMERA.followRadius, CAMERA.followLerp, dt);
+  }
+
+  /** Keep the board centred even when a followed piece reaches an edge tile. */
+  private clampPivot(point: THREE.Vector3): void {
+    const radius = Math.hypot(point.x, point.z);
+    if (radius > CAMERA.pivotRadius) {
+      const scale = CAMERA.pivotRadius / radius;
+      point.x *= scale;
+      point.z *= scale;
+    }
+    point.y = THREE.MathUtils.clamp(point.y, -2.4, 0.4);
   }
 
   update(dt: number): void {
@@ -115,6 +131,7 @@ export class CameraRig {
       this.radius += (this.wantRadius - this.radius) * k;
       this.target.lerp(this.wantTarget, k);
     }
+    this.clampPivot(this.target);
     const sin = Math.sin(this.pitch);
     this.camera.position.set(
       this.target.x + Math.sin(this.yaw) * Math.cos(this.pitch) * this.radius,
@@ -196,9 +213,9 @@ export class Stage {
     front.position.set(-3, 6, 16);
     this.scene.add(front);
 
-    // City time-of-day variation lives in CityLayer's materials. A second
-    // "city-only" light rig cannot work: real-time lights are scene-global,
-    // so changing them also relit the board (the Round 7 U11 failure).
+    // The island owns its own time-of-day materials. A second "island-only"
+    // light rig cannot work: real-time lights are scene-global, so changing
+    // them also relit the board (the Round 7 U11 failure).
   }
 
   setQuality(quality: QualityKey): void {
@@ -232,6 +249,10 @@ export class Stage {
 
   get domElement(): HTMLCanvasElement {
     return this.renderer.domElement;
+  }
+
+  stats(): { triangles: number; calls: number; points: number; lines: number } {
+    return { ...this.renderer.info.render };
   }
 
   worldPoint(ndc: THREE.Vector2): THREE.Vector3 {

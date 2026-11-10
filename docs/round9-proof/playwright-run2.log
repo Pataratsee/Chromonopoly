@@ -1,0 +1,51 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test tests/e2e/round9.spec.ts --reporter=line --grep W1:|W3/W6|W5:|W4:
+[WebServer] npm notice run chromonopoly@3.0.0 start
+
+[WebServer] npm notice run node dist-server/index.js
+
+
+Running 4 tests using 1 worker
+
+[1/4] tests/e2e/round9.spec.ts:149:1 › W1: username validation, seat reconnect and second-browser reclaim
+[2/4] tests/e2e/round9.spec.ts:195:1 › W3/W6: cash chip in every spending panel and one global error toast above them
+  1) tests/e2e/round9.spec.ts:195:1 › W3/W6: cash chip in every spending panel and one global error toast above them 
+
+    Error: {"ok":false,"reason":"no world for that session"}
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      82 |     { sessionKey: session, bodyMode: mode, bodySetup: setup },
+      83 |   );
+    > 84 |   expect(result.status, JSON.stringify(result.body)).toBe(200);
+         |                                                      ^
+      85 | }
+      86 |
+      87 | async function closeSheet(page: Page): Promise<void> {
+        at scenario (/home/christian/Desktop/LittleProjects/Chromonopoly 3.0/tests/e2e/round9.spec.ts:84:54)
+        at /home/christian/Desktop/LittleProjects/Chromonopoly 3.0/tests/e2e/round9.spec.ts:201:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/round9-W3-W6-cash-chip-in--0df3f-obal-error-toast-above-them/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/round9-W3-W6-cash-chip-in--0df3f-obal-error-toast-above-them/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/round9-W3-W6-cash-chip-in--0df3f-obal-error-toast-above-them/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/round9-W3-W6-cash-chip-in--0df3f-obal-error-toast-above-them/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/4] tests/e2e/round9.spec.ts:243:1 › W5: wheel IDLE→CLOSED with 100 ms samples and no result before LANDED
+[4/4] tests/e2e/round9.spec.ts:307:1 › W4: four island angles, triangle audit and render stats
+  1 failed
+    tests/e2e/round9.spec.ts:195:1 › W3/W6: cash chip in every spending panel and one global error toast above them 
+  2 did not run
+  1 passed (53.9s)

@@ -91,30 +91,30 @@ describe('rent', () => {
   });
 
   it('applies building rent for each type', () => {
-    const t = tiles([[1, { ownerId: 'a', building: 'house' }]]);
+    const t = tiles([[1, { ownerId: 'a', buildings: [{ type: 'house', rank: 1 }] }]]);
     expect(rentFor(1, t, 7)).toBe(10);
-    t[1]!.building = 'apartments';
+    t[1]!.buildings = [{ type: 'apartments', rank: 1 }];
     expect(rentFor(1, t, 7)).toBe(4);
-    t[1]!.building = 'office';
+    t[1]!.buildings = [{ type: 'office', rank: 1 }];
     expect(rentFor(1, t, 7)).toBe(8);
-    t[1]!.building = 'hotel';
+    t[1]!.buildings = [{ type: 'hotel', rank: 1 }];
     expect(rentFor(1, t, 7)).toBe(250);
-    t[1]!.building = 'landmark';
+    t[1]!.buildings = [{ type: 'landmark', rank: 1 }];
     expect(rentFor(1, t, 7)).toBe(26);
   });
 
   it('adds the shop and restaurant synergy only across the full group', () => {
-    const base = tiles([[1, { ownerId: 'a', building: 'corner_shop' }]]);
+    const base = tiles([[1, { ownerId: 'a', buildings: [{ type: 'corner_shop', rank: 1 }] }]]);
     expect(buildingRent(spaceAt(1), 'corner_shop', base)).toBe(4);
     const syn = tiles([
-      [1, { ownerId: 'a', building: 'corner_shop' }],
-      [3, { ownerId: 'a', building: 'corner_shop' }],
+      [1, { ownerId: 'a', buildings: [{ type: 'corner_shop', rank: 1 }] }],
+      [3, { ownerId: 'a', buildings: [{ type: 'corner_shop', rank: 1 }] }],
     ]);
     expect(hasTypeSynergy(1, 'corner_shop', syn)).toBe(true);
     expect(buildingRent(spaceAt(1), 'corner_shop', syn)).toBe(4);
     const restaurant = tiles([
-      [1, { ownerId: 'a', building: 'restaurant' }],
-      [3, { ownerId: 'a', building: 'restaurant' }],
+      [1, { ownerId: 'a', buildings: [{ type: 'restaurant', rank: 1 }] }],
+      [3, { ownerId: 'a', buildings: [{ type: 'restaurant', rank: 1 }] }],
     ]);
     expect(buildingRent(spaceAt(1), 'restaurant', restaurant)).toBe(Math.round(2 * 3 * 1.1));
   });
@@ -171,7 +171,7 @@ describe('mortgage and loans', () => {
       cash: 100,
       holdings: { '1': 500 },
     } as unknown as PlayerPrivate;
-    const t = tiles([[1, { ownerId: 'a', building: 'house' }]]);
+    const t = tiles([[1, { ownerId: 'a', buildings: [{ type: 'house', rank: 1 }] }]]);
     const worth = netWorth(player, t, { 1: 120 });
     expect(worth).toBe(100 + 60 + 25 + 60);
   });
@@ -196,7 +196,7 @@ describe('stock market', () => {
     const t = tiles();
     const plain = fundamental(1, t);
     t[1]!.ownerId = 'a';
-    t[1]!.building = 'hotel';
+    t[1]!.buildings = [{ type: 'hotel', rank: 1 }];
     expect(fundamental(1, t)).toBeGreaterThan(plain);
   });
 
@@ -251,8 +251,8 @@ describe('crime and justice', () => {
 describe('board consistency', () => {
   it('counts buildings for the 60 plot cap', () => {
     const t = tiles([
-      [1, { ownerId: 'a', building: 'house' }],
-      [3, { ownerId: 'a', building: 'corner_shop' }],
+      [1, { ownerId: 'a', buildings: [{ type: 'house', rank: 1 }] }],
+      [3, { ownerId: 'a', buildings: [{ type: 'corner_shop', rank: 1 }] }],
     ]);
     expect(groupBuildingCount(t)).toBe(2);
   });

@@ -1,0 +1,13 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test -g W4:|W7:|W13:|W9/W10/W11/W12:
+[WebServer] npm notice run chromonopoly@3.0.0 start
+[WebServer] npm notice run node dist-server/index.js
+
+Running 4 tests using 1 worker
+
+  ✓  1 tests/e2e/round9.spec.ts:312:1 › W4: four island angles, triangle audit and render stats (27.3s)
+  ✓  2 tests/e2e/round9.spec.ts:365:1 › W13: rival dice, tile follow, landing pause, zoom-out and turn pass (38.7s)
+  ✓  3 tests/e2e/round9.spec.ts:441:1 › W7: live drag, wheel zoom and resize keep the pivot inside its radius (26.7s)
+  ✓  4 tests/e2e/round9.spec.ts:476:1 › W9/W10/W11/W12: rent example, transfer warning, wipe wheel and live market (2.4m)
+
+  4 passed (4.0m)

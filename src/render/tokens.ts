@@ -235,6 +235,13 @@ export class TokenLayer {
 
   private land(visual: TokenVisual): void {
     visual.progress = 1;
+    // A state update can retarget a piece while its current hop is still in
+    // flight. Landing on the stale hop would snap it back and report a false
+    // centre mismatch, so queue the remaining path to the authoritative tile.
+    if (visual.nextTile !== visual.targetTile) {
+      this.startPath(visual);
+      return;
+    }
     this.snap(visual);
     if (visual.landedLogged) return;
     visual.landedLogged = true;

@@ -5,7 +5,7 @@ import { createBoard, pickTile, type BoardView } from './board/board';
 import { SPACES } from './game/board';
 import { TokenLayer } from './render/tokens';
 import { BuildingLayer } from './render/buildings';
-import { CityLayer } from './render/city';
+import { IslandLayer } from './board/island';
 import { Sky } from './board/sky';
 import { DiceLayer } from './board/dice';
 import { JailCageLayer } from './board/jail';
@@ -44,6 +44,11 @@ declare global {
     __sky?: Sky;
     __music?: () => ReturnType<typeof audio.musicInfo>;
     __skipSong?: () => void;
+    __net?: NetClient;
+    __islandStats?: () => { triangles: number; details: number; petals: number; skyOnly: true };
+    __islandProof?: (index: number) => { triangles: number; details: number; petals: number; skyOnly: true };
+    __renderStats?: () => { triangles: number; calls: number; points: number; lines: number } | null;
+    __botLog?: Array<{ at: number; player?: string; event: string; detail?: string | number }>;
   }
 }
 
@@ -63,9 +68,6 @@ async function start(): Promise<void> {
   const stage = new Stage(canvas, settings.quality);
   stage.camera.layers.enable(2);
   const testParams = new URLSearchParams(location.search);
-  const fastTest = testParams.has('e2e') && !testParams.has('visual');
-  // Browser proofs keep the visual city, but software WebGL cannot render it
-  // at high quality inside a normal test timeout.
   if (testParams.has('e2e')) stage.setQuality('low');
   const board: BoardView = await createBoard();
   stage.scene.add(board.group);
@@ -73,11 +75,11 @@ async function start(): Promise<void> {
   sky.setRunning(settings.skyRunning);
   sky.setHour(settings.skyHour);
   stage.scene.add(sky.group);
-  // Fast functional browser tests skip the 80-model city; visual tests and play render it.
-  const city = fastTest ? null : new CityLayer(stage.scene);
+  const island = new IslandLayer(stage.scene);
   if (testParams.has('e2e')) {
     window.__stage = stage;
     window.__sky = sky;
+    (window as unknown as { __island: IslandLayer }).__island = island;
     window.__music = () => audio.musicInfo();
     window.__skipSong = () => audio.skipSong();
   }
@@ -90,6 +92,20 @@ async function start(): Promise<void> {
 
   let state: PublicState | null = null;
   let activeId: string | null = null;
+  let fpsEl: HTMLElement | null = null;
+  const setFpsCounter = (visible: boolean): void => {
+    if (!visible) {
+      fpsEl?.remove();
+      fpsEl = null;
+      return;
+    }
+    if (fpsEl) return;
+    fpsEl = document.createElement('div');
+    fpsEl.id = 'fps-counter';
+    fpsEl.className = 'fps-counter glass';
+    fpsEl.textContent = '-- FPS';
+    document.body.append(fpsEl);
+  };
 
   const ui = new UI({
     net,
@@ -104,9 +120,12 @@ async function start(): Promise<void> {
       audio.duck(false);
       sky.setRunning(next.skyRunning);
       sky.setHour(next.skyHour);
+      setFpsCounter(next.fpsCounter);
       document.body.classList.toggle('reduced-motion', next.reducedMotion);
     },
   });
+  window.__net = net;
+  window.__islandStats = () => island.audit();
 
   const resize = (): void => stage.resize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', resize);
@@ -300,7 +319,9 @@ async function start(): Promise<void> {
     cages.sync(next.players, board.tilePoint(10));
     ui.setState(next);
     const id = net.playerId;
-    if (id && next.players[id]) activeId = id;
+    const soloTurn = next.mode === 'solo' ? next.activePlayerId : null;
+    if (soloTurn) activeId = soloTurn;
+    else if (id && next.players[id]) activeId = id;
     for (const waiter of [...stateWaiters]) {
       const p = next.players[waiter.id];
       if (p && p.position !== waiter.from) waiter.finish(p.position);
@@ -310,7 +331,92 @@ async function start(): Promise<void> {
   net.onState = applyState;
   net.onPrivate = (p) => {
     ui.setPrivate(p);
-    activeId = p.you.id;
+    if (net.mode !== 'solo' || !state?.activePlayerId) activeId = p.you.id;
+  };
+  interface BotLogEntry { at: number; player?: string; event: string; detail?: string | number }
+  const botLog: BotLogEntry[] = [];
+  const noteBot = (event: string, player?: string, detail?: string | number): void => {
+    const entry = { at: Math.round(performance.now()), player, event, detail };
+    botLog.push(entry);
+    window.__botLog = botLog;
+    if (new URLSearchParams(location.search).has('e2e')) console.debug('[bot]', entry);
+  };
+  const waitForToken = (id: string, target: number, timeoutMs = 5000): Promise<void> =>
+    new Promise((resolve) => {
+      const start = performance.now();
+      const tick = (): void => {
+        const actual = tokens.positionOf(id);
+        const center = board.tilePoint(target);
+        const distance = actual ? Math.hypot(actual.x - center.x, actual.z - center.z) : Infinity;
+        if ((tokens.isIdle(id) && distance < 0.05) || performance.now() - start > timeoutMs) resolve();
+        else requestAnimationFrame(tick);
+      };
+      tick();
+    });
+  const waitForCard = async (): Promise<void> => {
+    const start = performance.now();
+    while (document.getElementById('card-draw') && performance.now() - start < 3600) await hold(100);
+  };
+  interface BotTurn { ev: GameEvent; events: GameEvent[] }
+  let botPresenting = false;
+  let activeBotTurn: BotTurn | null = null;
+  const botTurns: BotTurn[] = [];
+  const presentBotTurn = async (turn: BotTurn): Promise<void> => {
+    const ev = turn.ev;
+    const botId = ev.playerId!;
+    const before = state?.players[botId];
+    const from = before?.position ?? 0;
+    const diceResult = (ev.dice ?? [1, 1]) as [number, number];
+    const total = diceResult[0] + diceResult[1];
+    noteBot('roll', botId, `${diceResult[0]}+${diceResult[1]}=${total}`);
+    stage.rig.focusDice();
+    dice.start();
+    dice.settle(diceResult);
+    await dice.whenSettled(1900);
+    await hold(ui.settingsValue.fastBots ? 100 : 320);
+    ui.ribbon(`${before?.name ?? 'Rival'} rolled ${total}`, `${diceResult[0]} + ${diceResult[1]}`);
+
+    const changed = await waitForPositionChange(botId, from, 2200);
+    const target = changed ?? state?.players[botId]?.position ?? from;
+    const startPoint = board.tilePoint(from);
+    stage.rig.focus(new THREE.Vector3(startPoint.x * 0.55, 0.2, startPoint.z * 0.55), CAMERA.followRadius);
+    await stage.rig.whenSettled(900);
+    followPieceId = botId;
+    noteBot('follow', botId, `tile ${from}→${target}`);
+    await waitForToken(botId, target);
+    followPieceId = null;
+    noteBot('landed', botId, SPACES[target]?.name ?? target);
+    const pause = ui.settingsValue.fastBots ? 260 : 900;
+    await hold(pause);
+    noteBot('pause', botId, pause);
+
+    stage.rig.reset();
+    await stage.rig.whenSettled(1900);
+    noteBot('zoom-out', botId);
+    for (const action of turn.events) {
+      noteBot(action.kind, botId, action.text ?? action.amount);
+      ui.event(action);
+      if (action.kind === 'card') await waitForCard();
+      else await hold(ui.settingsValue.fastBots ? 80 : 260);
+    }
+    turn.events = [];
+  };
+  const drainBotTurns = async (): Promise<void> => {
+    if (botPresenting) return;
+    botPresenting = true;
+    try {
+      while (botTurns.length) {
+        activeBotTurn = botTurns.shift()!;
+        await presentBotTurn(activeBotTurn);
+      }
+    } catch (error) {
+      ui.toast(error instanceof Error ? error.message : 'A rival turn could not be presented.', 'bad');
+      stage.rig.reset();
+      followPieceId = null;
+    } finally {
+      activeBotTurn = null;
+      botPresenting = false;
+    }
   };
   net.onEvent = (ev) => {
     const local = net.playerId;
@@ -325,12 +431,26 @@ async function start(): Promise<void> {
       ui.event(ev);
       return;
     }
+    const actor = ev.playerId ? state?.players[ev.playerId] : null;
     const isLocal = Boolean(
       local && (ev.playerId === local || ev.targetId === local || ev.audience?.includes(local)),
     );
     if (turnActive && isLocal) {
       bufferedLocal.push(ev);
       return;
+    }
+    if (ev.kind === 'roll' && actor?.isBot && state?.mode === 'solo') {
+      ui.event(ev);
+      botTurns.push({ ev, events: [] });
+      void drainBotTurns();
+      return;
+    }
+    if (botPresenting && (ev.kind === 'turn' || (actor?.isBot && state?.mode === 'solo'))) {
+      const owner = botTurns.find((turn) => turn.ev.playerId === ev.playerId) ?? activeBotTurn;
+      if (owner) {
+        owner.events.push(ev);
+        return;
+      }
     }
     ui.event(ev);
   };
@@ -356,6 +476,8 @@ async function start(): Promise<void> {
   let pointerDown = false;
   let downX = 0;
   let downY = 0;
+  const activePointers = new Map<number, { x: number; y: number }>();
+  let pinchSpan = 0;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let hover: number | null = null;
@@ -367,6 +489,11 @@ async function start(): Promise<void> {
 
   canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activePointers.size === 2) {
+      const [a, b] = [...activePointers.values()];
+      pinchSpan = Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0));
+    }
     pointerDown = true;
     downX = e.clientX;
     downY = e.clientY;
@@ -377,6 +504,15 @@ async function start(): Promise<void> {
   });
 
   canvas.addEventListener('pointermove', (e) => {
+    if (activePointers.has(e.pointerId)) activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activePointers.size === 2) {
+      const [a, b] = [...activePointers.values()];
+      const span = Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0));
+      if (pinchSpan > 0) stage.rig.zoom((pinchSpan - span) * 2.2);
+      pinchSpan = span;
+      dragging = false;
+      return;
+    }
     if (pointerDown) {
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
@@ -398,6 +534,8 @@ async function start(): Promise<void> {
   });
 
   const endPointer = (e: PointerEvent): void => {
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) pinchSpan = 0;
     if (!pointerDown) return;
     pointerDown = false;
     if (!dragging) {
@@ -414,7 +552,9 @@ async function start(): Promise<void> {
     dragging = false;
   };
   canvas.addEventListener('pointerup', endPointer);
-  canvas.addEventListener('pointercancel', () => {
+  canvas.addEventListener('pointercancel', (e) => {
+    activePointers.delete(e.pointerId);
+    pinchSpan = 0;
     pointerDown = false;
     dragging = false;
   });
@@ -486,15 +626,23 @@ async function start(): Promise<void> {
   // follow the active token, and resume after manual orbit
   const followTarget = new THREE.Vector3();
   let last = performance.now();
+  let fpsFrames = 0;
+  let fpsSince = last;
 
   const loop = (): void => {
     const now = performance.now();
+    fpsFrames += 1;
+    if (fpsEl && now - fpsSince > 500) {
+      fpsEl.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} FPS`;
+      fpsFrames = 0;
+      fpsSince = now;
+    }
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     stage.rig.update(dt);
     const skyState = sky.update(dt);
-    city?.setSky(skyState);
-    city?.update(dt, now / 1000);
+    island.setSky(skyState);
+    island.update(dt, now / 1000, stage.camera);
     dice.update(dt, now);
     cages.update(now);
     board.tick(now / 1000, stage.camera);
@@ -514,7 +662,7 @@ async function start(): Promise<void> {
       }
       if (ui.settingsValue.followCamera && performance.now() > stage.rig.manualUntil) stage.rig.follow(followTarget, dt);
     }
-    stage.render();
+    if (!document.hidden) stage.render();
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -533,6 +681,29 @@ async function start(): Promise<void> {
       const p = board.tilePoint(index);
       return { x: p.x, y: p.y, z: p.z };
     };
+    window.__islandProof = (index: number) => {
+      const angles = [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75];
+      const angle = angles[index % 4] ?? angles[0]!;
+      stage.rig.yaw = angle;
+      stage.rig.pitch = 0.24;
+      stage.rig.radius = 29;
+      stage.rig.target.set(0, -2.25, 0);
+      // Private fields are plain runtime properties; the proof hook sets all of
+      // them so the normal damping cannot move the four framing shots.
+      const rig = stage.rig as unknown as { wantYaw: number; wantPitch: number; wantRadius: number; wantTarget: THREE.Vector3; snapFrom: null; manualUntil: number };
+      rig.wantYaw = angle;
+      rig.wantPitch = 0.24;
+      rig.wantRadius = 29;
+      rig.wantTarget.set(0, -2.25, 0);
+      rig.snapFrom = null;
+      rig.manualUntil = performance.now() + 60_000;
+      stage.rig.update(1);
+      island.setSky(sky.update(0));
+      island.update(0, performance.now() / 1000, stage.camera);
+      stage.render();
+      return island.audit();
+    };
+    window.__renderStats = () => stage.stats();
     (window as unknown as { __state: () => unknown }).__state = () => state;
   }
 

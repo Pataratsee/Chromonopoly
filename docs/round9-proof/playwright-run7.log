@@ -1,0 +1,56 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test tests/e2e/round9.spec.ts --reporter=line --grep W5:|W4:
+[WebServer] npm notice run chromonopoly@3.0.0 start
+
+[WebServer] npm notice run node dist-server/index.js
+
+
+Running 2 tests using 1 worker
+
+[1/2] tests/e2e/round9.spec.ts:243:1 › W5: wheel IDLE→CLOSED with 100 ms samples and no result before LANDED
+  1) tests/e2e/round9.spec.ts:243:1 › W5: wheel IDLE→CLOSED with 100 ms samples and no result before LANDED 
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('#chance-overlay')
+    Expected: "LANDED"
+    Received: "RESULT_SHOWN"
+    Timeout:  12000ms
+
+    Call log:
+      - Expect "toHaveAttribute" locator('#chance-overlay') with timeout 12000ms
+      - waiting for locator('#chance-overlay')
+        12 × locator resolved to <div role="dialog" data-chance="20" aria-modal="true" id="chance-overlay" data-state-at="9520" data-state="SPINNING" class="chance-overlay" aria-label="Bank robbery · 50,000">…</div>
+           - unexpected value "SPINNING"
+        8 × locator resolved to <div role="dialog" data-chance="20" aria-modal="true" id="chance-overlay" data-state-at="17093" class="chance-overlay" data-state="RESULT_SHOWN" aria-label="Bank robbery · 50,000">…</div>
+          - unexpected value "RESULT_SHOWN"
+
+
+      272 |   });
+      273 |   await overlay.getByRole('button', { name: 'Spin', exact: true }).click();
+    > 274 |   await expect(overlay).toHaveAttribute('data-state', 'LANDED', { timeout: 12_000 });
+          |                         ^
+      275 |   await page.screenshot({ path: `${PROOF}/w5-wheel-landed-before-result.png` });
+      276 |   await expect(overlay).toHaveAttribute('data-state', 'RESULT_SHOWN', { timeout: 3000 });
+      277 |   await page.screenshot({ path: `${PROOF}/w5-wheel-result-after-stop.png` });
+        at /home/christian/Desktop/LittleProjects/Chromonopoly 3.0/tests/e2e/round9.spec.ts:274:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/round9-W5-wheel-IDLE→CLOSE-4f069-and-no-result-before-LANDED/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/round9-W5-wheel-IDLE→CLOSE-4f069-and-no-result-before-LANDED/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/round9-W5-wheel-IDLE→CLOSE-4f069-and-no-result-before-LANDED/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/round9-W5-wheel-IDLE→CLOSE-4f069-and-no-result-before-LANDED/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[2/2] tests/e2e/round9.spec.ts:310:1 › W4: four island angles, triangle audit and render stats
+  1 failed
+    tests/e2e/round9.spec.ts:243:1 › W5: wheel IDLE→CLOSED with 100 ms samples and no result before LANDED 
+  1 did not run

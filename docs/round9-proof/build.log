@@ -1,0 +1,17 @@
+npm notice run chromonopoly@3.0.0 build
+npm notice run node scripts/check-no-handmade-models.js && tsc --noEmit && vite build && node scripts/build-server.mjs
+NO-HANDMADE-MODELS CHECK PASSED — 31 source files scanned, 100 licensed token models, 32 licensed building models, 0 primitive objects outside src/board and src/ui.
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 46 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.92 kB │ gzip:   0.46 kB
+dist/assets/index-Br336y_F.css     47.68 kB │ gzip:  10.86 kB
+dist/assets/index-ckmLCEbP.js   1,100.99 kB │ gzip: 319.35 kB
+✓ built in 1.27s
+
+  dist-server/index.js  241.0kb
+
+⚡ Done in 9ms
+server bundled to dist-server/index.js

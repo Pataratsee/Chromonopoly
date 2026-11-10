@@ -265,6 +265,17 @@ export const BUILDING_CATALOG = {
 export type BuildingType = keyof typeof BUILDING_CATALOG;
 export type BuildingCategory = (typeof BUILDING_CATALOG)[BuildingType]['category'];
 
+/** W8 data: build slots grow with the property's list price. */
+export const BUILD_SLOT_TIERS = [
+  { maxPrice: 140, slots: 2 },
+  { maxPrice: 300, slots: 3 },
+  { maxPrice: Infinity, slots: 4 },
+] as const;
+
+export function buildSlots(space: { price: number }): number {
+  return BUILD_SLOT_TIERS.find((tier) => space.price <= tier.maxPrice)?.slots ?? 2;
+}
+
 export const BUILDING_META = BUILDING_CATALOG;
 export const BUILDING_TYPES = Object.keys(BUILDING_CATALOG) as BuildingType[];
 

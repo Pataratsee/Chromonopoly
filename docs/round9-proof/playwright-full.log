@@ -1,0 +1,14 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test
+[WebServer] npm notice run chromonopoly@3.0.0 start
+[WebServer] npm notice run node dist-server/index.js
+
+Running 8 tests using 1 worker
+
+  ✓  1 tests/e2e/round9.spec.ts:97:1 › W2: four frosted preview labels never overlap at five viewport/theme combinations (39.8s)
+  ✓  2 tests/e2e/round9.spec.ts:149:1 › W1: username validation, seat reconnect and second-browser reclaim (47.3s)
+  ✓  3 tests/e2e/round9.spec.ts:195:1 › W3/W6: cash chip in every spending panel and one global error toast above them (1.0m)
+  ✓  4 tests/e2e/round9.spec.ts:243:1 › W5: wheel IDLE→CLOSED with 100 ms samples and no result before LANDED (22.8s)
+  ✓  5 tests/e2e/round9.spec.ts:312:1 › W4: four island angles, triangle audit and render stats (28.1s)
+  ✓  6 tests/e2e/round9.spec.ts:365:1 › W13: rival dice, tile follow, landing pause, zoom-out and turn pass (53.9s)
+  ✓  7 tests/e2e/round9.spec.ts:441:1 › W7: live drag, wheel zoom and resize keep the pivot inside its radius (23.9s)

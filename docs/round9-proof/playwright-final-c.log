@@ -1,0 +1,10 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test -g W9/W10/W11/W12:
+[WebServer] npm notice run chromonopoly@3.0.0 start
+[WebServer] npm notice run node dist-server/index.js
+
+Running 1 test using 1 worker
+
+  ✓  1 tests/e2e/round9.spec.ts:476:1 › W9/W10/W11/W12: rent example, transfer warning, wipe wheel and live market (4.4m)
+
+  1 passed (4.4m)

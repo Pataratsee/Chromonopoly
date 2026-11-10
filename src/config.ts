@@ -43,6 +43,8 @@ export const CAMERA = {
   radius: 22.5,
   /** Tight follow framing: the acting piece is large and centred. */
   followRadius: 8.8,
+  /** Maximum horizontal pivot travel. Zoom never moves the pivot. */
+  pivotRadius: 1.25,
   framingY: -2.2,
   minRadius: 7.2,
   maxRadius: 40,

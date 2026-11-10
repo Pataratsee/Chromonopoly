@@ -8,7 +8,6 @@ import { HAS_BAND, boardName, contentBox, tilePose, tileTextLayout } from './lay
 import { fitText, loadFont } from './textFit';
 import type { Font } from 'opentype.js';
 import { assetUrl } from '../assetUrl';
-import { loadModel } from '../render/models';
 
 const BOARD_FONT = assetUrl('fonts/LilitaOne-Regular.ttf');
 const DISPLAY_FONT = assetUrl('fonts/LilitaOne-Regular.ttf');
@@ -479,22 +478,6 @@ export async function createBoard(): Promise<BoardView> {
   padLabel.letterSpacing = 0.14;
   group.add(padLabel);
 
-  addCenterProp(group, 'tree-large', 0.68, -2.7, 0.55, centerY);
-  addCenterProp(group, 'tree-large', 0.68, 2.7, 0.55, centerY);
-  addCenterProp(group, 'tree-small', 0.55, -2.95, 2.45, centerY);
-  addCenterProp(group, 'tree-small', 0.55, 2.95, 2.45, centerY);
-  addCenterProp(group, 'bench-city', 0.5, -1.8, 2.35, centerY);
-  addCenterProp(group, 'bench-city', 0.5, 1.8, 2.35, centerY);
-
-  const felt = new THREE.Mesh(
-    new THREE.CircleGeometry(46, 64),
-    new THREE.MeshStandardMaterial({ color: PALETTE.felt, roughness: 0.98, metalness: 0 }),
-  );
-  felt.rotation.x = -Math.PI / 2;
-  felt.position.y = -0.26;
-  felt.receiveShadow = true;
-  group.add(felt);
-
   await syncTexts(group);
   const cardAnimations: CardAnimation[] = [];
 
@@ -882,18 +865,6 @@ function createDeckStack(parent: THREE.Group, deck: 'chance' | 'chest', x: numbe
   logo.position.set(0, 14 * 0.018 + 0.012, 0);
   deckGroup.add(logo);
   return { x, z: 0.55, group: deckGroup };
-}
-
-function addCenterProp(parent: THREE.Group, id: string, size: number, x: number, z: number, centerY: number): void {
-  const holder = new THREE.Group();
-  holder.position.set(x, centerY + 0.028, z);
-  parent.add(holder);
-  void loadModel(id, size)
-    .then((model) => holder.add(model))
-    .catch((error: unknown) => {
-      holder.removeFromParent();
-      console.error('[board] center prop failed', id, error);
-    });
 }
 
 async function syncTexts(root: THREE.Object3D): Promise<void> {

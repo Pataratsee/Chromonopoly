@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { World } from '../server/world';
+import { RULES } from '../src/game/rules';
 import type { GameEvent } from '../src/game/types';
 
 function makeWorld(rngValues: number[] = [], mode: 'multi' | 'solo' = 'multi') {
@@ -78,7 +79,7 @@ describe('jail cascade', () => {
     const a = world.join('Ada', 'dog');
     botless(world);
     world.tiles[1]!.ownerId = a.player.id;
-    world.tiles[1]!.building = 'house';
+    world.tiles[1]!.buildings = [{ type: 'house', rank: 1 }];
     world.tiles[3]!.ownerId = a.player.id;
     const cashBefore = a.player.cash;
 
@@ -86,7 +87,7 @@ describe('jail cascade', () => {
     expect(result.ok).toBe(true);
     expect(a.player.inJail).toBe(true);
     expect(a.player.position).toBe(10);
-    expect(world.tiles[1]!.building).toBeNull();
+    expect(world.tiles[1]!.buildings).toEqual([]);
     expect(world.tiles[1]!.mortgaged).toBe(true);
     expect(world.tiles[3]!.mortgaged).toBe(true);
     expect(a.player.jailOutcome).toBe('none');
@@ -131,7 +132,7 @@ describe('economy', () => {
     const buyer = world.join('Buyer', 'cat');
     botless(world);
     world.tiles[1]!.ownerId = owner.player.id;
-    buyer.player.cash = 100_000;
+    buyer.player.cash = 1_000_000;
     expect(world.intent(buyer.player.id, { t: 'stock', tile: 1, qty: 500, key: 's1' }).ok).toBe(true);
     const tooMany = world.intent(buyer.player.id, { t: 'stock', tile: 1, qty: 1, key: 's2' });
     expect(tooMany).toEqual({ ok: false, reason: 'External ownership is capped at 50%.' });
@@ -345,7 +346,7 @@ describe('chance meters', () => {
     const actor = world.join('Ada', 'dog');
     botless(world);
     world.tiles[1]!.ownerId = actor.player.id;
-    world.tiles[1]!.building = 'house';
+    world.tiles[1]!.buildings = [{ type: 'house', rank: 1 }];
 
     expect(world.intent(actor.player.id, { t: 'robbery', amount: 50_000, key: 'caught' }).ok).toBe(true);
     const jail = events.find((e) => e.kind === 'jail')!;
@@ -363,7 +364,7 @@ describe('chance meters', () => {
     const victim = world.join('Bo', 'cat');
     botless(world);
     world.tiles[1]!.ownerId = victim.player.id;
-    world.tiles[1]!.building = 'house';
+    world.tiles[1]!.buildings = [{ type: 'house', rank: 1 }];
 
     expect(world.intent(actor.player.id, { t: 'murder', target: victim.player.id, key: 'hit' }).ok).toBe(true);
     const murder = events.find((e) => e.kind === 'murder')!;
@@ -374,7 +375,8 @@ describe('chance meters', () => {
     expect(victim.player.inHospital).toBe(true);
     expect(victim.player.hospitalTurns).toBe(3);
     expect(victim.player.cash).toBe(0);
-    expect(world.tiles[1]!.ownerId).toBeNull();
+    expect(world.tiles[1]!.ownerId).toBe(actor.player.id);
+    expect(murder.outcome?.taken).toEqual(['Mediterranean Ave']);
     expect(actor.player.reputation).toBe(0);
   });
 
@@ -412,6 +414,53 @@ describe('chance meters', () => {
     expect(report.audience).toEqual([actor.player.id]);
     expect(actor.player.dossier[target.player.id]).toBeDefined();
   });
+
+  it('erases private and public records on a successful 15% wipe', () => {
+    const { world, events } = makeWorld([0.1]);
+    const actor = world.join('Ada', 'dog');
+    const witness = world.join('Bo', 'cat');
+    botless(world);
+    actor.player.cash = 600_000;
+    actor.player.reputation = 28;
+    actor.player.acts = [{ at: 1, text: 'Murdered Bo.' }];
+    actor.player.jailRecord = [{ tile: 1, amount: 120, at: 2 }];
+    actor.player.unpaidRent = 120;
+    witness.player.findings[actor.player.id] = 3;
+
+    expect(world.intent(actor.player.id, { t: 'recordWipe', key: 'wipe-ok' }).ok).toBe(true);
+    const wipe = events.find((e) => e.kind === 'wipe')!;
+    expect(wipe.chance!.percent).toBe(15);
+    expect(wipe.chance!.rollPercent).toBe(10);
+    expect(wipe.chance!.success).toBe(true);
+    expect(wipe.audience).toEqual([actor.player.id]);
+    expect(wipe.outcome?.kind).toBe('wipe');
+    expect(actor.player.cash).toBe(100_000);
+    expect(actor.player.reputation).toBe(50);
+    expect(actor.player.acts).toEqual([]);
+    expect(actor.player.jailRecord).toEqual([]);
+    expect(actor.player.unpaidRent).toBe(0);
+    expect(witness.player.findings[actor.player.id]).toBeUndefined();
+  });
+
+  it('keeps the records and loses the fee when the 15% wipe fails', () => {
+    const { world, events } = makeWorld([0.9]);
+    const actor = world.join('Ada', 'dog');
+    botless(world);
+    actor.player.cash = 600_000;
+    actor.player.reputation = 28;
+    actor.player.acts = [{ at: 1, text: 'Murdered Bo.' }];
+    actor.player.jailRecord = [{ tile: 1, amount: 120, at: 2 }];
+
+    expect(world.intent(actor.player.id, { t: 'recordWipe', key: 'wipe-fail' }).ok).toBe(true);
+    const wipe = events.find((e) => e.kind === 'wipe')!;
+    expect(wipe.chance!.success).toBe(false);
+    expect(wipe.outcome?.kind).toBe('wipe');
+    expect(actor.player.cash).toBe(100_000);
+    expect(actor.player.reputation).toBe(28);
+    expect(actor.player.acts).toHaveLength(1);
+    expect(actor.player.jailRecord).toHaveLength(1);
+    expect(wipe.outcome?.detail).toContain('records remain');
+  });
 });
 
 describe('stock cost basis', () => {
@@ -424,7 +473,9 @@ describe('stock cost basis', () => {
 
     expect(world.intent(actor.player.id, { t: 'stock', tile: 1, qty: 100, key: 'buy-shares' }).ok).toBe(true);
     expect(actor.player.holdings['1']).toBe(100);
-    expect(actor.player.costBasis['1']).toBeCloseTo(price * 100, 6);
+    const execution = price * (1 + RULES.stockSpread);
+    const firstCost = execution * 100 + Math.max(1, Math.round(execution * 100 * RULES.stockFee));
+    expect(actor.player.costBasis['1']).toBeCloseTo(firstCost, 6);
 
     const oversell = world.intent(actor.player.id, { t: 'stock', tile: 1, qty: -101, key: 'oversell' });
     expect(oversell.ok).toBe(false);
@@ -432,7 +483,7 @@ describe('stock cost basis', () => {
 
     expect(world.intent(actor.player.id, { t: 'stock', tile: 1, qty: -40, key: 'sell-some' }).ok).toBe(true);
     expect(actor.player.holdings['1']).toBe(60);
-    expect(actor.player.costBasis['1']).toBeCloseTo(price * 60, 6);
+    expect(actor.player.costBasis['1']).toBeCloseTo(firstCost * 0.6, 4);
 
     expect(world.intent(actor.player.id, { t: 'stock', tile: 1, qty: -60, key: 'sell-rest' }).ok).toBe(true);
     expect(actor.player.holdings['1']).toBeUndefined();

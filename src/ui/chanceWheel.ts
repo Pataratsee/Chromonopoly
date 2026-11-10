@@ -1,3 +1,35 @@
+export const WHEEL_STATES = ['IDLE', 'READY', 'SPINNING', 'LANDED', 'RESULT_SHOWN', 'CLOSED'] as const;
+export type WheelState = (typeof WHEEL_STATES)[number];
+
+export interface WheelTransition {
+  state: WheelState;
+  at: number;
+}
+
+/**
+ * One explicit wheel lifecycle. The result is allowed to enter the DOM only
+ * after the SPINNING -> LANDED transition has been recorded.
+ */
+export class WheelStateMachine {
+  state: WheelState = 'IDLE';
+  readonly transitions: WheelTransition[] = [];
+
+  constructor(private readonly now: () => number = () => performance.now()) {
+    this.transitions.push({ state: 'IDLE', at: this.now() });
+  }
+
+  transition(next: WheelState): void {
+    if (next === this.state) return;
+    this.state = next;
+    this.transitions.push({ state: next, at: this.now() });
+  }
+
+  snapshot(): { state: WheelState; at: number } {
+    const last = this.transitions[this.transitions.length - 1]!;
+    return { state: this.state, at: last.at };
+  }
+}
+
 export interface WheelZone {
   key: string;
   label: string;

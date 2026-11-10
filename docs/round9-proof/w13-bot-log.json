@@ -1,0 +1,46 @@
+{
+  "log": [
+    {
+      "at": 27120,
+      "player": "p_mw9y98gf_b",
+      "event": "roll",
+      "detail": "1+6=7"
+    },
+    {
+      "at": 28768,
+      "player": "p_mw9y98gf_b",
+      "event": "follow",
+      "detail": "tile 0→7"
+    },
+    {
+      "at": 33788,
+      "player": "p_mw9y98gf_b",
+      "event": "landed",
+      "detail": "Chance"
+    },
+    {
+      "at": 34966,
+      "player": "p_mw9y98gf_b",
+      "event": "pause",
+      "detail": 900
+    },
+    {
+      "at": 35211,
+      "player": "p_mw9y98gf_b",
+      "event": "zoom-out"
+    },
+    {
+      "at": 35212,
+      "player": "p_mw9y98gf_b",
+      "event": "move"
+    },
+    {
+      "at": 35930,
+      "player": "p_mw9y98gf_b",
+      "event": "card",
+      "detail": "Bank pays you a dividend of $50."
+    }
+  ],
+  "ribbon": "Chance",
+  "ribbonSub": "Mr. Ledger · Bank pays you a dividend of $50."
+}

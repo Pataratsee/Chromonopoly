@@ -31,10 +31,16 @@ export interface Space {
   label?: string;
 }
 
+/** One independently upgradable building. Multiplayer may hold several. */
+export interface Building {
+  type: BuildingType;
+  rank: 1 | 2 | 3 | 4;
+}
+
 export interface TileState {
   ownerId: string | null;
   mortgaged: boolean;
-  building: BuildingType | null;
+  buildings: Building[];
   shares: Record<string, number>;
   lockedBy: string | null;
 }
@@ -83,6 +89,7 @@ export interface PlayerPublic {
   bankrupt: boolean;
   jailRecord: JailRecordEntry[];
   lastSeen: number;
+  online: boolean;
   isBot: boolean;
 }
 
@@ -170,7 +177,7 @@ export interface Suit {
   claim: number;
   evidence: number;
   filedAt: number;
-  status: 'pending' | 'closed';
+  status: 'pending' | 'closed' | 'dismissed';
 }
 
 export interface Offer {
@@ -190,26 +197,27 @@ export interface PrivateState {
   pending: Pending | null;
   netWorth: number;
   loanCap: number;
-  /** The recipient's own log; includes private underworld acts. */
+  /** The recipient's own log; includes private underworld acts and offline sales. */
   playerLog: LogEntry[];
 }
 
 export interface CrimeOutcome {
   success: boolean;
-  kind: 'theft' | 'robbery' | 'murder' | 'detective';
+  kind: 'theft' | 'robbery' | 'murder' | 'detective' | 'wipe';
   amount: number;
   targetName?: string;
+  taken?: string[];
   reputationDelta: number;
   detail: string;
 }
 
 export type Intent =
-  | { t: 'hello'; name: string; tokenId: string; session?: string }
   | { t: 'roll'; key: string }
   | { t: 'buy'; tile: number; key: string }
   | { t: 'decline'; tile: number; key: string }
   | { t: 'build'; tile: number; type: BuildingType; key: string }
-  | { t: 'sellBuilding'; tile: number; key: string }
+  | { t: 'upgrade'; tile: number; type: BuildingType; key: string }
+  | { t: 'sellBuilding'; tile: number; type: BuildingType; key: string }
   | { t: 'mortgage'; tile: number; key: string }
   | { t: 'unmortgage'; tile: number; key: string }
   | { t: 'loan'; amount: number; key: string }
@@ -227,6 +235,7 @@ export type Intent =
   | { t: 'jailPay'; key: string }
   | { t: 'selectToken'; tokenId: string; key: string }
   | { t: 'selectColor'; color: string; key: string }
+  | { t: 'recordWipe'; key: string }
   | { t: 'tradeOffer'; targetId: string; giveCash: number; giveTiles: number[]; wantCash: number; wantTiles: number[]; key: string }
   | { t: 'tradeAccept'; tradeId: string; key: string }
   | { t: 'tradeDecline'; tradeId: string; key: string }
@@ -250,6 +259,7 @@ export interface GameEvent {
     | 'stock'
     | 'loan'
     | 'trade'
+    | 'wipe'
     | 'turn'
     | 'win';
   playerId?: string;
@@ -262,6 +272,7 @@ export interface GameEvent {
   deck?: 'chance' | 'chest';
   chance?: ChanceRoll;
   outcome?: CrimeOutcome;
+  taken?: number[];
   at?: number;
 }
 
@@ -296,4 +307,6 @@ export interface Settings {
   followCamera: boolean;
   skyRunning: boolean;
   skyHour: number;
+  fpsCounter: boolean;
+  fastBots: boolean;
 }

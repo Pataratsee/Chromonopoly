@@ -1,4 +1,5 @@
 import type { GameEvent, GameMode, Intent, PrivateState, PublicState, ServerMessage } from '../game/types';
+import { normalizeUsername } from '../game/username';
 import { socketUrl } from './endpoint';
 
 type StateHandler = (state: PublicState) => void;
@@ -9,8 +10,8 @@ type StatusHandler = (status: 'connecting' | 'online' | 'offline', reason?: stri
 const SESSION_KEY = 'chromonopoly.session';
 const NAME_KEY = 'chromonopoly.name';
 const TOKEN_KEY = 'chromonopoly.token';
-const AUTH_KEY = 'chromonopoly.auth';
 const SOLO_KEY = 'chromonopoly.solo.key';
+const PLAYER_TOKEN_PREFIX = 'chromonopoly.player-token.';
 const sessionKey = (mode: GameMode): string => `${SESSION_KEY}.${mode}`;
 
 /** Stable browser key for the server-side single-player save. */
@@ -23,14 +24,15 @@ export function soloKey(): string {
   return key;
 }
 
-/** The bearer token for the signed-in password account. */
-export function authToken(): string {
-  return localStorage.getItem(AUTH_KEY) ?? '';
-}
-
-export function setAuthToken(token: string): void {
-  if (token) localStorage.setItem(AUTH_KEY, token);
-  else localStorage.removeItem(AUTH_KEY);
+/** 256-bit reclaim secret, stored per username. It is never rendered or broadcast. */
+export function playerTokenFor(rawName: string): string {
+  const key = `${PLAYER_TOKEN_PREFIX}${normalizeUsername(rawName).toLowerCase()}`;
+  const saved = localStorage.getItem(key);
+  if (saved) return saved;
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  localStorage.setItem(key, token);
+  return token;
 }
 
 export class NetClient {
@@ -48,13 +50,13 @@ export class NetClient {
   onEvent: EventHandler = () => undefined;
   onStatus: StatusHandler = () => undefined;
   onReject: (reason: string) => void = () => undefined;
-  onAuthLost: (reason: string) => void = () => undefined;
+  onJoinRejected: (reason: string) => void = () => undefined;
 
   connect(name?: string, tokenId?: string, mode: GameMode = this.mode): void {
     this.stopped = false;
     this.detach();
     this.mode = mode;
-    const storedName = name ?? localStorage.getItem(NAME_KEY) ?? '';
+    const storedName = normalizeUsername(name ?? localStorage.getItem(NAME_KEY) ?? '');
     const storedToken = tokenId ?? localStorage.getItem(TOKEN_KEY) ?? 'cat';
     this.onStatus('connecting');
     const ws = new WebSocket(socketUrl());
@@ -64,11 +66,11 @@ export class NetClient {
       ws.send(
         JSON.stringify({
           type: 'hello',
-          name: storedName || 'Tycoon',
+          name: storedName,
           tokenId: storedToken,
           mode,
           session: localStorage.getItem(sessionKey(mode)) ?? localStorage.getItem(SESSION_KEY) ?? undefined,
-          authToken: mode === 'multi' ? authToken() : undefined,
+          playerToken: mode === 'multi' ? playerTokenFor(storedName) : undefined,
           soloKey: mode === 'solo' ? soloKey() : undefined,
           fresh: mode === 'solo' ? this.freshSolo : undefined,
         }),
@@ -78,9 +80,9 @@ export class NetClient {
     };
 
     ws.onmessage = (raw) => {
-      let msg: ServerMessage & { seqq?: number };
+      let msg: ServerMessage;
       try {
-        msg = JSON.parse(String(raw.data));
+        msg = JSON.parse(String(raw.data)) as ServerMessage;
       } catch {
         return;
       }
@@ -113,10 +115,10 @@ export class NetClient {
 
     ws.onclose = (event) => {
       if (this.stopped) return;
-      if (event.code === 4001 || event.code === 4002) {
+      if (event.code === 4003) {
         this.stopped = true;
-        this.onStatus('offline', event.reason || 'signed out');
-        this.onAuthLost(event.reason || (event.code === 4002 ? 'You signed in on another device.' : 'Sign in again.'));
+        this.onStatus('offline', event.reason || 'name unavailable');
+        this.onJoinRejected(event.reason || 'That name is already taken.');
         return;
       }
       this.onStatus('offline');
@@ -159,7 +161,7 @@ export class NetClient {
   }
 
   setIdentity(name: string, tokenId: string): void {
-    localStorage.setItem(NAME_KEY, name);
+    localStorage.setItem(NAME_KEY, normalizeUsername(name));
     localStorage.setItem(TOKEN_KEY, tokenId);
   }
 
@@ -170,7 +172,6 @@ export class NetClient {
     this.detach();
   }
 
-  /** Drops the socket without letting its close handler start a reconnect. */
   private detach(): void {
     const ws = this.ws;
     this.ws = null;

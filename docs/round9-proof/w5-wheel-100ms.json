@@ -1,0 +1,271 @@
+{
+  "samples": [
+    {
+      "at": 5696,
+      "state": "READY",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 6168,
+      "state": "READY",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 6412,
+      "state": "READY",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 7120,
+      "state": "READY",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 7356,
+      "state": "READY",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 8070,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 8554,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 9096,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 9337,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 9838,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 10319,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 10560,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 11031,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 11540,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 11790,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 12024,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 12258,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 12743,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 13218,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 13680,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 14162,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 14398,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 14636,
+      "state": "SPINNING",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 15121,
+      "state": "LANDED",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 15361,
+      "state": "LANDED",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 15597,
+      "state": "LANDED",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 15831,
+      "state": "LANDED",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 16317,
+      "state": "LANDED",
+      "text": "Spin to reveal",
+      "revealed": false,
+      "styled": false
+    },
+    {
+      "at": 16822,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    },
+    {
+      "at": 17091,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    },
+    {
+      "at": 17352,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    },
+    {
+      "at": 17583,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    },
+    {
+      "at": 17818,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    },
+    {
+      "at": 18300,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    },
+    {
+      "at": 18789,
+      "state": "RESULT_SHOWN",
+      "text": "Records survive",
+      "revealed": true,
+      "styled": true
+    }
+  ],
+  "transitions": [
+    {
+      "state": "IDLE",
+      "at": 4638.4000000003725
+    },
+    {
+      "state": "READY",
+      "at": 4638.5
+    },
+    {
+      "state": "SPINNING",
+      "at": 7833.4000000003725
+    },
+    {
+      "state": "LANDED",
+      "at": 14884.400000000373
+    },
+    {
+      "state": "RESULT_SHOWN",
+      "at": 16316.900000000373
+    }
+  ]
+}

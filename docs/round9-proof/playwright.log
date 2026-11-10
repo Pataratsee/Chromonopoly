@@ -1,0 +1,61 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test tests/e2e/round9.spec.ts --reporter=line
+[WebServer] npm notice run chromonopoly@3.0.0 start
+
+[WebServer] npm notice run node dist-server/index.js
+
+
+Running 5 tests using 1 worker
+
+[1/5] tests/e2e/round9.spec.ts:97:1 › W2: four frosted preview labels never overlap at five viewport/theme combinations
+[2/5] tests/e2e/round9.spec.ts:146:1 › W1: username validation, seat reconnect and second-browser reclaim
+  1) tests/e2e/round9.spec.ts:146:1 › W1: username validation, seat reconnect and second-browser reclaim 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.toast').filter({ hasText: /already taken/i })
+    Expected: visible
+    Error: strict mode violation: locator('.toast').filter({ hasText: /already taken/i }) resolved to 2 elements:
+        1) <div class="toast bad">That name is already taken. Choose another, or re…</div> aka getByText('That name is already taken.').nth(1)
+        2) <div class="toast bad">That name is already taken. Choose another, or re…</div> aka getByText('That name is already taken.').nth(2)
+
+    Call log:
+      - Expect "toBeVisible" locator('.toast').filter({ hasText: /already taken/i }) with timeout 10000ms
+      - waiting for locator('.toast').filter({ hasText: /already taken/i })
+
+
+      162 |   await joinMulti(second, name);
+      163 |   await expect(second.locator('.auth-error')).toContainText(/already taken/i);
+    > 164 |   await expect(second.locator('.toast', { hasText: /already taken/i })).toBeVisible();
+          |                                                                         ^
+      165 |   await second.screenshot({ path: `${PROOF}/w1-duplicate-name-toast.png` });
+      166 |
+      167 |   await first.evaluate(() => {
+        at /home/christian/Desktop/LittleProjects/Chromonopoly 3.0/tests/e2e/round9.spec.ts:164:73
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/round9-W1-username-validat-4b6d4--and-second-browser-reclaim/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/round9-W1-username-validat-4b6d4--and-second-browser-reclaim/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/round9-W1-username-validat-4b6d4--and-second-browser-reclaim/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/round9-W1-username-validat-4b6d4--and-second-browser-reclaim/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/round9-W1-username-validat-4b6d4--and-second-browser-reclaim/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/5] tests/e2e/round9.spec.ts:192:1 › W3/W6: cash chip in every spending panel and one global error toast above them
+[4/5] tests/e2e/round9.spec.ts:240:1 › W5: wheel IDLE→CLOSED with 100 ms samples and no result before LANDED
+[5/5] tests/e2e/round9.spec.ts:304:1 › W4: four island angles, triangle audit and render stats
+  1 failed
+    tests/e2e/round9.spec.ts:146:1 › W1: username validation, seat reconnect and second-browser reclaim 
+  3 did not run
+  1 passed (1.2m)

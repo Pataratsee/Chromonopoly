@@ -171,9 +171,43 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   pointer-events: none;
 }
 #menu-preview { width: 100%; height: 100%; min-height: 460px; display: block; }
-.menu-preview-foot {
-  padding: 12px 18px 16px; display: flex; justify-content: space-between; align-items: center;
-  font-size: 13px; color: rgba(42, 35, 32, 0.7);
+.preview-corner {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(50% - 26px);
+  min-width: 84px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #211a14;
+  background: rgba(255, 252, 244, 0.84);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow: 0 6px 18px rgba(48, 35, 22, 0.18);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-corner b { font-weight: 900; }
+.preview-corner.tl { top: 20px; left: 20px; }
+.preview-corner.tr { top: 20px; right: 20px; }
+.preview-corner.bl { bottom: 20px; left: 20px; }
+.preview-corner.br { bottom: 20px; right: 20px; }
+@media (max-width: 720px) {
+  .preview-corner { font-size: 11px; min-width: 72px; min-height: 32px; padding: 6px 10px; max-width: calc(50% - 18px); }
+  .preview-corner.tl, .preview-corner.tr { top: 16px; }
+  .preview-corner.bl, .preview-corner.br { bottom: 16px; }
+  .preview-corner.tl, .preview-corner.bl { left: 16px; }
+  .preview-corner.tr, .preview-corner.br { right: 16px; }
 }
 
 .field {
@@ -338,6 +372,11 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 @keyframes sheetOut { to { transform: translateY(30px); opacity: 0; } }
 .grabber { width: 42px; height: 5px; border-radius: 3px; background: rgba(42, 35, 32, 0.2); margin: 10px auto 2px; }
 .sheet-head { display: flex; align-items: center; gap: 14px; padding: 10px 26px 12px; }
+.sheet-cash { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 999px; flex: none; }
+.sheet-cash span { font-size: 9px; letter-spacing: .12em; font-weight: 800; color: var(--ink-3); }
+.sheet-cash-value { font-family: 'Outfit'; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pending .sheet-cash { width: max-content; margin-bottom: 4px; }
+@media (max-width: 640px) { .sheet-cash { height: 32px; padding: 0 10px; } .sheet-cash-value { font-size: 14px; } }
 .sheet-title { font-family: 'Outfit'; font-size: 27px; font-weight: 750; letter-spacing: -0.02em; margin: 0; }
 .sheet-sub { font-size: 13px; color: var(--ink-2); margin: 2px 0 0; }
 .sheet-head .spacer { flex: 1; }
@@ -1107,6 +1146,13 @@ body[data-theme='dark'] .bar-action:hover { background: rgba(255, 255, 255, 0.09
 .crime-result-kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--ink-2); }
 .crime-result-card h3 { margin: 0; font-size: 28px; }
 .crime-result-detail { margin: 0 0 6px; font-size: 14px; line-height: 1.45; }
+
+.fps-counter {
+  position: fixed; right: 14px; top: 14px; z-index: 650;
+  min-width: 76px; padding: 8px 12px; border-radius: 12px;
+  font: 800 12px/1 'Outfit', sans-serif; letter-spacing: .06em;
+  font-variant-numeric: tabular-nums; text-align: center;
+}
 
 /* U13: one top layer above every sheet, modal and wheel. */
 .toast-layer { top: 16px; bottom: auto; z-index: 600; }

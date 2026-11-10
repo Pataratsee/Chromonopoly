@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cameraSpeed: 1,
   invertOrbit: false,
   shake: false,
-  quality: 'high',
+  quality: 'low',
   reducedMotion: false,
   uiScale: 1,
   colorblind: false,
@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS: Settings = {
   followCamera: false,
   skyRunning: true,
   skyHour: 9,
+  fpsCounter: false,
+  fastBots: false,
 };
 
 export function loadSettings(): Settings {

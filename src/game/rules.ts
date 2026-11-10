@@ -1,8 +1,8 @@
 import { SPACES, spaceAt, groupMembers } from './board';
-import { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, type BuildingType } from './buildings';
-import type { GameMode, PlayerPrivate, Space, TileState } from './types';
+import { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, buildSlots, type BuildingType } from './buildings';
+import type { Building, GameMode, PlayerPrivate, Space, TileState } from './types';
 
-export { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode };
+export { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, buildSlots };
 
 /** Every economic number the brief fixes. Nothing else may hardcode these. */
 export const RULES = {
@@ -12,9 +12,17 @@ export const RULES = {
   sellRefund: 0.5,
   loanInterest: 0.02,
   loanMaxMultiple: 3,
-  stockStartMultiple: 2,
-  stockDrift: 0.02,
-  stockNoise: 0.015,
+  loanMinimum: 200,
+  stockStartMultiple: 8,
+  // W12 measured: a smaller drift and wider noise keep most random traders
+  // slightly negative while leaving a meaningful profitable minority and rare
+  // +25% runs. Costs are half a percent per side.
+  stockDrift: -0.002,
+  stockNoise: 0.05,
+  stockFee: 0.005,
+  stockSpread: 0.005,
+  stockDailyRiseCap: 0.2,
+  stockTickCap: 0.06,
   stockFloor: 0.2,
   stockCeiling: 8,
   externalMax: 0.5,
@@ -57,11 +65,33 @@ export const RULES = {
   maxBuildings: 60,
   jailTurns: 3,
   jailRepOnEntry: 0,
+  buildingRanks: 4,
+  rankRentPct: [0.01, 0.05, 0.1, 0.4],
+  extraBuildingPct: 0.1,
+  prestigePerRank4: 0.25,
+  multiRentMin: 10,
+  wipeCost: 500_000,
+  wipeChance: 0.15,
+  wipeReputation: 50,
+  offlineSaleMs: 60 * 60 * 1000,
 } as const;
 
 export function buildingCost(space: Space, type: BuildingType): number {
   if (space.buildCost <= 0) throw new Error(`${space.name} cannot be built on`);
   return Math.round(space.buildCost * BUILDING_META[type].costMultiple);
+}
+
+/** Cost to take one building from rank-1 to rank-2/3/4: 3x, 9x, 27x base. */
+export function upgradeCost(space: Space, type: BuildingType, targetRank: 2 | 3 | 4): number {
+  return Math.round(buildingCost(space, type) * 3 ** (targetRank - 1));
+}
+
+export function buildingInvested(space: Space, building: Building): number {
+  let total = buildingCost(space, building.type);
+  for (let rank = 2; rank <= building.rank; rank += 1) {
+    total += upgradeCost(space, building.type, rank as 2 | 3 | 4);
+  }
+  return total;
 }
 
 export function buildingRentLabel(type: BuildingType): string {
@@ -72,7 +102,7 @@ export function buildingRentLabel(type: BuildingType): string {
 }
 
 export function emptyTile(): TileState {
-  return { ownerId: null, mortgaged: false, building: null, shares: {}, lockedBy: null };
+  return { ownerId: null, mortgaged: false, buildings: [], shares: {}, lockedBy: null };
 }
 
 /** True when `ownerId` holds every property in the colour group. */
@@ -88,19 +118,22 @@ export function hasTypeSynergy(tile: number, type: BuildingType, tiles: Record<n
   const ownerId = tiles[tile]?.ownerId;
   if (!space.group || !ownerId) return false;
   const members = groupMembers(space.group);
-  return members.every((s) => tiles[s.index]?.ownerId === ownerId && tiles[s.index]?.building === type);
+  return members.every((s) =>
+    tiles[s.index]?.ownerId === ownerId && tiles[s.index]?.buildings.some((b) => b.type === type),
+  );
 }
 
 /** Rent with no building, before railroad/utility special cases. */
-export function baseRent(space: Space, ownerId: string | null, tiles: Record<number, TileState>): number {
+export function baseRent(space: Space, ownerId: string | null, tiles: Record<number, TileState>, solo = true): number {
   if (!space.rents.length) return 0;
   const base = space.rents[0] ?? 0;
-  if (ownerId && ownsGroup(space.group, ownerId, tiles) && !tiles[space.index]?.building) {
+  if (solo && ownerId && ownsGroup(space.group, ownerId, tiles) && !tiles[space.index]?.buildings.length) {
     return base * 2;
   }
   return base;
 }
 
+/** Solo Monopoly rent. Multiplayer uses payer-cash rent below. */
 export function buildingRent(space: Space, type: BuildingType, tiles: Record<number, TileState>): number {
   const base = space.rents[0] ?? 0;
   const hotel = space.rents[5] ?? 0;
@@ -110,15 +143,54 @@ export function buildingRent(space: Space, type: BuildingType, tiles: Record<num
   return Math.round(base * BUILDING_META[type].rentMultiple * synergy);
 }
 
+export interface MultiRentBreakdown {
+  percent: number;
+  rent: number;
+  highestRank: number;
+  buildings: number;
+  prestige: number;
+}
+
+/** W9: rank percentages, +10% of the percentage per extra building, prestige per extra rank-4. */
+export function multiplayerRent(
+  tile: number,
+  tiles: Record<number, TileState>,
+  payerCash: number,
+): MultiRentBreakdown {
+  const space = spaceAt(tile);
+  const state = tiles[tile];
+  const empty = { percent: 0, rent: RULES.multiRentMin, highestRank: 0, buildings: 0, prestige: 1 };
+  if (!state || !space.rents.length) return empty;
+  if (!state.buildings.length) {
+    return { ...empty, rent: Math.max(RULES.multiRentMin, space.rents[0] ?? 0) };
+  }
+  const highestRank = Math.max(...state.buildings.map((b) => b.rank));
+  const rank4 = state.buildings.filter((b) => b.rank === 4).length;
+  const basePercent = RULES.rankRentPct[highestRank - 1] ?? 0;
+  const buildingFactor = 1 + RULES.extraBuildingPct * Math.max(0, state.buildings.length - 1);
+  const prestige = 1 + RULES.prestigePerRank4 * Math.max(0, rank4 - 1);
+  const percent = basePercent * buildingFactor * prestige;
+  const cash = Math.max(0, Math.floor(payerCash));
+  return {
+    percent,
+    rent: Math.max(RULES.multiRentMin, Math.floor(cash * percent)),
+    highestRank,
+    buildings: state.buildings.length,
+    prestige,
+  };
+}
+
 /**
  * The rent a visitor owes. `dice` is the committed roll (for utilities),
- * `null` when rent is being quoted outside a landing.
+ * `null` when rent is being quoted outside a landing. Passing `payerCash`
+ * switches to the multiplayer inflation formula.
  */
 export function rentFor(
   tile: number,
   tiles: Record<number, TileState>,
   dice: number | null,
   ownerId: string | null = tiles[tile]?.ownerId ?? null,
+  payerCash: number | null = null,
 ): number {
   const space = spaceAt(tile);
   const state = tiles[tile];
@@ -133,12 +205,17 @@ export function rentFor(
     return (dice ?? 0) * multiple;
   }
   if (space.type !== 'property') return 0;
-  if (state.building) return buildingRent(space, state.building, tiles);
-  return baseRent(space, ownerId, tiles);
+  if (payerCash !== null) return multiplayerRent(tile, tiles, payerCash).rent;
+  const highest = state.buildings.reduce<Building | null>(
+    (best, b) => (!best || b.rank > best.rank ? b : best),
+    null,
+  );
+  if (highest) return buildingRent(space, highest.type, tiles);
+  return baseRent(space, ownerId, tiles, true);
 }
 
 export function groupBuildingCount(tiles: Record<number, TileState>): number {
-  return Object.values(tiles).filter((t) => t.building).length;
+  return Object.values(tiles).reduce((total, tile) => total + tile.buildings.length, 0);
 }
 
 export function canBuild(
@@ -161,10 +238,18 @@ export function canBuild(
     if (!ownsGroup(space.group, ownerId, tiles)) return { ok: false, reason: 'You need the full colour group.' };
     const mortgagedInGroup = groupMembers(space.group!).some((s) => tiles[s.index]?.mortgaged);
     if (mortgagedInGroup) return { ok: false, reason: 'A property in this group is mortgaged.' };
+    if (state.buildings.length >= 1) return { ok: false, reason: 'Sell the existing house or hotel first.' };
+  } else {
+    if (state.buildings.length >= buildSlots(space)) {
+      return { ok: false, reason: `All ${buildSlots(space)} build slots on ${space.name} are used.` };
+    }
+    if (type && state.buildings.some((b) => b.type === type)) {
+      return { ok: false, reason: `${BUILDING_META[type].name} is already on this property.` };
+    }
   }
   if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
   if (totalBuildings >= RULES.maxBuildings) {
-    return { ok: false, reason: `The city is full — all ${RULES.maxBuildings} building plots are taken.` };
+    return { ok: false, reason: `The board is full — all ${RULES.maxBuildings} building plots are taken.` };
   }
   return { ok: true };
 }
@@ -183,7 +268,9 @@ export function netWorth(player: PlayerPrivate, tiles: Record<number, TileState>
     if (t.ownerId !== player.id) continue;
     const space = spaceAt(Number(idx));
     total += t.mortgaged ? mortgageValue(space) : space.price;
-    if (t.building) total += Math.round(buildingCost(space, t.building) * RULES.sellRefund);
+    for (const building of t.buildings) {
+      total += Math.round(buildingInvested(space, building) * RULES.sellRefund);
+    }
   }
   for (const [idx, shares] of Object.entries(player.holdings ?? {})) {
     total += (shares / 1000) * (prices[Number(idx)] ?? 0);
@@ -199,15 +286,15 @@ export function loanInterest(principal: number): number {
   return Math.ceil(principal * RULES.loanInterest);
 }
 
-/** Fundamental value: list price scaled by rent yield and building level. */
+/** Fundamental value: list price scaled by rent yield and the best building's rank. */
 export function fundamental(tile: number, tiles: Record<number, TileState>): number {
   const space = spaceAt(tile);
   if (space.price === 0) return 0;
   const state = tiles[tile];
   const yieldFactor = (space.rents[0] ?? 0) / space.price;
-  const level = state?.building ? BUILDING_TYPES.indexOf(state.building) + 1 : 0;
+  const rank = state?.buildings.length ? Math.max(...state.buildings.map((b) => b.rank)) : 0;
   const group = state?.ownerId && ownsGroup(space.group, state.ownerId, tiles) ? 1 : 0;
-  return space.price * (1.1 + yieldFactor * 9 + level * 0.22 + group * 0.18);
+  return space.price * RULES.stockStartMultiple * (1.1 + yieldFactor * 9 + rank * 0.22 + group * 0.18);
 }
 
 export function clampPrice(price: number, fund: number): number {
@@ -220,11 +307,16 @@ export function nextPrice(
   fund: number,
   netVolume: number,
   rng: () => number,
+  dayOpen = price,
 ): number {
-  const drift = (fund - price) / Math.max(1, fund) * RULES.stockDrift * 6;
+  const drift = ((fund - price) / Math.max(1, fund)) * RULES.stockDrift;
   const noise = (rng() * 2 - 1) * RULES.stockNoise;
-  const impact = Math.max(-0.04, Math.min(0.04, netVolume / 400));
-  return clampPrice(price * (1 + drift + noise + impact), fund);
+  const impact = Math.max(-0.04, Math.min(0.04, netVolume / 1000));
+  let next = price * (1 + drift + noise + impact);
+  const tickChange = next / Math.max(1, price) - 1;
+  next = price * (1 + Math.max(-RULES.stockTickCap, Math.min(RULES.stockTickCap, tickChange)));
+  next = Math.min(dayOpen * (1 + RULES.stockDailyRiseCap), next);
+  return clampPrice(next, fund);
 }
 
 export function dividendSplit(rent: number, shares: Record<string, number>): {

@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { SPACES, spaceAt, advanceTile, groupMembers } from '../src/game/board';
 import {
   BUILDING_META,
@@ -6,6 +6,7 @@ import {
   RULES,
   applyReputation,
   buildingCost,
+  buildingInvested,
   canBuild,
   clampPrice,
   dividendSplit,
@@ -26,7 +27,9 @@ import {
   robberyChance,
   suitChance,
   unmortgageCost,
+  upgradeCost,
 } from '../src/game/rules';
+import { nameKey, normalizeUsername } from '../src/game/username';
 import type {
   BuildingType,
   ChanceRoll,
@@ -51,6 +54,9 @@ const BOT_NAMES = ['Ada Tycoon', 'Mr. Ledger', 'Penny Sharp', 'Count Deed', 'Ver
 
 interface ServerPlayer extends PlayerPrivate {
   session: string;
+  tokenHash: string;
+  offlineSince: number;
+  notices: LogEntry[];
   loan: number;
   holdings: Record<string, number>;
   unpaidRent: number;
@@ -157,28 +163,39 @@ export class World {
   join(
     name: string,
     tokenId: string,
-    session?: string,
-    accountId?: string,
+    _session?: string,
+    playerToken?: string,
     requestedColor?: string,
-  ): { player: ServerPlayer; session: string } {
-    // A password account owns exactly one persistent seat. A second computer
-    // with the same account arrives without the old session and still gets it.
-    const existing = accountId
-      ? this.players.get(accountId)
-      : session
-        ? [...this.players.values()].find((p) => p.session === session)
-        : undefined;
+  ): { player: ServerPlayer; session: string; token?: string } {
+    const clean = normalizeUsername(name);
+    const key = nameKey(clean);
+    let existing = [...this.players.values()].find((p) => nameKey(p.name) === key);
+    const tokenHash = playerToken ? createHash('sha256').update(playerToken).digest('hex') : '';
+    if (existing && !this.nameReserved(existing)) {
+      // Nothing left on the board: the name is free for a new owner.
+      this.players.delete(existing.id);
+      existing = undefined;
+    }
     if (existing) {
+      if (!tokenHash || existing.tokenHash !== tokenHash) {
+        throw new Error('That name is already taken. Choose another, or reopen it in the browser that first used it.');
+      }
       existing.lastSeen = this.now();
-      if (accountId) existing.name = name.slice(0, 16) || existing.name;
+      existing.online = true;
+      existing.offlineSince = 0;
       if (tokenId) existing.tokenId = tokenId;
       if (requestedColor && TOKEN_COLORS.includes(requestedColor)) existing.color = requestedColor;
       return { player: existing, session: existing.session };
     }
-    const id = accountId ?? uid('p');
+    const rawToken = playerToken || randomBytes(32).toString('base64url');
+    const id = uid('p');
     const player: ServerPlayer = {
       id,
-      name: accountId ? name.slice(0, 16) : name.slice(0, 24) || 'Tycoon',
+      name: clean,
+      tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+      offlineSince: 0,
+      notices: [],
+      online: true,
       tokenId: tokenId || 'cat',
       color: requestedColor && TOKEN_COLORS.includes(requestedColor)
         ? requestedColor
@@ -225,7 +242,66 @@ export class World {
     }
     this.logLine(`${player.name} joins the board.`, 'info');
     this.dirty = true;
-    return { player, session: player.session };
+    return { player, session: player.session, token: playerToken ? undefined : rawToken };
+  }
+
+  private nameReserved(p: ServerPlayer): boolean {
+    if (p.online) return true;
+    if (p.cash > 0 || p.loan > 0) return true;
+    return Object.values(this.tiles).some((t) => t.ownerId === p.id);
+  }
+
+  disconnect(playerId: string): void {
+    const p = this.players.get(playerId);
+    if (!p) return;
+    p.online = false;
+    p.offlineSince = this.now();
+    p.lastSeen = this.now();
+    this.dirty = true;
+    this.seq += 1;
+  }
+
+  /** One hourly job: each offline full hour sells that player's cheapest deed. */
+  processOfflineSales(onlyPlayerId?: string): void {
+    if (this.mode !== 'multi') return;
+    const now = this.now();
+    for (const p of this.players.values()) {
+      if (onlyPlayerId && p.id !== onlyPlayerId) continue;
+      if (p.online || p.isBot || p.bankrupt || !p.offlineSince) continue;
+      const due = Math.floor((now - p.offlineSince) / RULES.offlineSaleMs);
+      if (due <= 0) continue;
+      const owned = Object.entries(this.tiles)
+        .filter(([, t]) => t.ownerId === p.id)
+        .map(([idx]) => Number(idx))
+        .sort((a, b) => spaceAt(a).price - spaceAt(b).price);
+      const count = Math.min(due, owned.length);
+      for (let i = 0; i < count; i += 1) {
+        const tile = owned[i]!;
+        const space = spaceAt(tile);
+        const state = this.tiles[tile]!;
+        let refund = 0;
+        for (const building of state.buildings) refund += Math.round(buildingInvested(space, building) * RULES.sellRefund);
+        p.cash += refund;
+        state.ownerId = null;
+        state.buildings = [];
+        state.mortgaged = false;
+        state.shares = {};
+        state.lockedBy = null;
+        this.note(p, `Offline ${i + 1}h: the bank sold ${space.name}${refund ? `; buildings refunded ${refund}` : ''}.`);
+      }
+      this.buildingCount = groupBuildingCount(this.tiles);
+      p.offlineSince += count * RULES.offlineSaleMs;
+      if (count) {
+        this.dirty = true;
+        this.seq += 1;
+      }
+    }
+  }
+
+  private note(p: ServerPlayer, text: string): void {
+    this.logSeq += 1;
+    p.notices.push({ id: -this.logSeq, at: this.now(), text, kind: 'info' });
+    if (p.notices.length > 80) p.notices = p.notices.slice(-60);
   }
 
   addBot(tokenIds: string[], difficulty = 0.7): ServerPlayer {
@@ -261,6 +337,7 @@ export class World {
         bankrupt: p.bankrupt,
         jailRecord: p.jailRecord,
         lastSeen: p.lastSeen,
+        online: p.online,
         isBot: p.isBot,
       };
     }
@@ -333,7 +410,7 @@ export class World {
       pending: p.pending,
       netWorth: net,
       loanCap: loanCap(net),
-      playerLog: [...ownActs, ...ownPublic].sort((a, b) => a.at - b.at).slice(-100),
+      playerLog: [...ownActs, ...p.notices, ...ownPublic].sort((a, b) => a.at - b.at).slice(-100),
     };
   }
 
@@ -365,8 +442,6 @@ export class World {
 
   private apply(p: ServerPlayer, intent: Intent): { ok: boolean; reason?: string } {
     switch (intent.t) {
-      case 'hello':
-        return { ok: true };
       case 'roll':
         return this.roll(p);
       case 'buy':
@@ -382,8 +457,10 @@ export class World {
         return this.evade(p);
       case 'build':
         return this.build(p, intent.tile, intent.type);
+      case 'upgrade':
+        return this.upgrade(p, intent.tile, intent.type);
       case 'sellBuilding':
-        return this.sellBuilding(p, intent.tile);
+        return this.sellBuilding(p, intent.tile, intent.type);
       case 'mortgage':
         return this.mortgage(p, intent.tile);
       case 'unmortgage':
@@ -410,6 +487,8 @@ export class World {
         return this.court(p, intent.suitId);
       case 'jailPay':
         return this.payJail(p);
+      case 'recordWipe':
+        return this.recordWipe(p);
       case 'selectToken':
         p.tokenId = intent.tokenId.slice(0, 24);
         return { ok: true };
@@ -566,7 +645,7 @@ export class World {
           return;
         }
         if (state.ownerId === p.id || state.mortgaged) return;
-        const rent = rentFor(tile, this.tiles, dice);
+        const rent = rentFor(tile, this.tiles, dice, state.ownerId, this.mode === 'multi' ? p.cash : null);
         p.pending = {
           kind: 'rent',
           tile,
@@ -636,7 +715,9 @@ export class World {
         break;
       }
       case 'repair': {
-        const owned = Object.values(this.tiles).filter((t) => t.ownerId === p.id && t.building).length;
+        const owned = Object.values(this.tiles)
+          .filter((t) => t.ownerId === p.id)
+          .reduce((n, t) => n + t.buildings.length, 0);
         this.charge(p, owned * effect.perBuilding, null);
         break;
       }
@@ -650,12 +731,13 @@ export class World {
     // deeds the bank takes outright; the rest are mortgaged.
     let refund = 0;
     for (const [idx, t] of Object.entries(this.tiles)) {
-      if (t.ownerId !== p.id || !t.building) continue;
-      refund += Math.round(buildingCost(spaceAt(Number(idx)), t.building) * RULES.sellRefund);
-      t.building = null;
-      this.buildingCount = Math.max(0, this.buildingCount - 1);
+      if (t.ownerId !== p.id) continue;
+      const space = spaceAt(Number(idx));
+      for (const building of t.buildings) refund += Math.round(buildingInvested(space, building) * RULES.sellRefund);
+      t.buildings = [];
     }
     p.cash += refund;
+    this.buildingCount = groupBuildingCount(this.tiles);
 
     const owned = Object.entries(this.tiles)
       .filter(([idx, t]) => t.ownerId === p.id && spaceAt(Number(idx)).price > 0)
@@ -678,7 +760,7 @@ export class World {
       if (sold.includes(idx)) {
         t.ownerId = null;
         t.mortgaged = false;
-        t.building = null;
+        t.buildings = [];
         t.shares = {};
         t.lockedBy = null;
       } else if (!t.mortgaged) {
@@ -760,7 +842,7 @@ export class World {
     if (p.pending?.kind !== 'rent') return { ok: false, reason: 'No rent is due.' };
     const { tile, amount, ownerId } = p.pending;
     p.pending = null;
-    const buildings = this.tiles[tile]?.building ? 1 : 0;
+    const buildings = this.tiles[tile]?.buildings.length ?? 0;
     const percent = evadeChance(buildings);
     const rollPercent = (this.rollTest() ?? this.rng()) * 100;
     const success = rollPercent < percent * 100;
@@ -864,12 +946,12 @@ export class World {
     this.cancelTradesFor(p.id);
     for (const t of Object.values(this.tiles)) {
       if (t.ownerId !== p.id) continue;
-      if (t.building) this.buildingCount = Math.max(0, this.buildingCount - 1);
       t.ownerId = creditorId;
-      t.building = null;
+      t.buildings = [];
       t.mortgaged = false;
       t.lockedBy = null;
     }
+    this.buildingCount = groupBuildingCount(this.tiles);
     p.pending = null;
     this.logLine(`${p.name} is bankrupt.`, 'money');
     this.emit({ kind: 'cash', playerId: p.id, amount: -1 });
@@ -890,33 +972,48 @@ export class World {
     const state = this.tiles[tile]!;
     if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
     const cost = buildingCost(space, type);
-    const refund = state.building ? Math.round(buildingCost(space, state.building) * RULES.sellRefund) : 0;
-    if (p.cash + refund < cost) {
+    if (p.cash < cost) {
       return { ok: false, reason: `You need ${cost} to build a ${BUILDING_META[type].name}.` };
     }
-    if (state.building) {
-      p.cash += refund;
-      this.buildingCount = Math.max(0, this.buildingCount - 1);
-    }
     p.cash -= cost;
-    state.building = type;
+    state.buildings.push({ type, rank: 1 });
     this.buildingCount += 1;
-    this.logLine(`${p.name} builds a ${BUILDING_META[type].name} on ${space.name}${refund ? ` (replaced, ${refund} refunded)` : ''}.`, 'build');
+    this.logLine(`${p.name} builds a ${BUILDING_META[type].name} on ${space.name}.`, 'build');
+    this.bumpPrice(tile, 0.03);
     this.emit({ kind: 'build', playerId: p.id, tile });
     this.seq += 1;
     return { ok: true };
   }
 
-  private sellBuilding(p: ServerPlayer, tile: number): { ok: boolean; reason?: string } {
+  private upgrade(p: ServerPlayer, tile: number, type: BuildingType): { ok: boolean; reason?: string } {
     const state = this.tiles[tile]!;
-    if (state.ownerId !== p.id || !state.building) return { ok: false, reason: 'No building of yours here.' };
+    const building = state.buildings.find((b) => b.type === type);
+    if (state.ownerId !== p.id || !building) return { ok: false, reason: 'No building of yours here.' };
+    if (building.rank >= RULES.buildingRanks) return { ok: false, reason: 'That building is already max rank.' };
+    if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
+    const target = (building.rank + 1) as 2 | 3 | 4;
+    const cost = upgradeCost(spaceAt(tile), type, target);
+    if (p.cash < cost) return { ok: false, reason: `You need ${cost} to upgrade to rank ${target}.` };
+    p.cash -= cost;
+    building.rank = target;
+    this.logLine(`${p.name} upgrades ${BUILDING_META[type].name} on ${spaceAt(tile).name} to rank ${target}.`, 'build');
+    this.bumpPrice(tile, 0.06 * target);
+    this.emit({ kind: 'build', playerId: p.id, tile, amount: cost });
+    this.seq += 1;
+    return { ok: true };
+  }
+
+  private sellBuilding(p: ServerPlayer, tile: number, type: BuildingType): { ok: boolean; reason?: string } {
+    const state = this.tiles[tile]!;
+    const index = state.buildings.findIndex((b) => b.type === type);
+    if (state.ownerId !== p.id || index < 0) return { ok: false, reason: 'No building of yours here.' };
     if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
     const space = spaceAt(tile);
-    const refund = Math.round(buildingCost(space, state.building) * RULES.sellRefund);
+    const [building] = state.buildings.splice(index, 1);
+    const refund = Math.round(buildingInvested(space, building!) * RULES.sellRefund);
     p.cash += refund;
-    state.building = null;
     this.buildingCount = Math.max(0, this.buildingCount - 1);
-    this.logLine(`${p.name} sells a building on ${space.name} for ${refund}.`, 'build');
+    this.logLine(`${p.name} sells a ${BUILDING_META[type].name} on ${space.name} for ${refund}.`, 'build');
     this.seq += 1;
     return { ok: true };
   }
@@ -926,7 +1023,7 @@ export class World {
     const state = this.tiles[tile]!;
     if (state.ownerId !== p.id) return { ok: false, reason: 'You do not own this property.' };
     if (state.mortgaged) return { ok: false, reason: 'Already mortgaged.' };
-    if (state.building) return { ok: false, reason: 'Sell the building first.' };
+    if (state.buildings.length) return { ok: false, reason: 'Sell the buildings first.' };
     if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
     state.mortgaged = true;
     p.cash += mortgageValue(space);
@@ -959,7 +1056,7 @@ export class World {
       if (!state) continue;
       const space = spaceAt(tile);
       total += state.mortgaged ? Math.round(space.price * 0.5) : space.price;
-      if (state.building) total += Math.round(buildingCost(space, state.building) * 0.5);
+      for (const building of state.buildings) total += Math.round(buildingInvested(space, building) * 0.5);
     }
     return total;
   }
@@ -1160,25 +1257,6 @@ export class World {
     }
   }
 
-  /** Drops any multiplayer seat that is not backed by a real account. */
-  purgeUnauthenticated(accountIds: Set<string>): void {
-    if (this.mode !== 'multi') return;
-    for (const p of [...this.players.values()]) {
-      if (accountIds.has(p.id)) continue;
-      this.cancelTradesFor(p.id);
-      for (const t of Object.values(this.tiles)) {
-        if (t.ownerId !== p.id) continue;
-        if (t.building) this.buildingCount = Math.max(0, this.buildingCount - 1);
-        t.ownerId = null;
-        t.building = null;
-        t.mortgaged = false;
-        t.shares = {};
-        t.lockedBy = null;
-      }
-      this.players.delete(p.id);
-    }
-  }
-
   /** Removes any legacy bot seats and returns their deeds to the bank. */
   purgeBots(): void {
     for (const p of [...this.players.values()]) {
@@ -1186,15 +1264,15 @@ export class World {
       this.cancelTradesFor(p.id);
       for (const t of Object.values(this.tiles)) {
         if (t.ownerId !== p.id) continue;
-        if (t.building) this.buildingCount = Math.max(0, this.buildingCount - 1);
         t.ownerId = null;
-        t.building = null;
+        t.buildings = [];
         t.mortgaged = false;
         t.shares = {};
         t.lockedBy = null;
       }
       this.players.delete(p.id);
     }
+    this.buildingCount = groupBuildingCount(this.tiles);
     if (this.activePlayerId && !this.players.has(this.activePlayerId)) {
       this.activePlayerId = [...this.players.values()].find((p) => !p.isBot)?.id ?? null;
     }
@@ -1203,19 +1281,68 @@ export class World {
   // ------------------------------------------------------------------- loans
 
   private takeLoan(p: ServerPlayer, amount: number): { ok: boolean; reason?: string } {
+    if (p.loan > 0) return { ok: false, reason: 'Repay your current loan first.' };
     const privatePlayer = this.privateState(p.id).you;
     const cap = loanCap(netWorth(privatePlayer, this.tiles, this.prices));
-    if (amount < 200) return { ok: false, reason: 'Minimum loan is $200.' };
-    if (p.loan + amount > cap) {
-      return {
-        ok: false,
-        reason: `Loan limit is ${cap.toLocaleString('en-US')}. You asked for ${(p.loan + amount).toLocaleString('en-US')}.`,
-      };
+    if (amount < RULES.loanMinimum) return { ok: false, reason: `Minimum loan is ${RULES.loanMinimum}.` };
+    if (amount > cap) {
+      return { ok: false, reason: `Loan limit is ${cap.toLocaleString('en-US')}. You asked for ${amount.toLocaleString('en-US')}.` };
     }
     p.loan += amount;
     p.cash += amount;
     this.logLine(`${p.name} borrows ${amount} from the bank.`, 'money');
     this.emit({ kind: 'loan', playerId: p.id, amount });
+    this.seq += 1;
+    return { ok: true };
+  }
+
+  private recordWipe(p: ServerPlayer): { ok: boolean; reason?: string } {
+    if (this.mode !== 'multi') return { ok: false, reason: 'Record wipes only exist on the shared board.' };
+    if (p.cash < RULES.wipeCost) return { ok: false, reason: `The wipe costs ${RULES.wipeCost.toLocaleString('en-US')}.` };
+    const reputationBefore = p.reputation;
+    p.cash -= RULES.wipeCost;
+    const rollPercent = (this.rollTest() ?? this.rng()) * 100;
+    const success = rollPercent < RULES.wipeChance * 100;
+    const chance: ChanceRoll = {
+      label: 'Reputation record wipe',
+      percent: Math.round(RULES.wipeChance * 100),
+      success,
+      rollPercent,
+      result: success ? 'Records erased' : 'Records survive',
+    };
+    if (success) {
+      p.acts = [];
+      p.jailRecord = [];
+      p.unpaidRent = 0;
+      p.reputation = RULES.wipeReputation;
+      for (const other of this.players.values()) delete other.findings[p.id];
+      for (const suit of this.suits.values()) {
+        if (suit.status !== 'pending' || (suit.plaintiffId !== p.id && suit.defendantId !== p.id)) continue;
+        suit.status = 'dismissed';
+        this.emit({
+          kind: 'verdict',
+          playerId: p.id,
+          targetId: suit.id,
+          audience: [suit.plaintiffId, suit.defendantId],
+          text: 'dismissed',
+        });
+      }
+      this.logLine('A record vanishes from every ledger. Nobody saw whose.', 'crime');
+    }
+    this.emit({
+      kind: 'wipe',
+      playerId: p.id,
+      audience: [p.id],
+      text: success ? 'success' : 'failed',
+      chance,
+      outcome: {
+        success,
+        kind: 'wipe',
+        amount: -RULES.wipeCost,
+        reputationDelta: success ? RULES.wipeReputation - reputationBefore : 0,
+        detail: success ? 'Your private and public records are gone. Reputation reset to 50.' : 'The wheel stopped on failure. The fee is gone and your records remain.',
+      },
+    });
     this.seq += 1;
     return { ok: true };
   }
@@ -1241,16 +1368,19 @@ export class World {
     const key = String(tile);
     const held = p.holdings[key] ?? 0;
     const purchase = qty > 0;
-    const cost = Math.abs(qty) * price;
+    const execution = purchase ? price * (1 + RULES.stockSpread) : price * (1 - RULES.stockSpread);
+    const gross = Math.abs(qty) * execution;
+    const fee = Math.max(1, Math.round(gross * RULES.stockFee));
+    const cost = gross + fee;
     if (purchase) {
-      if (p.cash < cost) return { ok: false, reason: `You need ${Math.round(cost)}.` };
+      if (p.cash < cost) return { ok: false, reason: `You need ${Math.round(cost)} including the ${(RULES.stockFee * 100).toFixed(1)}% fee.` };
       if (state.ownerId !== p.id) {
         const external = Object.entries(state.shares)
           .filter(([id]) => id !== state.ownerId)
           .reduce((a, [, v]) => a + v, 0);
         if (external + qty / 1000 > RULES.externalMax) return { ok: false, reason: 'External ownership is capped at 50%.' };
       }
-      p.cash -= cost;
+      p.cash -= Math.round(cost);
       state.shares[p.id] = (state.shares[p.id] ?? 0) + qty / 1000;
       p.holdings[key] = held + qty;
       p.costBasis[key] = (p.costBasis[key] ?? 0) + cost;
@@ -1260,8 +1390,8 @@ export class World {
       if (sell > held) return { ok: false, reason: `You only hold ${held} shares.` };
       const basis = p.costBasis[key] ?? 0;
       const average = held > 0 ? basis / held : price;
-      p.cash += sell * price;
-      p.realizedPnl += (price - average) * sell;
+      p.cash += Math.round(Math.max(0, sell * execution - fee));
+      p.realizedPnl += Math.max(0, sell * execution - fee) - average * sell;
       state.shares[p.id] = Math.max(0, (state.shares[p.id] ?? 0) - sell / 1000);
       p.holdings[key] = held - sell;
       p.costBasis[key] = Math.max(0, basis - average * sell);
@@ -1272,11 +1402,12 @@ export class World {
       this.volumes[tile] = (this.volumes[tile] ?? 0) - sell;
     }
     const fund = fundamental(tile, this.tiles);
-    const impact = Math.max(-0.04, Math.min(0.04, qty / 2500));
+    const impact = Math.max(-0.04, Math.min(0.04, qty / 1000));
     const before = this.prices[tile]!;
     const after = clampPrice(before * (1 + impact), fund);
     this.prices[tile] = after;
     this.recordPrice(tile, before, after);
+    this.bumpPrice(tile, purchase ? 0.01 : -0.005);
     this.emit({ kind: 'stock', playerId: p.id, tile, amount: qty });
     this.seq += 1;
     return { ok: true };
@@ -1497,16 +1628,15 @@ export class World {
       p.reputation = applyReputation(p.reputation, -RULES.murderSuccessRep);
       this.recordAct(p, `Murdered ${victim.name}.`);
       const repDelta = p.reputation - (p.reputation + RULES.murderSuccessRep);
+      const taken: number[] = [];
       for (const [idx, t] of Object.entries(this.tiles)) {
         if (t.ownerId !== victim.id) continue;
-        if (t.building) this.buildingCount = Math.max(0, this.buildingCount - 1);
-        t.ownerId = null;
-        t.building = null;
-        t.mortgaged = false;
-        t.shares = {};
+        t.ownerId = p.id;
+        delete t.shares[victim.id];
         t.lockedBy = null;
-        void idx;
+        taken.push(Number(idx));
       }
+      for (const t of Object.values(this.tiles)) delete t.shares[victim.id];
       victim.cash = 0;
       victim.position = 0;
       victim.inHospital = true;
@@ -1535,10 +1665,12 @@ export class World {
           amount: 0,
           targetName: victim.name,
           reputationDelta: repDelta,
-          detail: `${victim.name} is hospitalized and their portfolio is gone.`,
+          taken: taken.map((tile) => spaceAt(tile).name),
+          detail: `You took ${taken.length} propert${taken.length === 1 ? 'y' : 'ies'} from ${victim.name}.`,
         },
+        taken,
       });
-      this.emit({ kind: 'hospital', playerId: victim.id, audience: [p.id, victim.id], text: 'You wake in the hospital. Your portfolio is gone.' });
+      this.emit({ kind: 'hospital', playerId: victim.id, audience: [p.id, victim.id], text: 'You wake in the hospital. Your properties now belong to the killer.' });
       this.seq += 1;
       return { ok: true };
     }
@@ -1717,11 +1849,11 @@ export class World {
     for (const space of SPACES) {
       if (!space.price) continue;
       const fund = fundamental(space.index, this.tiles);
+      const before = this.prices[space.index]!;
       const next = clampPrice(
-        this.prices[space.index]! * (1 + ((fund - this.prices[space.index]!) / Math.max(1, fund)) * 0.02 * 6 + (this.rng() * 2 - 1) * 0.015 + Math.max(-0.04, Math.min(0.04, (this.volumes[space.index] ?? 0) / 400))),
+        before * (1 + RULES.stockDrift * 0.5 + (this.rng() * 2 - 1) * RULES.stockNoise + Math.max(-0.04, Math.min(0.04, (this.volumes[space.index] ?? 0) / 1000))),
         fund,
       );
-      const before = this.prices[space.index]!;
       this.prices[space.index] = next;
       this.recordPrice(space.index, before, next);
       this.volumes[space.index] = 0;
@@ -1767,7 +1899,7 @@ export class World {
     // Modest AI: build when a full group is held, then roll next tick.
     for (const space of SPACES) {
       const state = this.tiles[space.index]!;
-      if (state.ownerId !== p.id || state.building || !space.buildCost) continue;
+      if (state.ownerId !== p.id || state.buildings.length || !space.buildCost) continue;
       if (!ownsGroup(space.group, p.id, this.tiles)) continue;
       if (p.cash > buildingCost(space, 'house') * 2.4) {
         this.intent(p.id, { t: 'build', tile: space.index, type: 'house', key: `bot-build-${space.index}-${now}` });
@@ -1817,13 +1949,13 @@ export class World {
         state.ownerId = owner.id;
         state.mortgaged = false;
         state.lockedBy = null;
-        state.building = setup.building ?? null;
+        state.buildings = setup.building ? [{ type: setup.building, rank: 1 }] : [];
         if (setup.cash !== undefined) actor.cash = setup.cash;
         actor.position = tile;
         actor.pending = {
           kind: 'rent',
           tile,
-          amount: rentFor(tile, this.tiles, 7),
+          amount: rentFor(tile, this.tiles, 7, owner.id, this.mode === 'multi' ? actor.cash : null),
           ownerId: owner.id,
           expiresAt: this.now() + 120_000,
         };
@@ -1835,7 +1967,7 @@ export class World {
         state.ownerId = actor.id;
         state.mortgaged = false;
         state.lockedBy = null;
-        state.building = 'house';
+        state.buildings = [{ type: 'house', rank: 1 }];
         actor.cash = setup.cash ?? 5000;
         actor.pending = null;
         actor.unpaidRent += setup.unpaid ?? 300;
@@ -1869,7 +2001,7 @@ export class World {
           state.ownerId = actor.id;
           state.mortgaged = false;
           state.lockedBy = null;
-          state.building = null;
+          state.buildings = [];
         }
         actor.cash = setup.cash ?? 5000;
         break;
@@ -1910,6 +2042,15 @@ export class World {
     this.logSeq += 1;
     this.log.push({ id: this.logSeq, at: this.now(), text, kind });
     if (this.log.length > 400) this.log = this.log.slice(-200);
+  }
+
+  /** Driver hook: property activity nudges the share price within its daily cap. */
+  private bumpPrice(tile: number, fraction: number): void {
+    const fund = fundamental(tile, this.tiles);
+    const before = this.prices[tile]!;
+    const after = clampPrice(before * (1 + fraction), fund);
+    this.prices[tile] = after;
+    this.recordPrice(tile, before, after);
   }
 
   private recordPrice(tile: number, before: number, after: number): void {
@@ -1986,9 +2127,10 @@ export class World {
 export function groupSynergyText(tile: number, tiles: Record<number, TileState>): string {
   const space = spaceAt(tile);
   const state = tiles[tile];
-  if (!space.group || !state?.building) return '';
+  const type = state?.buildings[0]?.type;
+  if (!space.group || !type) return '';
   const members = groupMembers(space.group);
-  const same = members.filter((s) => tiles[s.index]?.building === state.building).length;
+  const same = members.filter((s) => tiles[s.index]?.buildings.some((b) => b.type === type)).length;
   if (same === members.length) return 'Group synergy active';
   return '';
 }
