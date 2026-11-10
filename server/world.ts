@@ -31,6 +31,7 @@ import {
 } from '../src/game/rules';
 import { nameKey, normalizeUsername } from '../src/game/username';
 import type {
+  Building,
   BuildingType,
   ChanceRoll,
   GameEvent,
@@ -117,6 +118,31 @@ function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${idCounter.toString(36)}`;
 }
 
+type RestorableTile = Partial<TileState> & { building?: BuildingType | null };
+
+/** Round 8 stored one building flag; Round 9 stores independently upgradable buildings. */
+function restoreTile(raw: RestorableTile | undefined): TileState {
+  const base = emptyTile();
+  if (!raw) return base;
+  const buildings: Building[] = Array.isArray(raw.buildings)
+    ? raw.buildings
+        .filter((b): b is Building => Boolean(b) && typeof b.type === 'string' && typeof b.rank === 'number')
+        .map((b) => ({
+          type: b.type,
+          rank: Math.min(4, Math.max(1, Math.round(b.rank))) as Building['rank'],
+        }))
+    : raw.building
+      ? [{ type: raw.building, rank: 1 }]
+      : [];
+  return {
+    ownerId: raw.ownerId ?? base.ownerId,
+    mortgaged: raw.mortgaged ?? base.mortgaged,
+    buildings,
+    shares: raw.shares ?? base.shares,
+    lockedBy: raw.lockedBy ?? base.lockedBy,
+  };
+}
+
 export class World {
   readonly players = new Map<string, ServerPlayer>();
   tiles: Record<number, TileState> = {};
@@ -177,6 +203,8 @@ export class World {
       existing = undefined;
     }
     if (existing) {
+      // A Round 8 seat has no reclaim token. Its first Round 9 join claims it.
+      if (!existing.tokenHash && !existing.isBot && tokenHash) existing.tokenHash = tokenHash;
       if (!tokenHash || existing.tokenHash !== tokenHash) {
         throw new Error('That name is already taken. Choose another, or reopen it in the browser that first used it.');
       }
@@ -2092,8 +2120,11 @@ export class World {
 
   restore(snap: WorldSnapshot): void {
     this.seq = snap.seq ?? 0;
-    this.tiles = snap.tiles;
-    this.prices = snap.prices;
+    const savedTiles = (snap.tiles ?? {}) as Record<number, RestorableTile>;
+    for (const space of SPACES) this.tiles[space.index] = restoreTile(savedTiles[space.index]);
+    for (const space of SPACES) {
+      this.prices[space.index] = snap.prices?.[space.index] ?? (space.price ? space.price * RULES.stockStartMultiple : 0);
+    }
     this.log = snap.log ?? [];
     this.logSeq = snap.logSeq ?? this.log.length;
     this.suitSeq = snap.suitSeq ?? 0;
@@ -2103,10 +2134,15 @@ export class World {
     this.marketFeed = snap.marketFeed ?? [];
     this.marketSeq = snap.marketSeq ?? 0;
     this.buildingCount = groupBuildingCount(this.tiles);
-    for (const raw of snap.players) {
+    this.players.clear();
+    for (const raw of snap.players ?? []) {
       const p = raw as ServerPlayer;
       this.players.set(p.id, {
         ...p,
+        tokenHash: p.tokenHash ?? '',
+        offlineSince: p.offlineSince ?? (p.isBot ? 0 : this.now()),
+        notices: p.notices ?? [],
+        online: false,
         acts: p.acts ?? [],
         costBasis: p.costBasis ?? {},
         realizedPnl: p.realizedPnl ?? 0,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { World } from '../server/world';
+import { World, type WorldSnapshot } from '../server/world';
 import { RULES } from '../src/game/rules';
 import type { GameEvent } from '../src/game/types';
 
@@ -585,5 +585,36 @@ describe('player trades', () => {
     solo.world.purgeBots();
     expect(solo.world.players.has(bot.id)).toBe(false);
     expect(solo.world.tiles[1]!.ownerId).toBeNull();
+  });
+});
+
+describe('snapshot migration', () => {
+  it('restores a Round 8 building flag and lets its seat be claimed', () => {
+    const source = makeWorld();
+    const joined = source.world.join('Legacy', 'dog', '', 'a'.repeat(32));
+    source.world.tiles[1]!.ownerId = joined.player.id;
+    const snap = source.world.snapshot();
+    const legacyTiles = structuredClone(snap.tiles) as unknown as Record<number, Record<string, unknown>>;
+    legacyTiles[1] = {
+      ownerId: joined.player.id,
+      mortgaged: false,
+      building: 'house',
+      shares: {},
+      lockedBy: null,
+    };
+    delete (snap.players[0] as unknown as { tokenHash?: string }).tokenHash;
+    snap.players[0]!.online = true;
+
+    const restored = makeWorld();
+    restored.world.restore({ ...snap, tiles: legacyTiles } as unknown as WorldSnapshot);
+
+    expect(restored.world.tiles[1]!.buildings).toEqual([{ type: 'house', rank: 1 }]);
+    expect(restored.world.buildingCount).toBe(1);
+    expect(restored.world.players.get(joined.player.id)?.tokenHash).toBe('');
+    expect(restored.world.players.get(joined.player.id)?.online).toBe(false);
+
+    const claimed = restored.world.join('Legacy', 'cat', '', 'b'.repeat(32));
+    expect(claimed.player.id).toBe(joined.player.id);
+    expect(claimed.player.tokenHash).not.toBe('');
   });
 });
