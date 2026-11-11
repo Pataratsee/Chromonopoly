@@ -90,27 +90,27 @@ describe('W3 loans', () => {
 });
 
 describe('W8/W9 building slots and payer-cash rent', () => {
-  it('scales slots with price and charges 1x/3x/9x/27x upgrades', () => {
-    expect(buildSlots(spaceAt(1))).toBe(2);
-    expect(buildSlots(spaceAt(39))).toBe(4);
+  it('gives every property three slots and charges 1x/3x/9x/27x upgrades', () => {
+    expect(buildSlots(spaceAt(1))).toBe(3);
+    expect(buildSlots(spaceAt(39))).toBe(3);
     expect(upgradeCost(spaceAt(1), 'house', 2)).toBe(150);
     expect(upgradeCost(spaceAt(1), 'house', 3)).toBe(450);
     expect(upgradeCost(spaceAt(1), 'house', 4)).toBe(1350);
   });
 
-  it('builds several types, upgrades independently and refuses a fifth on a four-slot deed', () => {
+  it('builds three slots including duplicates, upgrades independently and refuses a fourth', () => {
     const { world } = worldAt();
     const p = world.join('Ada', 'dog');
     p.player.cash = 1_000_000;
     world.tiles[39]!.ownerId = p.player.id;
-    for (const type of ['house', 'apartments', 'office', 'hotel'] as const) {
-      expect(world.intent(p.player.id, { t: 'build', tile: 39, type, key: `b-${type}` }).ok).toBe(true);
+    for (const [index, type] of (['house', 'apartments', 'house'] as const).entries()) {
+      expect(world.intent(p.player.id, { t: 'build', tile: 39, type, key: `b-${type}-${index}` }).ok).toBe(true);
     }
-    expect(world.tiles[39]!.buildings).toHaveLength(4);
+    expect(world.tiles[39]!.buildings).toHaveLength(3);
     expect(world.intent(p.player.id, { t: 'build', tile: 39, type: 'landmark', key: 'b5' }).ok).toBe(false);
-    expect(world.intent(p.player.id, { t: 'upgrade', tile: 39, type: 'house', key: 'u1' }).ok).toBe(true);
-    expect(world.tiles[39]!.buildings.find((b) => b.type === 'house')!.rank).toBe(2);
-    expect(world.tiles[39]!.buildings.find((b) => b.type === 'office')!.rank).toBe(1);
+    expect(world.intent(p.player.id, { t: 'upgrade', tile: 39, type: 'house', slot: 2, key: 'u1' }).ok).toBe(true);
+    expect(world.tiles[39]!.buildings[0]!.rank).toBe(1);
+    expect(world.tiles[39]!.buildings[2]!.rank).toBe(2);
   });
 
   it('matches the documented payer-cash percentages and prestige', () => {

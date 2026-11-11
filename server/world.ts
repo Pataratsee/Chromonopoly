@@ -31,6 +31,7 @@ import {
 } from '../src/game/rules';
 import { nameKey, normalizeUsername } from '../src/game/username';
 import type {
+  BotStyle,
   Building,
   BuildingType,
   ChanceRoll,
@@ -54,6 +55,12 @@ import { perksForOwner, protectedTheftAmount } from '../src/game/perks';
 
 const TOKEN_COLORS = ['#E23B3B', '#2F6FD0', '#37B36B', '#F79A3E', '#8A5A3B', '#E85C9E', '#6C7A89', '#F7D64A'];
 const BOT_NAMES = ['Ada Tycoon', 'Mr. Ledger', 'Penny Sharp', 'Count Deed', 'Vera Vault'];
+const BOT_STYLES: BotStyle[] = ['cautious', 'balanced', 'aggressive'];
+const BOT_PROFILES: Record<BotStyle, { buyReserve: number; buildReserve: number; jailReserve: number }> = {
+  cautious: { buyReserve: 2.6, buildReserve: 3.4, jailReserve: 2.2 },
+  balanced: { buyReserve: 1.8, buildReserve: 2.4, jailReserve: 1.5 },
+  aggressive: { buyReserve: 1.2, buildReserve: 1.7, jailReserve: 1.15 },
+};
 
 interface ServerPlayer extends PlayerPrivate {
   session: string;
@@ -67,6 +74,8 @@ interface ServerPlayer extends PlayerPrivate {
   pending: Pending | null;
   jailFree: number;
   lastRollAt: number;
+  botStyle: BotStyle;
+  botNextActionAt: number;
   lastTheftAt: number;
   murderReadyAt: number;
   extraRoll: boolean;
@@ -112,6 +121,8 @@ export interface TestSetup {
   claim?: number;
   roll?: number;
   deck?: 'chance' | 'chest';
+  /** Test-only: present custody without rolling the jail-sale wheel. */
+  quiet?: boolean;
 }
 
 let idCounter = 0;
@@ -167,8 +178,8 @@ export class World {
   activePlayerId: string | null = null;
   turnNumber = 0;
   private volumes: Record<number, number> = {};
-  private lastBotAt = 0;
   private turnStartedAt = 0;
+  private fastBots = false;
   private readonly baseRng: () => number;
   private rng: () => number;
   private testRoll: number | null = null;
@@ -219,7 +230,11 @@ export class World {
     if (existing) {
       // A Round 8 seat has no reclaim token. Its first Round 9 join claims it.
       if (!existing.tokenHash && !existing.isBot && tokenHash) existing.tokenHash = tokenHash;
-      if (!tokenHash || existing.tokenHash !== tokenHash) {
+      // A solo seat is authenticated by its saved session; the player token is
+      // only issued for multiplayer seats. Without this, a dropped solo socket
+      // could never reclaim its own seat.
+      const sessionMatch = this.mode === 'solo' && Boolean(_session && _session === existing.session);
+      if (!sessionMatch && (!tokenHash || existing.tokenHash !== tokenHash)) {
         throw new Error('That name is already taken. Choose another, or reopen it in the browser that first used it.');
       }
       existing.lastSeen = this.now();
@@ -268,6 +283,8 @@ export class World {
       pending: null,
       jailFree: 0,
       lastRollAt: 0,
+      botStyle: 'balanced',
+      botNextActionAt: 0,
       lastTheftAt: 0,
       murderReadyAt: 0,
       extraRoll: false,
@@ -347,13 +364,15 @@ export class World {
     if (p.notices.length > 80) p.notices = p.notices.slice(-60);
   }
 
-  addBot(tokenIds: string[], difficulty = 0.7): ServerPlayer {
+  addBot(tokenIds: string[]): ServerPlayer {
     if (this.mode !== 'solo') throw new Error('Bots cannot join a multiplayer board.');
     const name = BOT_NAMES[this.players.size % BOT_NAMES.length]!;
     const { player } = this.join(name, tokenIds[this.players.size % tokenIds.length] ?? 'cat');
     player.isBot = true;
     player.reputation = 40 + Math.floor(this.rng() * 30);
-    player.lastRollAt = this.now() + 800 + this.rng() * difficulty * 1600;
+    player.botStyle = BOT_STYLES[[...this.players.values()].filter((p) => p.isBot).length - 1] ?? 'balanced';
+    player.botNextActionAt = 0;
+    player.lastRollAt = 0;
     return player;
   }
 
@@ -382,6 +401,7 @@ export class World {
         lastSeen: p.lastSeen,
         online: p.online,
         isBot: p.isBot,
+        botStyle: p.botStyle,
       };
     }
     return {
@@ -505,9 +525,9 @@ export class World {
       case 'build':
         return this.build(p, intent.tile, intent.type);
       case 'upgrade':
-        return this.upgrade(p, intent.tile, intent.type);
+        return this.upgrade(p, intent.tile, intent.type, intent.slot);
       case 'sellBuilding':
-        return this.sellBuilding(p, intent.tile, intent.type);
+        return this.sellBuilding(p, intent.tile, intent.type, intent.slot);
       case 'mortgage':
         return this.mortgage(p, intent.tile);
       case 'unmortgage':
@@ -538,6 +558,9 @@ export class World {
         return this.payJail(p);
       case 'recordWipe':
         return this.recordWipe(p);
+      case 'botSpeed':
+        this.fastBots = intent.fast;
+        return { ok: true };
       case 'selectToken':
         p.tokenId = intent.tokenId.slice(0, 24);
         return { ok: true };
@@ -681,6 +704,7 @@ export class World {
     this.activePlayerId = next.id;
     this.turnNumber += 1;
     this.turnStartedAt = this.now();
+    next.botNextActionAt = 0;
     this.logLine(`${next.name}'s turn.`, 'info');
     this.emit({ kind: 'turn', playerId: next.id, text: `${next.name}'s turn` });
     this.seq += 1;
@@ -853,7 +877,7 @@ export class World {
     this.seq += 1;
   }
 
-  /** Release always costs 5% of current cash, never less than $50. The server owns it. */
+  /** Release always costs 10% of current cash, never less than $50. The server owns it. */
   private jailReleaseCost(p: ServerPlayer): number {
     const rate = Math.max(0.01, RULES.jailFeeRate - perksForOwner(p.id, this.tiles).jailFee);
     return Math.max(RULES.jailFeeMin, Math.round(p.cash * rate));
@@ -1039,10 +1063,10 @@ export class World {
     return { ok: true };
   }
 
-  private upgrade(p: ServerPlayer, tile: number, type: BuildingType): { ok: boolean; reason?: string } {
+  private upgrade(p: ServerPlayer, tile: number, type: BuildingType, slot?: number): { ok: boolean; reason?: string } {
     const state = this.tiles[tile]!;
-    const building = state.buildings.find((b) => b.type === type);
-    if (state.ownerId !== p.id || !building) return { ok: false, reason: 'No building of yours here.' };
+    const building = slot === undefined ? state.buildings.find((b) => b.type === type) : state.buildings[slot];
+    if (state.ownerId !== p.id || !building || building.type !== type) return { ok: false, reason: 'No building of yours here.' };
     if (building.rank >= RULES.buildingRanks) return { ok: false, reason: 'That building is already max rank.' };
     if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
     const target = (building.rank + 1) as 2 | 3 | 4;
@@ -1057,10 +1081,10 @@ export class World {
     return { ok: true };
   }
 
-  private sellBuilding(p: ServerPlayer, tile: number, type: BuildingType): { ok: boolean; reason?: string } {
+  private sellBuilding(p: ServerPlayer, tile: number, type: BuildingType, slot?: number): { ok: boolean; reason?: string } {
     const state = this.tiles[tile]!;
-    const index = state.buildings.findIndex((b) => b.type === type);
-    if (state.ownerId !== p.id || index < 0) return { ok: false, reason: 'No building of yours here.' };
+    const index = slot === undefined ? state.buildings.findIndex((b) => b.type === type) : slot;
+    if (state.ownerId !== p.id || index < 0 || state.buildings[index]?.type !== type) return { ok: false, reason: 'No building of yours here.' };
     if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };
     const space = spaceAt(tile);
     const [building] = state.buildings.splice(index, 1);
@@ -1902,7 +1926,7 @@ export class World {
   private payJail(p: ServerPlayer): { ok: boolean; reason?: string } {
     if (!p.inJail) return { ok: false, reason: 'You are not in jail.' };
     const cost = this.jailReleaseCost(p);
-    if (p.cash < cost) return { ok: false, reason: `You need ${cost} to pay the 5% release fee.` };
+    if (p.cash < cost) return { ok: false, reason: `You need ${cost} to pay the 10% release fee.` };
     p.cash -= cost;
     for (const t of Object.values(this.tiles)) {
       if (t.ownerId === p.id) t.mortgaged = false;
@@ -1969,26 +1993,27 @@ export class World {
   }
 
   private botTakeTurn(p: ServerPlayer, now: number): void {
+    const profile = BOT_PROFILES[p.botStyle ?? 'balanced'];
     if (p.pending) {
       if (p.pending.kind === 'buy') {
         const price = p.pending.amount;
-        if (p.cash > price * 1.8) this.intent(p.id, { t: 'buy', tile: p.pending.tile, key: `bot-buy-${p.pending.tile}-${now}` });
+        if (p.cash > price * profile.buyReserve) this.intent(p.id, { t: 'buy', tile: p.pending.tile, key: `bot-buy-${p.pending.tile}-${now}` });
         else this.intent(p.id, { t: 'decline', tile: p.pending.tile, key: `bot-dec-${now}` });
       } else {
         this.intent(p.id, { t: 'payRent', tile: p.pending.tile, key: `bot-rent-${now}` });
       }
       return;
     }
-    if (p.inJail && p.cash > this.jailReleaseCost(p) * 1.4) {
+    if (p.inJail && p.cash > this.jailReleaseCost(p) * profile.jailReserve) {
       this.intent(p.id, { t: 'jailPay', key: `bot-jail-${now}` });
       return;
     }
-    // Modest AI: build when a full group is held, then roll next tick.
+    // Temperament decides how much cash a bot keeps before building.
     for (const space of SPACES) {
       const state = this.tiles[space.index]!;
       if (state.ownerId !== p.id || state.buildings.length || !space.buildCost) continue;
       if (!ownsGroup(space.group, p.id, this.tiles)) continue;
-      if (p.cash > buildingCost(space, 'house') * 2.4) {
+      if (p.cash > buildingCost(space, 'house') * profile.buildReserve) {
         this.intent(p.id, { t: 'build', tile: space.index, type: 'house', key: `bot-build-${space.index}-${now}` });
         return;
       }
@@ -2012,8 +2037,14 @@ export class World {
       this.decideBotTrades(now);
       const active = this.activePlayerId ? this.players.get(this.activePlayerId) : null;
       if (!active || !active.isBot || active.bankrupt) return;
-      if (now - this.lastBotAt < 900 || now - this.turnStartedAt < 500) return;
-      this.lastBotAt = now;
+      const forced = now - this.turnStartedAt >= 15_000;
+      if (!active.botNextActionAt) {
+        active.botNextActionAt = now + (this.fastBots
+          ? (active.pending ? 160 + this.rng() * 220 : 120 + this.rng() * 200)
+          : (active.pending ? 1_000 + this.rng() * 1_500 : 800 + this.rng() * 1_200));
+      }
+      if (!forced && now < active.botNextActionAt) return;
+      active.botNextActionAt = 0;
       this.botTakeTurn(active, now);
       return;
     }
@@ -2069,18 +2100,38 @@ export class World {
         actor.pending = null;
         actor.unpaidRent += setup.unpaid ?? 300;
         actor.jailRecord.push({ tile, amount: setup.unpaid ?? 300, at: this.now() });
-        this.sendToJail(actor, 'the test scenario');
+        if (setup.quiet) {
+          actor.position = 10;
+          actor.inJail = true;
+          actor.jailTurns = RULES.jailTurns;
+          actor.jailCause = 'the test scenario';
+          actor.jailOutcome = null;
+          actor.jailSold = [];
+          this.emit({ kind: 'jail', playerId: actor.id, text: 'the test scenario' });
+          this.seq += 1;
+        } else {
+          this.sendToJail(actor, 'the test scenario');
+        }
         actor.cash = setup.cash ?? 5000;
         actor.jailReleaseCost = this.jailReleaseCost(actor);
         break;
       }
-      case 'evidence':
+      case 'evidence': {
         if (!target) return { ok: false, reason: 'A target is needed.' };
         actor.cash = setup.cash ?? 12_000;
-        actor.findings[target.id] = setup.findings ?? 1;
+        const findings = setup.findings ?? 1;
+        actor.findings[target.id] = findings;
         target.unpaidRent = setup.unpaid ?? 300;
         target.jailRecord = [{ tile, amount: target.unpaidRent, at: this.now() }];
+        actor.dossier[target.id] = {
+          reputation: target.reputation,
+          evidence: evidenceStrength(target.unpaidRent, findings),
+          at: this.now(),
+          record: target.jailRecord.slice(-20),
+          acts: target.acts.slice(-20),
+        };
         break;
+      }
       case 'suit': {
         if (!target) return { ok: false, reason: 'A defendant is needed.' };
         actor.findings[target.id] = setup.findings ?? 2;

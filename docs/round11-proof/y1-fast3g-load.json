@@ -1,0 +1,35 @@
+{
+  "profile": "Fast 3G 1.6 Mbps / 150 ms RTT, cold cache",
+  "coldMs": 4709,
+  "marks": [
+    {
+      "name": "chromo-boot-start",
+      "at": 3261
+    },
+    {
+      "name": "chromo-manifest",
+      "at": 3537
+    },
+    {
+      "name": "chromo-stage",
+      "at": 3624
+    },
+    {
+      "name": "chromo-board",
+      "at": 4680
+    },
+    {
+      "name": "chromo-island",
+      "at": 4687
+    },
+    {
+      "name": "chromo-ui",
+      "at": 4709
+    },
+    {
+      "name": "chromonopoly-ready",
+      "at": 4709
+    }
+  ],
+  "budget": 8000
+}

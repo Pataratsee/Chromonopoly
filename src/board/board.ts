@@ -6,7 +6,6 @@ import { SPACES } from '../game/board';
 import type { PublicState, Space } from '../game/types';
 import { HAS_BAND, boardName, contentBox, tilePose, tileTextLayout } from './layout';
 import { fitText, loadFont } from './textFit';
-import type { Font } from 'opentype.js';
 import { assetUrl } from '../assetUrl';
 
 const BOARD_FONT = assetUrl('fonts/LilitaOne-Regular.ttf');
@@ -229,7 +228,7 @@ function specialName(space: Space): string {
 }
 
 export async function createBoard(): Promise<BoardView> {
-  const font: Font = await loadFont(BOARD_FONT);
+  const font = await loadFont(BOARD_FONT);
   const group = new THREE.Group();
   group.name = 'board';
 
@@ -478,7 +477,11 @@ export async function createBoard(): Promise<BoardView> {
   padLabel.letterSpacing = 0.14;
   group.add(padLabel);
 
-  await syncTexts(group);
+  // Text SDF generation is visible work, not a prerequisite for the board or
+  // the menu. Let the first frame paint while troika fills the labels in.
+  void syncTexts(group).catch((error: unknown) => {
+    console.warn('Board labels could not be prepared:', error);
+  });
   const cardAnimations: CardAnimation[] = [];
 
   const updateOwner = (handle: TileHandle, state: PublicState): void => {

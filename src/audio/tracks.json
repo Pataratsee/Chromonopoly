@@ -1,0 +1,82 @@
+[
+  {
+    "id": "dawn-ledger",
+    "title": "Dawn Ledger",
+    "file": "audio/dawn-ledger.ogg",
+    "fallback": "audio/dawn-ledger.m4a",
+    "bpm": 72,
+    "bars": 42,
+    "beatsPerBar": 4,
+    "mood": "warm keys and brushed pulse"
+  },
+  {
+    "id": "quiet-harbor",
+    "title": "Quiet Harbor",
+    "file": "audio/quiet-harbor.ogg",
+    "fallback": "audio/quiet-harbor.m4a",
+    "bpm": 60,
+    "bars": 36,
+    "beatsPerBar": 4,
+    "mood": "beatless pads and slow piano"
+  },
+  {
+    "id": "sunday-market",
+    "title": "Sunday Market",
+    "file": "audio/sunday-market.ogg",
+    "fallback": "audio/sunday-market.m4a",
+    "bpm": 84,
+    "bars": 48,
+    "beatsPerBar": 4,
+    "mood": "soft lo-fi beat and electric keys"
+  },
+  {
+    "id": "amber-window",
+    "title": "Amber Window",
+    "file": "audio/amber-window.ogg",
+    "fallback": "audio/amber-window.m4a",
+    "bpm": 76,
+    "bars": 44,
+    "beatsPerBar": 4,
+    "mood": "nylon guitar and warm air"
+  },
+  {
+    "id": "slow-auction",
+    "title": "Slow Auction",
+    "file": "audio/slow-auction.ogg",
+    "fallback": "audio/slow-auction.m4a",
+    "bpm": 70,
+    "bars": 40,
+    "beatsPerBar": 4,
+    "mood": "late jazz brushes and upright bass"
+  },
+  {
+    "id": "riverstone",
+    "title": "Riverstone",
+    "file": "audio/riverstone.ogg",
+    "fallback": "audio/riverstone.m4a",
+    "bpm": 62,
+    "bars": 40,
+    "beatsPerBar": 4,
+    "mood": "ambient drone and distant bells"
+  },
+  {
+    "id": "paper-skies",
+    "title": "Paper Skies",
+    "file": "audio/paper-skies.ogg",
+    "fallback": "audio/paper-skies.m4a",
+    "bpm": 80,
+    "bars": 46,
+    "beatsPerBar": 4,
+    "mood": "gentle beat and glassy melody"
+  },
+  {
+    "id": "late-harvest",
+    "title": "Late Harvest",
+    "file": "audio/late-harvest.ogg",
+    "fallback": "audio/late-harvest.m4a",
+    "bpm": 66,
+    "bars": 48,
+    "beatsPerBar": 3,
+    "mood": "slow waltz for autumn"
+  }
+]

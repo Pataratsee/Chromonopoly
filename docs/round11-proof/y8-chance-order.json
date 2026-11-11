@@ -1,0 +1,43 @@
+[
+  {
+    "kind": "theft",
+    "landed": 14782.200000000186,
+    "overlay": 6091,
+    "result": 17755,
+    "busted": 18588
+  },
+  {
+    "kind": "robbery",
+    "landed": 31222.799999999814,
+    "overlay": 22576,
+    "result": 34145,
+    "busted": 35294
+  },
+  {
+    "kind": "murder",
+    "landed": 47797.700000000186,
+    "overlay": 38448,
+    "result": 50992,
+    "busted": 52075
+  },
+  {
+    "kind": "detective",
+    "landed": 63630.59999999963,
+    "overlay": 54956,
+    "result": 66871,
+    "busted": 69058
+  },
+  {
+    "kind": "wipe",
+    "landed": 81787.89999999944,
+    "overlay": 73047,
+    "result": 85003,
+    "busted": 86269
+  },
+  {
+    "kind": "jail",
+    "landed": 99105.39999999944,
+    "overlay": 90377,
+    "busted": 102099
+  }
+]

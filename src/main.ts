@@ -11,7 +11,7 @@ import { DiceLayer } from './board/dice';
 import { JailCageLayer } from './board/jail';
 import { loadManifest, type ModelAsset } from './render/models';
 import { ThumbnailStudio } from './render/thumbnails';
-import { NetClient } from './net/client';
+import { NetClient, intentKey } from './net/client';
 import { UI } from './ui/ui';
 import { audio } from './audio/audio';
 import { applySettings, loadSettings } from './ui/settings';
@@ -49,6 +49,12 @@ declare global {
     __islandProof?: (index: number) => { triangles: number; details: number; petals: number; skyOnly: true };
     __renderStats?: () => { triangles: number; calls: number; points: number; lines: number } | null;
     __botLog?: Array<{ at: number; player?: string; event: string; detail?: string | number }>;
+    __studio?: ThumbnailStudio;
+    __assets?: ModelAsset[];
+    __manifestLoaded?: () => Promise<unknown>;
+    __cameraView?: (view: `angle-${number}` | 'below' | 'default' | 'max-zoom') => void;
+    __campfireView?: () => void;
+    __menuReadyAt?: number;
   }
 }
 
@@ -63,19 +69,24 @@ async function start(): Promise<void> {
   audio.setSfxOn(settings.sfxOn);
   audio.setMusicOn(settings.musicOn);
 
+  performance.mark('chromo-boot-start');
   const manifest = await loadManifest();
+  performance.mark('chromo-manifest');
   const assets = manifest.assets as ModelAsset[];
   const stage = new Stage(canvas, settings.quality);
+  performance.mark('chromo-stage');
   stage.camera.layers.enable(2);
   const testParams = new URLSearchParams(location.search);
   if (testParams.has('e2e')) stage.setQuality('low');
   const board: BoardView = await createBoard();
+  performance.mark('chromo-board');
   stage.scene.add(board.group);
   const sky = new Sky();
   sky.setRunning(settings.skyRunning);
   sky.setHour(settings.skyHour);
   stage.scene.add(sky.group);
   const island = new IslandLayer(stage.scene);
+  performance.mark('chromo-island');
   if (testParams.has('e2e')) {
     window.__stage = stage;
     window.__sky = sky;
@@ -88,6 +99,10 @@ async function start(): Promise<void> {
   const buildings = new BuildingLayer(stage.scene);
   const cages = new JailCageLayer(stage.scene);
   const studio = new ThumbnailStudio();
+  if (testParams.has('e2e')) {
+    window.__studio = studio;
+    window.__assets = assets;
+  }
   const net = new NetClient();
 
   let state: PublicState | null = null;
@@ -118,6 +133,7 @@ async function start(): Promise<void> {
       audio.setSfxOn(next.sfxOn);
       audio.setMusicOn(next.musicOn);
       audio.duck(false);
+      if (net.mode === 'solo') net.send({ t: 'botSpeed', fast: next.fastBots, key: intentKey('bot-speed') });
       sky.setRunning(next.skyRunning);
       sky.setHour(next.skyHour);
       setFpsCounter(next.fpsCounter);
@@ -674,6 +690,8 @@ async function start(): Promise<void> {
   requestAnimationFrame(loop);
 
   ui.mount();
+  performance.mark('chromo-ui');
+  window.__menuReadyAt = performance.now();
   performance.mark('chromonopoly-ready');
 
   // Test-only projection hook: lets Playwright click a real tile without guessing pixels.
@@ -709,8 +727,59 @@ async function start(): Promise<void> {
       stage.render();
       return island.audit();
     };
+    window.__campfireView = () => {
+      const rig = stage.rig as unknown as { wantYaw: number; wantPitch: number; wantRadius: number; wantTarget: THREE.Vector3; snapFrom: null; manualUntil: number };
+      // The detail group is scaled by 1.3, so the fire's local (8.6,-4.7)
+      // sits at world (11.18,-6.11), on the lawn outside the board.
+      const angle = 2.07;
+      stage.rig.lockOn(new THREE.Vector3(11.18, 0.45, -6.11));
+      stage.rig.yaw = angle;
+      stage.rig.pitch = 0.26;
+      stage.rig.radius = 4.2;
+      stage.rig.target.set(11.18, 0.45, -6.11);
+      rig.wantYaw = angle;
+      rig.wantPitch = 0.26;
+      rig.wantRadius = 4.2;
+      rig.wantTarget.set(11.18, 0.45, -6.11);
+      rig.snapFrom = null;
+      rig.manualUntil = performance.now() + 60_000;
+      stage.rig.update(1);
+      island.setSky(sky.update(0));
+      island.update(0, performance.now() / 1000, stage.camera);
+      stage.render();
+    };
+    window.__cameraView = (view) => {
+      const rig = stage.rig as unknown as { wantYaw: number; wantPitch: number; wantRadius: number; wantTarget: THREE.Vector3; snapFrom: null; manualUntil: number };
+      // Twenty-four equally spaced azimuths are used by the Y2 proof sweep;
+      // the original four named views remain the four quadrants.
+      const angle = view.startsWith('angle-')
+        ? (Number(view.slice(6)) / 24) * Math.PI * 2
+        : 0;
+      const framing = view === 'below'
+        ? { pitch: 0.075, radius: 34 }
+        : view === 'max-zoom'
+          ? { pitch: 0.55, radius: CAMERA.minRadius }
+          : view === 'default'
+            ? { pitch: CAMERA.pitch, radius: CAMERA.radius }
+            : { pitch: 0.24, radius: 29 };
+      stage.rig.yaw = angle;
+      stage.rig.pitch = framing.pitch;
+      stage.rig.radius = framing.radius;
+      stage.rig.target.set(0, view === 'max-zoom' ? 0 : -2.25, 0);
+      rig.wantYaw = angle;
+      rig.wantPitch = framing.pitch;
+      rig.wantRadius = framing.radius;
+      rig.wantTarget.set(0, view === 'max-zoom' ? 0 : -2.25, 0);
+      rig.snapFrom = null;
+      rig.manualUntil = performance.now() + 60_000;
+      stage.rig.update(1);
+      island.setSky(sky.update(0));
+      island.update(0, performance.now() / 1000, stage.camera);
+      stage.render();
+    };
     window.__renderStats = () => stage.stats();
     (window as unknown as { __state: () => unknown }).__state = () => state;
+    (window as unknown as { __ui: UI }).__ui = ui;
   }
 
   // The first frame proves the renderer is alive, but background tabs pause

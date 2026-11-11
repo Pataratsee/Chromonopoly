@@ -1,0 +1,128 @@
+[
+  {
+    "view": "angle-0",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 94,
+      "calls": 472,
+      "triangles": 38713,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-1",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 116,
+      "calls": 470,
+      "triangles": 38709,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-2",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 138,
+      "calls": 471,
+      "triangles": 38711,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-3",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 160,
+      "calls": 471,
+      "triangles": 38711,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  {
+    "view": "below",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 183,
+      "calls": 472,
+      "triangles": 38713,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  {
+    "view": "default",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 204,
+      "calls": 448,
+      "triangles": 38495,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  {
+    "view": "max-zoom",
+    "stats": {
+      "triangles": 3609,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 225,
+      "calls": 197,
+      "triangles": 23857,
+      "points": 900,
+      "lines": 0
+    }
+  }
+]

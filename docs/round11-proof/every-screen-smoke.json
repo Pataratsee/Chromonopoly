@@ -1,0 +1,46 @@
+[
+  {
+    "method": "openMarket",
+    "title": "Market"
+  },
+  {
+    "method": "openBank",
+    "title": "Bank"
+  },
+  {
+    "method": "openCrime",
+    "title": "Underworld"
+  },
+  {
+    "method": "openDetective",
+    "title": "Detective"
+  },
+  {
+    "method": "openProperties",
+    "title": "Properties"
+  },
+  {
+    "method": "openReputation",
+    "title": "Reputation"
+  },
+  {
+    "method": "openCourt",
+    "title": "Court"
+  },
+  {
+    "method": "openLog",
+    "title": "Logs"
+  },
+  {
+    "method": "openSettings",
+    "title": "Settings"
+  },
+  {
+    "method": "openTokens",
+    "title": "Pick your piece"
+  },
+  {
+    "method": "openHelp",
+    "title": "How to play"
+  }
+]

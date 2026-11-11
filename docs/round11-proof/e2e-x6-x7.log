@@ -1,0 +1,10 @@
+npm notice run chromonopoly@3.0.0 npx
+npm notice run 'playwright' test tests/e2e/round10.spec.ts -g X6-X7
+[WebServer] npm notice run chromonopoly@3.0.0 start
+[WebServer] npm notice run node dist-server/index.js
+
+Running 1 test using 1 worker
+
+  ✓  1 tests/e2e/round10.spec.ts:487:1 › X6-X7: custody presentation and the exact release price (19.6s)
+
+  1 passed (23.9s)

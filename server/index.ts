@@ -1,17 +1,19 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { World, type TestSetup } from './world.ts';
 import { Store } from './db.ts';
-import type { GameEvent, GameMode, Intent, ServerMessage } from '../src/game/types.ts';
+import type { GameEvent, GameMode, Intent, PublicState, ServerMessage } from '../src/game/types.ts';
+import { diffState } from './delta.ts';
 import { normalizeUsername, usernameIssue } from '../src/game/username.ts';
 
 const PORT = Number(process.env.CHROMONOPOLY_PORT ?? process.env.PORT ?? 8787) || 8787;
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 const BUILD = process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? 'dev';
-const PROTOCOL = 3;
+const PROTOCOL = 4;
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -28,23 +30,82 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
   '.wasm': 'application/wasm',
   '.ktx2': 'image/ktx2',
+  '.ogg': 'audio/ogg',
+  '.opus': 'audio/ogg',
+  '.m4a': 'audio/mp4',
 };
 
 const store = new Store();
+const compressionCache = new Map<string, Buffer>();
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.svg', '.ttf', '.gltf']);
 
 interface Client {
   ws: WebSocket;
   playerId: string;
   world: World;
   mode: GameMode;
+  /** Sequence the client has actually been sent, used as the delta base. */
+  lastSeq: number;
+}
+
+interface BroadcastFrame {
+  seq: number;
+  previousSeq: number | null;
+  fullJson: string;
+  deltaJson: string | null;
+  state: PublicState;
 }
 
 const clients = new Map<WebSocket, Client>();
 const events: GameEvent[] = [];
 const soloWorlds = new Map<string, { world: World; touched: number; saved?: number }>();
+const frames = new Map<World, BroadcastFrame>();
+const SOFT_BUFFER = 256 * 1024;
+const HARD_BUFFER = 2 * 1024 * 1024;
+const startedAt = Date.now();
+const metrics = {
+  intents: 0,
+  rejected: 0,
+  errors: 0,
+  dropped: 0,
+  bytesOut: 0,
+  deltaFrames: 0,
+  fullFrames: 0,
+  actionMs: [] as number[],
+  tickMs: [] as number[],
+  lastSaveAt: 0,
+};
 
 function clientsIn(world: World): Client[] {
   return [...clients.values()].filter((c) => c.world === world);
+}
+
+function record(list: number[], value: number): void {
+  list.push(value);
+  if (list.length > 2000) list.splice(0, list.length - 2000);
+}
+
+function percentile(list: number[], fraction: number): number {
+  if (!list.length) return 0;
+  const sorted = [...list].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))]!;
+}
+
+function safeSendRaw(ws: WebSocket, payload: string): boolean {
+  if (ws.readyState !== WebSocket.OPEN) return false;
+  try {
+    ws.send(payload);
+    metrics.bytesOut += Buffer.byteLength(payload);
+    return true;
+  } catch (error) {
+    metrics.errors += 1;
+    console.error(JSON.stringify({ at: new Date().toISOString(), level: 'error', event: 'send', error: error instanceof Error ? error.message : String(error) }));
+    return false;
+  }
+}
+
+function send(ws: WebSocket, message: ServerMessage): void {
+  safeSendRaw(ws, JSON.stringify(message));
 }
 
 function broadcastWorld(world: World, message: ServerMessage): void {
@@ -53,8 +114,89 @@ function broadcastWorld(world: World, message: ServerMessage): void {
     if (message.type === 'event' && message.event?.audience?.length) {
       if (!message.event.audience.includes(client.playerId)) continue;
     }
-    if (client.ws.readyState === WebSocket.OPEN) client.ws.send(payload);
+    if (client.ws.bufferedAmount > HARD_BUFFER) {
+      metrics.dropped += 1;
+      client.ws.terminate();
+      continue;
+    }
+    safeSendRaw(client.ws, payload);
   }
+}
+
+/**
+ * One deep diff per world per tick, not per client. Clients that are in step
+ * receive the compact delta; a client that missed a frame or is under socket
+ * backpressure receives a full snapshot and starts a fresh delta chain.
+ */
+function broadcastBoard(world: World): void {
+  const state = world.publicState();
+  const previous = frames.get(world);
+  if (previous?.seq === state.seq) return;
+  const patch = previous ? diffState(previous.state, state) : null;
+  const fullJson = JSON.stringify({ type: 'state', state });
+  let deltaJson = patch ? JSON.stringify({ type: 'delta', seq: state.seq, baseSeq: previous!.seq, patch }) : null;
+  if (deltaJson && deltaJson.length >= fullJson.length * 0.92) deltaJson = null;
+  const frame: BroadcastFrame = {
+    seq: state.seq,
+    previousSeq: previous?.seq ?? null,
+    fullJson,
+    deltaJson,
+    state: structuredClone(state),
+  };
+  frames.set(world, frame);
+
+  for (const client of clientsIn(world)) {
+    if (client.ws.readyState !== WebSocket.OPEN) continue;
+    if (client.ws.bufferedAmount > HARD_BUFFER) {
+      metrics.dropped += 1;
+      client.ws.terminate();
+      continue;
+    }
+    const canDelta = Boolean(
+      deltaJson
+      && client.lastSeq === frame.previousSeq
+      && client.ws.bufferedAmount < SOFT_BUFFER,
+    );
+    if (canDelta) {
+      if (safeSendRaw(client.ws, deltaJson!)) {
+        client.lastSeq = state.seq;
+        metrics.deltaFrames += 1;
+      }
+    } else if (safeSendRaw(client.ws, fullJson)) {
+      client.lastSeq = state.seq;
+      metrics.fullFrames += 1;
+      if (client.ws.bufferedAmount > SOFT_BUFFER) metrics.dropped += 1;
+    }
+  }
+}
+
+function snapshotFor(ws: WebSocket, world: World, playerId: string): number {
+  const state = world.publicState();
+  send(ws, { type: 'state', state });
+  send(ws, { type: 'private', private: world.privateState(playerId) });
+  return state.seq;
+}
+
+function logMetrics(event: string): void {
+  console.log(JSON.stringify({
+    at: new Date().toISOString(),
+    level: 'info',
+    event,
+    uptime: Math.round(process.uptime()),
+    players: publicWorld.players.size,
+    online: [...publicWorld.players.values()].filter((p) => p.online).length,
+    sockets: clients.size,
+    seq: publicWorld.seq,
+    intents: metrics.intents,
+    rejected: metrics.rejected,
+    errors: metrics.errors,
+    dropped: metrics.dropped,
+    p95ActionMs: Number(percentile(metrics.actionMs, 0.95).toFixed(2)),
+    p95TickMs: Number(percentile(metrics.tickMs, 0.95).toFixed(2)),
+    bytesOut: metrics.bytesOut,
+    deltaFrames: metrics.deltaFrames,
+    fullFrames: metrics.fullFrames,
+  }));
 }
 
 function newWorld(mode: GameMode): World {
@@ -82,10 +224,6 @@ const BOT_TOKENS = ['dog', 'taxi', 'penguin', 'chest', 'locomotive', 'panda'];
 
 function fillSoloBots(world: World): void {
   while ([...world.players.values()].filter((p) => p.isBot).length < 3) world.addBot(BOT_TOKENS);
-}
-
-function send(ws: WebSocket, message: ServerMessage): void {
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
 }
 
 function cors(req: IncomingMessage, res: ServerResponse): void {
@@ -117,8 +255,17 @@ const server = createServer(async (req, res) => {
       seq: publicWorld.seq,
       soloTables: soloWorlds.size,
       uptime: process.uptime(),
+      startedAt,
       version: BUILD,
       protocol: PROTOCOL,
+      sockets: clients.size,
+      p95ActionMs: Number(percentile(metrics.actionMs, 0.95).toFixed(2)),
+      p95TickMs: Number(percentile(metrics.tickMs, 0.95).toFixed(2)),
+      droppedUpdates: metrics.dropped,
+      deltaFrames: metrics.deltaFrames,
+      fullFrames: metrics.fullFrames,
+      bytesOut: metrics.bytesOut,
+      lastSaveAt: metrics.lastSaveAt,
     });
     return;
   }
@@ -197,26 +344,62 @@ const server = createServer(async (req, res) => {
   try {
     const data = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, {
+    const headers: Record<string, string | number> = {
       'content-type': MIME[ext] ?? 'application/octet-stream',
       'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=604800',
       'x-content-type-options': 'nosniff',
-    });
-    res.end(data);
+      vary: 'Accept-Encoding',
+    };
+    let body: Buffer = data;
+    if (COMPRESSIBLE.has(ext) && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')) {
+      body = compressionCache.get(filePath) ?? gzipSync(data, { level: 9 });
+      compressionCache.set(filePath, body);
+      headers['content-encoding'] = 'gzip';
+    }
+    headers['content-length'] = body.length;
+    res.writeHead(200, headers);
+    res.end(body);
   } catch {
     res.writeHead(404).end('Not found');
   }
 });
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({
+  server,
+  path: '/ws',
+  perMessageDeflate: { threshold: 512, zlibDeflateOptions: { level: 3 } },
+  maxPayload: 64 * 1024,
+  clientTracking: true,
+});
 
 wss.on('connection', (ws) => {
   let client: Client | null = null;
+  (ws as WebSocket & { _socket?: { setNoDelay(value: boolean): void } })._socket?.setNoDelay(true);
+  let windowStartedAt = Date.now();
+  let messagesInWindow = 0;
+
+  ws.on('error', (error) => {
+    metrics.errors += 1;
+    console.error(JSON.stringify({ at: new Date().toISOString(), level: 'error', event: 'socket', error: error.message }));
+  });
 
   ws.on('message', (raw) => {
+    const now = Date.now();
+    if (now - windowStartedAt >= 1000) {
+      windowStartedAt = now;
+      messagesInWindow = 0;
+    }
+    messagesInWindow += 1;
+    if (messagesInWindow > 60) {
+      metrics.rejected += 1;
+      send(ws, { type: 'rejected', reason: 'Too many messages. Slow down.' });
+      ws.close(1008, 'rate limit');
+      return;
+    }
     let msg: {
       type?: string;
       intent?: Intent;
+      t?: number;
       name?: string;
       tokenId?: string;
       session?: string;
@@ -291,11 +474,10 @@ wss.on('connection', (ws) => {
         joined.player.offlineSince = 0;
         world.processOfflineSales(joined.player.id);
       }
-      client = { ws, playerId: joined.player.id, world, mode };
+      client = { ws, playerId: joined.player.id, world, mode, lastSeq: -1 };
       clients.set(ws, client);
       send(ws, { type: 'welcome', playerId: joined.player.id, session: joined.session, mode });
-      send(ws, { type: 'state', state: world.publicState() });
-      send(ws, { type: 'private', private: world.privateState(joined.player.id) });
+      client.lastSeq = snapshotFor(ws, world, joined.player.id);
       return;
     }
 
@@ -304,8 +486,14 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    if (msg.type === 'ping') {
+      send(ws, { type: 'pong', t: msg.t, serverTime: Date.now() });
+      return;
+    }
+
     if (msg.type === 'resync') {
       send(ws, { type: 'resync', state: client.world.publicState(), private: client.world.privateState(client.playerId) });
+      client.lastSeq = client.world.seq;
       return;
     }
 
@@ -321,8 +509,13 @@ wss.on('connection', (ws) => {
         send(ws, { type: 'rejected', reason: 'Missing idempotency key.' });
         return;
       }
+      const started = performance.now();
       const result = client.world.intent(client.playerId, intent);
+      const elapsed = performance.now() - started;
+      record(metrics.actionMs, elapsed);
+      metrics.intents += 1;
       if (!result.ok) {
+        metrics.rejected += 1;
         send(ws, { type: 'rejected', reason: result.reason ?? 'Action refused.', key: 'key' in intent ? intent.key : undefined });
       } else {
         send(ws, { type: 'private', private: client.world.privateState(client.playerId) });
@@ -335,43 +528,39 @@ wss.on('connection', (ws) => {
     if (client.mode === 'multi') {
       client.world.disconnect(client.playerId);
       store.saveWorld(publicWorld.snapshot());
+      metrics.lastSaveAt = Date.now();
     }
     clients.delete(ws);
     client = null;
   });
 });
 
-const lastBroadcast = new Map<World, number>();
+const TICK_MS = 100;
 const lastPrivate = new Map<World, number>();
 
-setInterval(() => {
+const gameLoop = setInterval(() => {
+  const tickStarted = performance.now();
   const worlds = [publicWorld, ...[...soloWorlds.values()].map((s) => s.world)];
   for (const world of worlds) {
-    world.tick(100);
+    world.tick(TICK_MS);
     world.expirePending();
     world.runBots();
-    if (world.seq !== (lastBroadcast.get(world) ?? -1)) {
-      lastBroadcast.set(world, world.seq);
-      broadcastWorld(world, { type: 'state', state: world.publicState() });
-    }
+    if (world.seq !== (frames.get(world)?.seq ?? -1)) broadcastBoard(world);
     if (world.seq !== (lastPrivate.get(world) ?? -1)) {
       lastPrivate.set(world, world.seq);
       for (const c of clientsIn(world)) {
-        try {
-          send(c.ws, { type: 'private', private: world.privateState(c.playerId) });
-        } catch {
-          // Disconnected clients are cleaned up by their close handler.
-        }
+        if (c.ws.bufferedAmount > SOFT_BUFFER) continue;
+        send(c.ws, { type: 'private', private: world.privateState(c.playerId) });
       }
     }
   }
 
-  // One job for every disconnected name. No per-player timers.
   publicWorld.processOfflineSales();
 
   if (publicWorld.dirty) {
     publicWorld.dirty = false;
     store.saveWorld(publicWorld.snapshot());
+    metrics.lastSaveAt = Date.now();
   }
 
   for (const [key, entry] of soloWorlds) {
@@ -379,18 +568,65 @@ setInterval(() => {
     entry.world.dirty = false;
     entry.saved = Date.now();
     store.saveSolo(key, entry.world.snapshot());
+    metrics.lastSaveAt = Date.now();
   }
-}, 80);
+  record(metrics.tickMs, performance.now() - tickStarted);
+}, TICK_MS);
+
+const metricsTimer = setInterval(() => logMetrics('metrics'), 10_000);
 
 server.listen(PORT, () => {
-  console.log(`Chromonopoly server on http://localhost:${PORT}  (ws://localhost:${PORT}/ws)`);
+  console.log(JSON.stringify({ at: new Date().toISOString(), level: 'info', event: 'listening', port: PORT, protocol: PROTOCOL, version: BUILD, pid: process.pid }));
 });
 
-function shutdown(): void {
-  store.saveWorld(publicWorld.snapshot(), true);
-  store.close();
-  server.close(() => process.exit(0));
-  setTimeout(() => process.exit(0), 1200);
+let shuttingDown = false;
+let closedStore = false;
+function closeStore(): void {
+  if (closedStore) return;
+  closedStore = true;
+  try {
+    store.close();
+  } catch (error) {
+    metrics.errors += 1;
+    console.error(JSON.stringify({ at: new Date().toISOString(), level: 'error', event: 'store-close', error: error instanceof Error ? error.message : String(error) }));
+  }
 }
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+
+function shutdown(signal = 'SIGTERM', exitCode = 0): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  clearInterval(gameLoop);
+  clearInterval(metricsTimer);
+  logMetrics(`shutdown:${signal}`);
+  for (const [key, entry] of soloWorlds) {
+    entry.world.dirty = false;
+    store.saveSolo(key, entry.world.snapshot());
+  }
+  store.saveWorld(publicWorld.snapshot(), true);
+  metrics.lastSaveAt = Date.now();
+  for (const ws of wss.clients) {
+    try {
+      ws.close(1001, 'server restart');
+    } catch {
+      ws.terminate();
+    }
+  }
+  const done = (): void => {
+    closeStore();
+    process.exit(exitCode);
+  };
+  server.close(done);
+  setTimeout(done, 1500).unref();
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('uncaughtException', (error) => {
+  metrics.errors += 1;
+  console.error(JSON.stringify({ at: new Date().toISOString(), level: 'fatal', event: 'uncaughtException', error: error.message, stack: error.stack }));
+  shutdown('uncaughtException', 1);
+});
+process.on('unhandledRejection', (reason) => {
+  metrics.errors += 1;
+  console.error(JSON.stringify({ at: new Date().toISOString(), level: 'error', event: 'unhandledRejection', error: String(reason) }));
+});
+

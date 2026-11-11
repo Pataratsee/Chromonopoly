@@ -27,10 +27,43 @@ const TURKEY_WING = new THREE.MeshStandardMaterial({ color: '#a4552c', roughness
 const APPLE = new THREE.MeshStandardMaterial({ color: '#b6402c', roughness: 0.8, flatShading: true });
 const MUSHROOM = new THREE.MeshStandardMaterial({ color: '#d9c7a2', roughness: 1, flatShading: true });
 const FLOWER = new THREE.MeshStandardMaterial({ color: '#d9a63a', roughness: 1, flatShading: true });
-const FIRE = new THREE.MeshStandardMaterial({ color: '#f08b2e', emissive: '#d35a10', emissiveIntensity: 1.6, roughness: 0.6 });
-const SEA = new THREE.MeshStandardMaterial({ color: '#4f6f67', roughness: 0.75, metalness: 0.04 });
-const CLOUD = new THREE.MeshStandardMaterial({ color: '#f0e5cf', roughness: 1, transparent: true, opacity: 0.55, depthWrite: false });
 const LEAF = new THREE.MeshBasicMaterial({ color: '#c9662a', side: THREE.DoubleSide });
+
+function softTexture(inner: string, outer: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, inner);
+  gradient.addColorStop(0.55, outer);
+  gradient.addColorStop(1, 'rgba(255,120,20,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(canvas);
+}
+
+function flameTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 192;
+  const ctx = canvas.getContext('2d')!;
+  const gradient = ctx.createLinearGradient(64, 192, 64, 0);
+  gradient.addColorStop(0, 'rgba(255,238,150,0.98)');
+  gradient.addColorStop(0.35, 'rgba(255,170,42,0.96)');
+  gradient.addColorStop(0.76, 'rgba(234,70,18,0.8)');
+  gradient.addColorStop(1, 'rgba(180,30,8,0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(64, 8);
+  ctx.bezierCurveTo(118, 76, 108, 138, 64, 184);
+  ctx.bezierCurveTo(20, 138, 10, 76, 64, 8);
+  ctx.closePath();
+  ctx.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
 
 function jitter(seed: number): number {
   return (Math.sin(seed * 12.9898) * 43758.5453) % 1;
@@ -93,35 +126,35 @@ function cap(points: THREE.Vector3[], center: THREE.Vector3, material: THREE.Mat
 
 function solidIsland(): THREE.Group {
   const group = new THREE.Group();
+  group.name = 'island-shell';
   const rings = [
-    ring(13.4, 56, -0.42, 1, 0.55),
-    ring(13.1, 56, -1.8, 2, 0.8),
-    ring(12.3, 56, -3.6, 3, 1.0),
-    ring(10.6, 56, -5.8, 4, 1.2),
-    ring(7.1, 56, -8.4, 5, 1.25),
-    ring(3.2, 56, -10.6, 6, 0.9),
+    ring(17.2, 56, -0.42, 1, 0.55),
+    ring(16.9, 56, -2.0, 2, 0.8),
+    ring(15.8, 56, -4.1, 3, 1.0),
+    ring(13.6, 56, -6.8, 4, 1.2),
+    ring(9.1, 56, -9.8, 5, 1.25),
+    ring(3.4, 56, -13.4, 6, 0.9),
+    ring(0.9, 56, -14.6, 7, 0.25),
   ];
   const materials = [ROCK_LIGHT, ROCK, ROCK_DARK, ROCK, ROCK_DARK];
   for (let i = 0; i < rings.length - 1; i += 1) group.add(strip(rings[i]!, rings[i + 1]!, materials[i]!));
-  const tip = new THREE.Vector3(0, -12.1, 0);
-  group.add(strip(rings[rings.length - 1]!, new Array(56).fill(tip), ROCK_DARK));
   // Closed top and bottom. The top cap is under the plaza, so no z-fighting.
   group.add(cap(rings[0]!, new THREE.Vector3(0, -0.42, 0), GRASS));
-  group.add(cap(rings[rings.length - 1]!, tip.clone().add(new THREE.Vector3(0, 0.01, 0)), ROCK_DARK, true));
+  group.add(cap(rings[rings.length - 1]!, new THREE.Vector3(0, -14.6, 0), ROCK_DARK, true));
   return group;
 }
 
 function plaza(): THREE.Group {
   const group = new THREE.Group();
-  const lawn = new THREE.Mesh(new THREE.CircleGeometry(9.9, 48), GRASS);
+  const lawn = new THREE.Mesh(new THREE.CircleGeometry(13.2, 48), GRASS);
   lawn.rotation.x = -Math.PI / 2;
   lawn.position.y = -0.40;
   group.add(lawn);
-  const packed = new THREE.Mesh(new THREE.CircleGeometry(7.65, 48), PLAZA);
+  const packed = new THREE.Mesh(new THREE.CircleGeometry(9.75, 48), PLAZA);
   packed.rotation.x = -Math.PI / 2;
   packed.position.y = -0.34;
   group.add(packed);
-  const edge = new THREE.Mesh(new THREE.RingGeometry(7.55, 7.8, 48), PLAZA_EDGE);
+  const edge = new THREE.Mesh(new THREE.RingGeometry(9.65, 9.9, 48), PLAZA_EDGE);
   edge.rotation.x = -Math.PI / 2;
   edge.position.y = -0.325;
   group.add(edge);
@@ -235,7 +268,9 @@ function turkey(parent: THREE.Group, angle: number, radius: number): void {
   parent.add(g);
 }
 
-function campfire(parent: THREE.Group): void {
+interface FireRig { flames: THREE.Sprite[]; glow: THREE.Mesh; sparks: THREE.Points }
+
+function campfire(parent: THREE.Group): FireRig {
   const g = new THREE.Group();
   g.position.set(8.6, -0.33, -4.7);
   for (let i = 0; i < 6; i += 1) {
@@ -250,10 +285,35 @@ function campfire(parent: THREE.Group): void {
     log.position.y = 0.22;
     g.add(log);
   }
-  const fire = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.1, 0.6), FIRE);
-  fire.position.y = 0.75;
-  g.add(fire);
+  const texture = flameTexture();
+  const flames: THREE.Sprite[] = [];
+  for (let i = 0; i < 3; i += 1) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: texture,
+      color: i === 1 ? '#ffd45a' : '#ff7a1a',
+      transparent: true,
+      opacity: 0.86 - i * 0.08,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    sprite.position.set((i - 1) * 0.12, 0.55 + i * 0.26, (i % 2 ? 0.06 : -0.05));
+    sprite.scale.set(0.75 + i * 0.16, 1.15 + i * 0.2, 1);
+    flames.push(sprite);
+    g.add(sprite);
+  }
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.8, 2.8),
+    new THREE.MeshBasicMaterial({ map: softTexture('rgba(255,190,80,.85)', 'rgba(255,120,30,.22)'), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending }),
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.y = 0.02;
+  g.add(glow);
+  const sparkGeometry = new THREE.BufferGeometry();
+  sparkGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18 * 3), 3));
+  const sparks = new THREE.Points(sparkGeometry, new THREE.PointsMaterial({ color: '#ffc15a', size: 0.08, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+  g.add(sparks);
   parent.add(g);
+  return { flames, glow, sparks };
 }
 
 function harvestTable(parent: THREE.Group): void {
@@ -279,23 +339,6 @@ function cornStalks(parent: THREE.Group): void {
   }
 }
 
-function clouds(parent: THREE.Group): void {
-  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), CLOUD, 28);
-  const dummy = new THREE.Object3D();
-  for (let i = 0; i < 28; i += 1) {
-    const angle = (i / 28) * Math.PI * 2 + jitter(i) * 0.3;
-    const radius = 17 + jitter(i + 10) * 30;
-    dummy.position.set(Math.cos(angle) * radius, -14 - jitter(i + 3) * 3, Math.sin(angle) * radius);
-    dummy.rotation.set(0, jitter(i + 4) * Math.PI, 0);
-    dummy.scale.set(3.5 + jitter(i + 5) * 5, 0.7 + jitter(i + 6) * 0.8, 2 + jitter(i + 7) * 2.5);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-  }
-  mesh.instanceMatrix.needsUpdate = true;
-  mesh.frustumCulled = false;
-  parent.add(mesh);
-}
-
 export class IslandLayer {
   readonly group = new THREE.Group();
   private readonly leaves: THREE.InstancedMesh;
@@ -303,15 +346,12 @@ export class IslandLayer {
   private readonly detail: THREE.Group;
   private leafClock = 0;
   private lastScale = 0;
-  private readonly fire: THREE.Mesh;
-  private readonly fireMaterial: THREE.MeshStandardMaterial;
+  private readonly flames: THREE.Sprite[];
+  private readonly fireGlow: THREE.Mesh;
+  private readonly sparks: THREE.Points;
 
   constructor(scene: THREE.Scene) {
     this.group.name = 'floating-island';
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), SEA);
-    sea.rotation.x = -Math.PI / 2;
-    sea.position.y = -18;
-    this.group.add(sea);
     this.group.add(solidIsland());
     this.group.add(plaza());
 
@@ -332,7 +372,10 @@ export class IslandLayer {
     turkey(this.detail, 1.7, 9.35);
     turkey(this.detail, 1.95, 9.7);
     turkey(this.detail, 4.75, 9.5);
-    campfire(this.detail);
+    const fireRig = campfire(this.detail);
+    this.flames = fireRig.flames;
+    this.fireGlow = fireRig.glow;
+    this.sparks = fireRig.sparks;
     harvestTable(this.detail);
     cornStalks(this.detail);
     for (let i = 0; i < 9; i += 1) {
@@ -346,14 +389,9 @@ export class IslandLayer {
     }
     this.group.add(this.detail);
 
-    const fire = this.detail.children.find((child) => child instanceof THREE.Group && child.children.some((c) => c instanceof THREE.Mesh && (c.material as THREE.Material) === FIRE));
-    this.fire = (fire?.children.find((c) => c instanceof THREE.Mesh && (c.material as THREE.Material) === FIRE) as THREE.Mesh | undefined) ?? new THREE.Mesh();
-    this.fireMaterial = FIRE;
-
-    clouds(this.group);
     this.leaves = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.14, 0.07), LEAF, 48);
     for (let i = 0; i < 48; i += 1) {
-      this.dummy.position.set((jitter(i) - 0.5) * 23, 1.5 + jitter(i + 1) * 7, (jitter(i + 2) - 0.5) * 23);
+      this.dummy.position.set((jitter(i) - 0.5) * 32, 1.5 + jitter(i + 1) * 9, (jitter(i + 2) - 0.5) * 32);
       this.dummy.updateMatrix();
       this.leaves.setMatrixAt(i, this.dummy.matrix);
     }
@@ -364,14 +402,14 @@ export class IslandLayer {
   }
 
   setSky(state: SkyState): void {
-    this.fireMaterial.emissiveIntensity = state.night > 0.4 ? 2.6 : 1.4;
-    CLOUD.opacity = state.night > 0.4 ? 0.3 : 0.55;
+    this.flames.forEach((flame, index) => { flame.material.opacity = state.night > 0.4 ? 0.95 : 0.8 - index * 0.08; });
+    (this.fireGlow.material as THREE.MeshBasicMaterial).opacity = state.night > 0.4 ? 0.42 : 0.22;
   }
 
   update(dt: number, time: number, camera: THREE.Camera): void {
     // Decoration push: one group transform, never per object.
     const distance = camera.position.length();
-    const push = 1 + THREE.MathUtils.clamp((distance - 24) / 60, 0, 0.15);
+    const push = 1.3 + THREE.MathUtils.clamp((distance - 24) / 60, 0, 0.15);
     if (Math.abs(push - this.lastScale) > 0.001) {
       this.lastScale = push;
       this.detail.scale.setScalar(push);
@@ -394,7 +432,18 @@ export class IslandLayer {
       this.leaves.setMatrixAt(i, this.dummy.matrix);
     }
     this.leaves.instanceMatrix.needsUpdate = true;
-    this.fire.scale.y = 0.9 + Math.sin(time * 7) * 0.1;
+    this.flames.forEach((flame, index) => {
+      const flicker = 0.86 + Math.sin(time * (7 + index) + index * 1.7) * 0.12;
+      flame.scale.set(0.7 + index * 0.16, 1 + flicker * 0.35, 1);
+      flame.position.y = 0.55 + index * 0.26 + Math.sin(time * 9 + index) * 0.05;
+    });
+    (this.fireGlow.material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(time * 6) * 0.06;
+    const sparkPos = this.sparks.geometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < sparkPos.count; i += 1) {
+      const y = 0.45 + ((time * (0.55 + (i % 5) * 0.08) + i * 0.37) % 2.2);
+      sparkPos.setXYZ(i, Math.cos(i * 2.4 + time * 0.7) * (0.18 + (i % 3) * 0.08), y, Math.sin(i * 2.4 + time * 0.7) * (0.18 + (i % 3) * 0.08));
+    }
+    sparkPos.needsUpdate = true;
     void step;
   }
 

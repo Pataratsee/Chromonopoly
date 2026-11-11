@@ -1187,20 +1187,33 @@ body[data-theme='dark'] .bar-action:hover { background: rgba(255, 255, 255, 0.09
 .busted-lights i { position: absolute; width: 70vw; height: 70vw; border-radius: 50%; filter: blur(10px); opacity: .5; }
 .busted-lights .blue { background: radial-gradient(circle, rgba(35,94,255,.8), transparent 65%); left: -22vw; top: -20vw; animation: police-blue 1.05s steps(2,end) infinite; }
 .busted-lights .red { background: radial-gradient(circle, rgba(255,42,42,.8), transparent 65%); right: -22vw; bottom: -24vw; animation: police-red 1.05s steps(2,end) infinite; }
-.busted-cuffs { display: flex; gap: 14px; position: absolute; top: 18%; animation: cuffs-snap .32s cubic-bezier(.2,1.6,.4,1) .18s both; }
-.busted-cuffs i { width: 54px; height: 54px; border: 9px solid #d9dee4; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
 .busted-copy { position: relative; display: grid; justify-items: center; gap: 4px; text-align: center; text-shadow: 0 6px 22px rgba(0,0,0,.9); }
 .busted-copy span { font-size: clamp(18px, 3vw, 32px); letter-spacing: .22em; color: #f3e9d7; }
 .busted-copy strong { font-size: clamp(64px, 16vw, 190px); line-height: .9; letter-spacing: .02em; color: #f2b93b; -webkit-text-stroke: 3px #301b0a; transform: skew(-7deg); animation: busted-punch .48s cubic-bezier(.15,1.7,.35,1) both; }
 .busted-copy small { color: rgba(255,248,235,.72); letter-spacing: .12em; }
 .busted-screen.reduced { background: rgba(8,9,11,.94); }
-.busted-screen.reduced .busted-bars, .busted-screen.reduced .busted-lights, .busted-screen.reduced .busted-cuffs { display: none; }
+.busted-screen.reduced .busted-bars, .busted-screen.reduced .busted-lights { display: none; }
 .busted-screen.reduced .busted-copy strong { animation: none; }
 @keyframes busted-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes busted-out { to { opacity: 0 } }
 @keyframes bars-slide { from { transform: translateY(-105%) } to { transform: translateY(0) } }
-@keyframes cuffs-snap { from { transform: scale(2.4) rotate(-8deg); opacity: 0 } to { transform: scale(1) rotate(0); opacity: 1 } }
 @keyframes busted-punch { from { transform: scale(.2) skew(-7deg); opacity: 0 } 70% { transform: scale(1.12) skew(-7deg) } to { transform: scale(1) skew(-7deg); opacity: 1 } }
 @keyframes police-blue { 50% { opacity: .08 } }
 @keyframes police-red { 50% { opacity: .08 } }
-@media (prefers-reduced-motion: reduce) { .busted-bars i, .busted-lights i, .busted-cuffs, .busted-copy strong { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .busted-bars i, .busted-lights i, .busted-copy strong { animation: none !important; } }
+
+
+/* Round 10 live-network and bot presence */
+.offline-banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 700; display: flex; gap: 8px; align-items: center; padding: 9px 16px; border: 1px solid rgba(240,138,36,.55); background: rgba(46,32,20,.92); color: #fff6e4; font-size: 12px; }
+.offline-banner[hidden] { display: none !important; }
+.thinking-dots { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); z-index: 38; display: flex; gap: 6px; align-items: center; padding: 8px 13px; font-size: 12px; color: var(--cream); background: rgba(24,20,18,.78); }
+.thinking-dots[hidden] { display: none !important; }
+.thinking-dots > span:first-child { font-weight: 650; }
+.thinking-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); animation: think-pulse 1.2s infinite ease-in-out; }
+.thinking-dots i:nth-of-type(2) { animation-delay: .18s; }
+.thinking-dots i:nth-of-type(3) { animation-delay: .36s; }
+.bot-style { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 9px; font-weight: 800; color: #24180f; background: #d7b873; }
+.bot-style.cautious { background: #9bc7b0; }
+.bot-style.aggressive { background: #e08a6a; }
+@keyframes think-pulse { 0%, 70%, 100% { opacity: .28; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .thinking-dots i { animation: none; opacity: .8; } }

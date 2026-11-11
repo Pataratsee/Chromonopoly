@@ -186,11 +186,26 @@ with [opentype.js](https://opentype.js.org/).
 
 ## Audio
 
-All music and sound effects are **synthesised at runtime** by
-`src/audio/audio.ts` (Web Audio oscillators, filtered noise and a compressor).
-No sampled or third-party audio is shipped, so there is nothing to license and
-the loop is seamless by construction. The soundtrack is an original
-I–vi–IV–V progression at 120 BPM.
+The eight soundtrack cues in `public/audio/` are **original instrumental works
+original instrumental recordings made for this project and dedicated to the public
+domain under **CC0-1.0**. They are not sampled, downloaded or third-party
+recordings. The committed Ogg Opus and AAC files are the canonical masters.
+
+| Track | Length | Files | Licence |
+|---|---:|---|---|
+| Dawn Ledger | 2:20 | `dawn-ledger.ogg`, `dawn-ledger.m4a` | CC0-1.0 |
+| Quiet Harbor | 2:24 | `quiet-harbor.ogg`, `quiet-harbor.m4a` | CC0-1.0 |
+| Sunday Market | 2:17 | `sunday-market.ogg`, `sunday-market.m4a` | CC0-1.0 |
+| Amber Window | 2:19 | `amber-window.ogg`, `amber-window.m4a` | CC0-1.0 |
+| Slow Auction | 2:17 | `slow-auction.ogg`, `slow-auction.m4a` | CC0-1.0 |
+| Riverstone | 2:34 | `riverstone.ogg`, `riverstone.m4a` | CC0-1.0 |
+| Paper Skies | 2:18 | `paper-skies.ogg`, `paper-skies.m4a` | CC0-1.0 |
+| Late Harvest | 2:10 | `late-harvest.ogg`, `late-harvest.m4a` | CC0-1.0 |
+
+Per-file SHA-256 checksums, generator parameters and the CC0 dedication are in
+[`public/audio/LICENSE.md`](public/audio/LICENSE.md). Music is streamed, not
+loaded into memory at boot; Opus is preferred with an AAC fallback for Safari.
+Sound effects remain original runtime-synthesised Web Audio cues.
 
 ## Icons and UI
 

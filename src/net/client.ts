@@ -1,6 +1,7 @@
 import type { Candle, GameEvent, GameMode, Intent, PrivateState, PublicState, ServerMessage } from '../game/types';
 import { normalizeUsername } from '../game/username';
 import { socketUrl } from './endpoint';
+import { applyStatePatch, type StatePatch } from '../../server/delta';
 
 type StateHandler = (state: PublicState) => void;
 type PrivateHandler = (state: PrivateState) => void;
@@ -12,6 +13,9 @@ const NAME_KEY = 'chromonopoly.name';
 const TOKEN_KEY = 'chromonopoly.token';
 const SOLO_KEY = 'chromonopoly.solo.key';
 const PLAYER_TOKEN_PREFIX = 'chromonopoly.player-token.';
+const MAX_QUEUE = 64;
+const HEARTBEAT_MS = 10_000;
+const DEAD_AFTER_MS = 35_000;
 const sessionKey = (mode: GameMode): string => `${SESSION_KEY}.${mode}`;
 
 /** Stable browser key for the server-side single-player save. */
@@ -38,10 +42,13 @@ export function playerTokenFor(rawName: string): string {
 export class NetClient {
   private ws: WebSocket | null = null;
   private reconnectTimer: number | null = null;
+  private heartbeatTimer: number | null = null;
   private attempts = 0;
   private stopped = false;
   private freshSolo = false;
   private queue: Intent[] = [];
+  private currentState: PublicState | null = null;
+  private lastMessageAt = 0;
   playerId: string | null = null;
   mode: GameMode = 'multi';
   lastSeq = -1;
@@ -58,6 +65,8 @@ export class NetClient {
     this.stopped = false;
     this.detach();
     this.mode = mode;
+    this.lastSeq = -1;
+    this.currentState = null;
     const storedName = normalizeUsername(name ?? localStorage.getItem(NAME_KEY) ?? '');
     const storedToken = tokenId ?? localStorage.getItem(TOKEN_KEY) ?? 'cat';
     this.onStatus('connecting');
@@ -65,6 +74,7 @@ export class NetClient {
     this.ws = ws;
 
     ws.onopen = () => {
+      this.lastMessageAt = Date.now();
       ws.send(
         JSON.stringify({
           type: 'hello',
@@ -79,9 +89,11 @@ export class NetClient {
       );
       this.freshSolo = false;
       for (const intent of this.queue.splice(0)) ws.send(JSON.stringify({ type: 'intent', intent }));
+      this.startHeartbeat(ws);
     };
 
     ws.onmessage = (raw) => {
+      this.lastMessageAt = Date.now();
       let msg: ServerMessage;
       try {
         msg = JSON.parse(String(raw.data)) as ServerMessage;
@@ -99,13 +111,31 @@ export class NetClient {
       } else if (msg.type === 'state' || msg.type === 'resync') {
         if (msg.state) {
           if (this.lastSeq >= 0 && msg.state.seq < this.lastSeq) return;
-          if (this.lastSeq >= 0 && msg.state.seq > this.lastSeq + 3) {
-            ws.send(JSON.stringify({ type: 'resync' }));
-          }
+          this.currentState = msg.state;
           this.lastSeq = msg.state.seq;
           this.onState(msg.state);
         }
         if (msg.private) this.onPrivate(msg.private);
+      } else if (msg.type === 'delta') {
+        if (msg.patch && Number.isInteger(msg.seq) && Number.isInteger(msg.baseSeq)) {
+          if (!this.currentState || msg.baseSeq !== this.lastSeq) {
+            this.resync();
+            return;
+          }
+          const next = applyStatePatch(this.currentState, msg.patch as StatePatch);
+          if (next.seq !== msg.seq) {
+            this.resync();
+            return;
+          }
+          this.currentState = next;
+          this.lastSeq = next.seq;
+          this.onState(next);
+        }
+      } else if (msg.type === 'pong') {
+        if (typeof msg.t === 'number') {
+          const sample = Math.max(0, Date.now() - msg.t);
+          this.latency = this.latency ? Math.round(this.latency * 0.7 + sample * 0.3) : sample;
+        }
       } else if (msg.type === 'private' && msg.private) {
         this.onPrivate(msg.private);
       } else if (msg.type === 'event' && msg.event) {
@@ -118,6 +148,9 @@ export class NetClient {
     };
 
     ws.onclose = (event) => {
+      this.stopHeartbeat();
+      this.currentState = null;
+      this.lastSeq = -1;
       if (this.stopped) return;
       if (event.code === 4003) {
         this.stopped = true;
@@ -131,11 +164,32 @@ export class NetClient {
     ws.onerror = () => ws.close();
   }
 
+  private startHeartbeat(ws: WebSocket): void {
+    this.stopHeartbeat();
+    this.lastMessageAt = Date.now();
+    this.heartbeatTimer = window.setInterval(() => {
+      if (this.stopped || ws.readyState !== WebSocket.OPEN) return;
+      if (Date.now() - this.lastMessageAt > DEAD_AFTER_MS) {
+        ws.close(4000, 'heartbeat timeout');
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'ping', t: Date.now() }));
+    }, HEARTBEAT_MS);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer !== null) window.clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
+  }
+
   private scheduleReconnect(name: string, tokenId: string, mode: GameMode): void {
     if (this.stopped) return;
     if (this.reconnectTimer) return;
     this.attempts += 1;
-    const delay = Math.min(8000, 500 * 2 ** Math.min(4, this.attempts));
+    // Exponential backoff with ±20% jitter avoids a reconnect stampede when a
+    // shared table or server restarts.
+    const base = Math.min(8000, 400 * 2 ** Math.min(5, this.attempts));
+    const delay = Math.round(base * (0.8 + Math.random() * 0.4));
     this.reconnectTimer = window.setTimeout(() => {
       this.reconnectTimer = null;
       this.connect(name, tokenId, mode);
@@ -148,6 +202,7 @@ export class NetClient {
     localStorage.removeItem(sessionKey(mode));
     this.freshSolo = mode === 'solo';
     this.lastSeq = -1;
+    this.currentState = null;
     this.playerId = null;
     this.connect(name, tokenId, mode);
   }
@@ -156,16 +211,19 @@ export class NetClient {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'intent', intent }));
     } else {
+      // Every intent already has an idempotency key, so replaying the bounded
+      // queue after reconnect cannot double-charge a purchase.
+      if (this.queue.length >= MAX_QUEUE) this.queue.shift();
       this.queue.push(intent);
     }
   }
 
   resync(): void {
-    this.ws?.send(JSON.stringify({ type: 'resync' }));
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'resync' }));
   }
 
   requestMarket(tile: number): void {
-    this.ws?.send(JSON.stringify({ type: 'market', tile }));
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'market', tile }));
   }
 
   setIdentity(name: string, tokenId: string): void {
@@ -175,12 +233,14 @@ export class NetClient {
 
   close(): void {
     this.stopped = true;
+    this.stopHeartbeat();
     if (this.reconnectTimer) window.clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
     this.detach();
   }
 
   private detach(): void {
+    this.stopHeartbeat();
     const ws = this.ws;
     this.ws = null;
     if (!ws) return;

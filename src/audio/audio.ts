@@ -1,11 +1,13 @@
 /**
- * All audio is synthesised here — no sampled material, so the licence is ours.
  * One master bus -> limiter -> destination; music and SFX have their own gains.
- * Music is a shuffle bag of six full arrangements with a crossfade at each
- * boundary, so it does not loop or repeat the same song back-to-back.
+ * Music is eight original calm recordings, streamed lazily as Opus with an AAC
+ * fallback, shuffled without repeats and crossfaded at every boundary. Sound
+ * effects remain synthesised. The audio sources and their CC0 licences live in
+ * public/audio/LICENSE.md.
  */
 
-import { SONGS, SongDeck, midiToHz, songDuration, type Song } from './songs';
+import { assetUrl } from '../assetUrl';
+import { TRACKS, SongDeck, songDuration, type Track } from './songs';
 
 type Sfx =
   | 'click'
@@ -31,14 +33,16 @@ export class AudioEngine {
   private musicBus!: GainNode;
   private sfxBus!: GainNode;
   private limiter!: DynamicsCompressorNode;
-  /** Two music buses let one arrangement fade out under the next. */
   private musicGains: [GainNode, GainNode] | null = null;
-  private activeMusicGain: 0 | 1 = 0;
+  /** Two music buses let one track fade out under the next. */
   private musicTimer: number | null = null;
-  private songIndex = 0;
-  private songStep = 0;
+  private crossfadeTimer: number | null = null;
+  private players: [HTMLAudioElement, HTMLAudioElement] | null = null;
+  private trackIndex = 0;
+  private activeMusicSlot: 0 | 1 = 0;
+  private transitioning = false;
   private crossfades = 0;
-  private readonly songDeck = new SongDeck(SONGS.length);
+  private readonly songDeck = new SongDeck(TRACKS.length);
   private volumes = { master: 0.8, music: 0.5, sfx: 0.8 };
   private musicOn = true;
   private sfxOn = true;
@@ -239,8 +243,47 @@ export class AudioEngine {
 
   // ---------------------------------------------------------------- music
 
-  private currentSong(): Song {
-    return SONGS[this.songIndex]!;
+  private currentTrack(): Track {
+    return TRACKS[this.trackIndex]!;
+  }
+
+  private canPlayOpus(): boolean {
+    if (typeof Audio === 'undefined') return true;
+    return Boolean(new Audio().canPlayType('audio/ogg; codecs="opus"'));
+  }
+
+  private ensurePlayers(): boolean {
+    if (this.players || !this.ctx || !this.musicGains) return Boolean(this.players);
+    const created: HTMLAudioElement[] = [];
+    for (let slot = 0; slot < 2; slot += 1) {
+      const element = new Audio();
+      element.preload = 'none';
+      element.loop = false;
+      element.crossOrigin = 'anonymous';
+      const source = this.ctx.createMediaElementSource(element);
+      source.connect(this.musicGains[slot]!);
+      created.push(element);
+    }
+    this.players = [created[0]!, created[1]!];
+    return true;
+  }
+
+  private trackUrl(track: Track): string {
+    return assetUrl(this.canPlayOpus() ? track.file : track.fallback);
+  }
+
+  private loadTrack(index: number, slot: 0 | 1): HTMLAudioElement | null {
+    if (!this.players) return null;
+    const track = TRACKS[index]!;
+    const element = this.players[slot];
+    const url = this.trackUrl(track);
+    if (element.dataset.track !== track.id || element.src !== url) {
+      element.pause();
+      element.src = url;
+      element.dataset.track = track.id;
+      element.load();
+    }
+    return element;
   }
 
   /** Test/UI-visible snapshot; contains no audio samples. */
@@ -256,145 +299,137 @@ export class AudioEngine {
     musicOn: boolean;
     context: AudioContextState | 'none';
     crossfades: number;
-    songs: Array<{ id: string; title: string; duration: number }>;
+    source: string;
+    songs: Array<{ id: string; title: string; duration: number; file: string }>;
   } {
-    const song = this.currentSong();
+    const track = this.currentTrack();
+    const element = this.players?.[this.activeMusicSlot];
     return {
-      id: song.id,
-      title: song.title,
-      index: this.songIndex,
-      bpm: song.bpm,
-      bars: song.bars,
-      duration: Math.round(songDuration(song)),
-      step: this.songStep,
-      playing: this.musicTimer !== null,
+      id: track.id,
+      title: track.title,
+      index: this.trackIndex,
+      bpm: track.bpm,
+      bars: track.bars,
+      duration: Math.round(songDuration(track)),
+      step: 0,
+      playing: Boolean(element && !element.paused && this.musicTimer !== null),
       musicOn: this.musicOn,
       context: this.ctx?.state ?? 'none',
       crossfades: this.crossfades,
-      songs: SONGS.map((entry) => ({
+      source: this.trackUrl(track),
+      songs: TRACKS.map((entry) => ({
         id: entry.id,
         title: entry.title,
         duration: Math.round(songDuration(entry)),
+        file: entry.file,
       })),
     };
   }
 
-  /** Skip immediately, using the same crossfade as a natural song ending. */
+  /** Skip immediately, using the same crossfade as a natural track ending. */
   skipSong(): void {
-    this.advanceSong();
+    if (!this.players) {
+      this.trackIndex = this.songDeck.next();
+      return;
+    }
+    void this.beginCrossfade(this.songDeck.next());
   }
 
   startMusic(): void {
-    if (!this.ctx || this.musicTimer !== null) return;
-    this.songStep = 0;
-    if (this.musicGains) {
-      const now = this.ctx.currentTime;
-      const active = this.musicGains[this.activeMusicGain];
-      const inactive = this.musicGains[this.activeMusicGain === 0 ? 1 : 0];
-      active.gain.cancelScheduledValues(now);
-      active.gain.setValueAtTime(1, now);
-      inactive.gain.cancelScheduledValues(now);
-      inactive.gain.setValueAtTime(0, now);
-    }
-    this.musicTimer = window.setTimeout(this.musicTick, 0);
+    if (!this.ctx || this.musicTimer !== null || !this.musicOn) return;
+    if (!this.ensurePlayers() || !this.players || !this.musicGains) return;
+    const slot = this.activeMusicSlot;
+    const element = this.loadTrack(this.trackIndex, slot);
+    if (!element) return;
+    const gain = this.musicGains[slot];
+    const now = this.ctx.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(0.0001, now);
+    element.currentTime = 0;
+    void element
+      .play()
+      .then(() => {
+        if (!this.ctx || this.musicTimer !== null) return;
+        gain.gain.linearRampToValueAtTime(1, this.ctx.currentTime + 1.4);
+        this.musicTimer = window.setInterval(this.musicTick, 500);
+      })
+      .catch(() => {
+        // Autoplay was blocked or the file was unavailable. The next user
+        // gesture calls resume() again; keep the toggle honest and stopped.
+        this.stopMusic();
+      });
   }
 
   stopMusic(): void {
-    if (this.musicTimer !== null) window.clearTimeout(this.musicTimer);
+    if (this.musicTimer !== null) window.clearInterval(this.musicTimer);
+    if (this.crossfadeTimer !== null) window.clearTimeout(this.crossfadeTimer);
     this.musicTimer = null;
+    this.crossfadeTimer = null;
+    this.transitioning = false;
+    for (const element of this.players ?? []) {
+      element.pause();
+      element.currentTime = 0;
+    }
   }
 
   private musicTick = (): void => {
-    if (!this.ctx || this.musicTimer === null) return;
-    const song = this.currentSong();
-    const destination = this.musicGains?.[this.activeMusicGain] ?? this.musicBus;
-    this.musicStep(song, this.songStep, this.ctx.currentTime + 0.05, destination);
-    this.songStep += 1;
-    if (this.songStep >= song.bars * 16) this.advanceSong();
-    const stepMs = 60_000 / song.bpm / 4;
-    this.musicTimer = window.setTimeout(this.musicTick, stepMs);
+    if (!this.ctx || !this.players || this.transitioning) return;
+    const element = this.players[this.activeMusicSlot];
+    if (!element || element.paused || !Number.isFinite(element.duration) || element.duration <= 0) return;
+    if (element.duration - element.currentTime <= 2.4) {
+      void this.beginCrossfade(this.songDeck.next());
+    }
   };
 
   /**
-   * Move to the next song in the shuffle bag. The outgoing bus fades over
-   * 1.1 s while the incoming bus rises, so there is no silent gap or cut.
+   * Start the incoming track on the idle bus, fade it up over 2.2 s and fade the
+   * outgoing track down over the same interval. The old element is paused only
+   * after its fade, so there is no silent gap or click.
    */
-  private advanceSong(): void {
-    const next = this.songDeck.next();
-    if (!this.ctx || !this.musicGains) {
-      this.songIndex = next;
-      this.songStep = 0;
+  private async beginCrossfade(next: number): Promise<void> {
+    if (!this.ctx || !this.players || !this.musicGains) {
+      this.trackIndex = next;
+      return;
+    }
+    if (this.transitioning) return;
+    this.transitioning = true;
+    if (this.crossfadeTimer !== null) window.clearTimeout(this.crossfadeTimer);
+    const outgoingSlot = this.activeMusicSlot;
+    const incomingSlot: 0 | 1 = outgoingSlot === 0 ? 1 : 0;
+    const outgoing = this.players[outgoingSlot];
+    const incoming = this.loadTrack(next, incomingSlot);
+    if (!incoming) {
+      this.transitioning = false;
       return;
     }
     const now = this.ctx.currentTime;
-    const outgoing = this.musicGains[this.activeMusicGain];
-    const incomingIndex: 0 | 1 = this.activeMusicGain === 0 ? 1 : 0;
-    const incoming = this.musicGains[incomingIndex];
-    this.songIndex = next;
-    this.songStep = 0;
-    this.activeMusicGain = incomingIndex;
-
-    outgoing.gain.cancelScheduledValues(now);
-    outgoing.gain.setValueAtTime(outgoing.gain.value, now);
-    outgoing.gain.linearRampToValueAtTime(0.0001, now + 1.1);
-
-    incoming.gain.cancelScheduledValues(now);
-    incoming.gain.setValueAtTime(0.0001, now);
-    incoming.gain.linearRampToValueAtTime(1, now + 1.1);
+    const fade = 2.2;
+    const outGain = this.musicGains[outgoingSlot];
+    const inGain = this.musicGains[incomingSlot];
+    outGain.gain.cancelScheduledValues(now);
+    outGain.gain.setValueAtTime(Math.max(0.0001, outGain.gain.value), now);
+    outGain.gain.linearRampToValueAtTime(0.0001, now + fade);
+    inGain.gain.cancelScheduledValues(now);
+    inGain.gain.setValueAtTime(0.0001, now);
+    incoming.currentTime = 0;
+    try {
+      await incoming.play();
+    } catch {
+      // A blocked incoming track must not kill the one already playing.
+      inGain.gain.setValueAtTime(0.0001, now);
+      this.transitioning = false;
+      return;
+    }
+    inGain.gain.linearRampToValueAtTime(1, now + fade);
+    this.trackIndex = next;
+    this.activeMusicSlot = incomingSlot;
     this.crossfades += 1;
-  }
-
-  private musicStep(song: Song, step: number, at: number, destination: AudioNode): void {
-    const bar = Math.floor(step / 16) % song.chords.length;
-    const beat = step % 16;
-    const chord = song.chords[bar]!;
-    const root = song.roots[bar % song.roots.length]!;
-
-    if (beat % 4 === 0) {
-      this.pluck(midiToHz(chord[0]!), at, 0.34, 0.12, song.pad, destination);
-    }
-    if (beat % 4 === 2) {
-      this.pluck(midiToHz(root), at, 0.3, 0.17, song.bass, destination);
-    }
-    if (song.arp && beat % 2 === 0) {
-      this.pluck(midiToHz(chord[(beat / 2) % chord.length]! + 12), at, 0.18, 0.05, song.lead, destination);
-    }
-    if (beat === 0 || beat === 6) {
-      const melody = song.melody;
-      const semitone = melody[(bar * 2 + (beat === 6 ? 1 : 0)) % melody.length]!;
-      const note = midiToHz(chord[0]! + 12 + semitone);
-      this.pluck(note, at, 0.26, 0.1, song.lead, destination);
-      if (song.sparkle) {
-        this.pluck(note * 2, at + 0.09, 0.18, 0.035, 'sine', destination);
-      }
-    }
-    if (song.sparkle && beat === 12) {
-      this.pluck(midiToHz(chord[2]! + 24), at, 0.2, 0.04, 'sine', destination);
-    }
-  }
-
-  private pluck(
-    freq: number,
-    at: number,
-    duration: number,
-    gain: number,
-    type: OscillatorType,
-    destination: AudioNode = this.musicBus,
-  ): void {
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 3200;
-    osc.type = type;
-    osc.frequency.value = freq * 2;
-    g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(gain, at + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + duration);
-    osc.connect(filter).connect(g).connect(destination);
-    osc.start(at);
-    osc.stop(at + duration + 0.02);
+    this.crossfadeTimer = window.setTimeout(() => {
+      outgoing.pause();
+      outgoing.currentTime = 0;
+      this.transitioning = false;
+      this.crossfadeTimer = null;
+    }, fade * 1000 + 80);
   }
 }
 

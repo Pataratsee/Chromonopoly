@@ -1,4 +1,4 @@
-import { BUILDING_META } from './buildings';
+import { BUILDING_META, duplicateFactor } from './buildings';
 import type { BuildingType, TileState } from './types';
 
 /** Aggregated, server-computed perks for one owner. */
@@ -62,10 +62,10 @@ export function perksForOwner(ownerId: string | null, tiles: Record<number, Tile
   let transports = 0;
   for (const tile of Object.values(tiles)) {
     if (tile.ownerId !== ownerId) continue;
-    for (const building of tile.buildings) {
+    for (const [index, building] of tile.buildings.entries()) {
       const meta = BUILDING_META[building.type as BuildingType];
       if (!meta) continue;
-      const amount = meta.perkValue * building.rank;
+      const amount = meta.perkValue * building.rank * duplicateFactor(tile.buildings, index);
       switch (meta.perkKey) {
         case 'steadyIncome': out.incomePerTurn += amount * 40; break;
         case 'loanDesk': out.loanInterest += amount; out.loanLimit += amount; break;

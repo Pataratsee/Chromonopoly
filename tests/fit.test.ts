@@ -7,7 +7,13 @@ import { boardName, contentBox, HAS_BAND } from '../src/board/layout';
 import { SPACES } from '../src/game/board';
 
 const file = readFileSync(path.join(process.cwd(), 'public/fonts/LilitaOne-Regular.ttf'));
-const font = opentype.parse(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+const parsed = opentype.parse(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+// Keep the real font metrics in the unit test without shipping opentype in the
+// browser bundle. Runtime measurement uses Canvas 2D on the same font.
+const font = {
+  family: 'test',
+  advanceWidth: (text: string, size: number) => parsed.getAdvanceWidth(text, size, { kerning: true }),
+};
 const RESOLUTIONS = [
   { w: 1280, h: 720, name: '1280x720' },
   { w: 1920, h: 1080, name: '1920x1080' },

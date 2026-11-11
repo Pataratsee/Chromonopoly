@@ -1,0 +1,411 @@
+{
+  "x1": {
+    "avgFps": 4.920779877113498,
+    "p95FrameMs": 216.70000000000437,
+    "frames": 222,
+    "render": {
+      "frame": 305,
+      "calls": 447,
+      "triangles": 38483,
+      "points": 900,
+      "lines": 0
+    }
+  },
+  "x2": [
+    {
+      "view": "angle-0",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 94,
+        "calls": 472,
+        "triangles": 38713,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "view": "angle-1",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 116,
+        "calls": 470,
+        "triangles": 38709,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "view": "angle-2",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 138,
+        "calls": 471,
+        "triangles": 38711,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "view": "angle-3",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 160,
+        "calls": 471,
+        "triangles": 38711,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "view": "below",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 183,
+        "calls": 472,
+        "triangles": 38713,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "view": "default",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 204,
+        "calls": 448,
+        "triangles": 38495,
+        "points": 900,
+        "lines": 0
+      }
+    },
+    {
+      "view": "max-zoom",
+      "stats": {
+        "triangles": 3609,
+        "details": 88,
+        "petals": 48,
+        "solid": true,
+        "japaneseProps": 0,
+        "skyOnly": true
+      },
+      "render": {
+        "frame": 225,
+        "calls": 197,
+        "triangles": 23857,
+        "points": 900,
+        "lines": 0
+      }
+    }
+  ],
+  "x3": [
+    {
+      "at": 36609,
+      "elapsed": 1,
+      "state": "IDLE",
+      "detail": "ready"
+    },
+    {
+      "at": 36611,
+      "elapsed": 3,
+      "state": "DICE_ROLLING",
+      "detail": ""
+    },
+    {
+      "at": 37674,
+      "elapsed": 1066,
+      "state": "DICE_SETTLED",
+      "detail": ""
+    },
+    {
+      "at": 38327,
+      "elapsed": 1719,
+      "state": "CAMERA_ZOOM_IN",
+      "detail": "tile 7"
+    },
+    {
+      "at": 38344,
+      "elapsed": 1736,
+      "state": "PIECE_MOVING",
+      "detail": "tile 7"
+    },
+    {
+      "at": 41740,
+      "elapsed": 5132,
+      "state": "PIECE_LANDED",
+      "detail": ""
+    },
+    {
+      "at": 42905,
+      "elapsed": 6297,
+      "state": "CAMERA_ZOOM_OUT",
+      "detail": ""
+    },
+    {
+      "at": 43134,
+      "elapsed": 6526,
+      "state": "TILE_PROMPT",
+      "detail": "prompts released"
+    }
+  ],
+  "x4": {
+    "active": {
+      "id": "p_mwa47uqs_5",
+      "name": "Penny Sharp",
+      "tokenId": "penguin",
+      "color": "#37B36B",
+      "cash": 1300,
+      "position": 9,
+      "inJail": false,
+      "jailTurns": 0,
+      "jailReleaseCost": 65,
+      "jailCause": null,
+      "jailOutcome": null,
+      "jailSold": [],
+      "inHospital": false,
+      "hospitalTurns": 0,
+      "bankrupt": false,
+      "jailRecord": [],
+      "lastSeen": 1794280433417,
+      "online": true,
+      "isBot": true,
+      "botStyle": "balanced"
+    },
+    "thinking": "Penny Sharpis thinking",
+    "log": [
+      {
+        "at": 38596,
+        "player": "p_mwa47uqs_3",
+        "event": "roll",
+        "detail": "4+4=8"
+      },
+      {
+        "at": 41161,
+        "player": "p_mwa47uqs_3",
+        "event": "follow",
+        "detail": "tile 0→8"
+      },
+      {
+        "at": 46182,
+        "player": "p_mwa47uqs_3",
+        "event": "landed",
+        "detail": "Vermont Ave"
+      },
+      {
+        "at": 47468,
+        "player": "p_mwa47uqs_3",
+        "event": "pause",
+        "detail": 900
+      },
+      {
+        "at": 47473,
+        "player": "p_mwa47uqs_3",
+        "event": "zoom-out"
+      },
+      {
+        "at": 47473,
+        "player": "p_mwa47uqs_3",
+        "event": "move"
+      },
+      {
+        "at": 48096,
+        "player": "p_mwa47uqs_3",
+        "event": "purchase",
+        "detail": "offer"
+      },
+      {
+        "at": 48522,
+        "player": "p_mwa47uqs_3",
+        "event": "purchase",
+        "detail": 100
+      },
+      {
+        "at": 48986,
+        "player": "p_mwa47uqs_3",
+        "event": "turn",
+        "detail": "doubles — roll again"
+      },
+      {
+        "at": 49661,
+        "player": "p_mwa47uqs_3",
+        "event": "turn",
+        "detail": "Penny Sharp's turn"
+      },
+      {
+        "at": 50095,
+        "player": "p_mwa47uqs_3",
+        "event": "turn",
+        "detail": "Count Deed's turn"
+      },
+      {
+        "at": 50607,
+        "player": "p_mwa47uqs_3",
+        "event": "roll",
+        "detail": "2+5=7"
+      },
+      {
+        "at": 54364,
+        "player": "p_mwa47uqs_3",
+        "event": "follow",
+        "detail": "tile 15→15"
+      },
+      {
+        "at": 54364,
+        "player": "p_mwa47uqs_3",
+        "event": "landed",
+        "detail": "Pennsylvania RR"
+      },
+      {
+        "at": 55453,
+        "player": "p_mwa47uqs_3",
+        "event": "pause",
+        "detail": 900
+      },
+      {
+        "at": 55650,
+        "player": "p_mwa47uqs_3",
+        "event": "zoom-out"
+      },
+      {
+        "at": 55650,
+        "player": "p_mwa47uqs_3",
+        "event": "move"
+      }
+    ]
+  },
+  "x5": {
+    "price": 451.81817840608545,
+    "options": 28,
+    "terminal": 1,
+    "chart": 1
+  },
+  "x8": {
+    "beforeUpgrade": {
+      "label": "Upgrade $150",
+      "enabled": true,
+      "title": ""
+    },
+    "afterUpgrade": {
+      "label": "Upgrade $450",
+      "enabled": true
+    },
+    "disabled": {
+      "label": "Upgrade $450",
+      "title": "Need $450"
+    }
+  },
+  "x6": {
+    "text": "YOUBUSTEDThe table has been notified",
+    "aria": "YOU busted"
+  },
+  "x7": {
+    "releaseLabel": "Pay $250 to get out",
+    "releaseTitle": "5% of cash, minimum $50",
+    "released": true
+  },
+  "x12": {
+    "id": "dawn-ledger",
+    "title": "Dawn Ledger",
+    "index": 0,
+    "bpm": 72,
+    "bars": 42,
+    "duration": 140,
+    "step": 0,
+    "playing": true,
+    "musicOn": true,
+    "context": "running",
+    "crossfades": 0,
+    "source": "http://127.0.0.1:8790/audio/dawn-ledger.ogg",
+    "songs": [
+      {
+        "id": "dawn-ledger",
+        "title": "Dawn Ledger",
+        "duration": 140,
+        "file": "audio/dawn-ledger.ogg"
+      },
+      {
+        "id": "quiet-harbor",
+        "title": "Quiet Harbor",
+        "duration": 144,
+        "file": "audio/quiet-harbor.ogg"
+      },
+      {
+        "id": "sunday-market",
+        "title": "Sunday Market",
+        "duration": 137,
+        "file": "audio/sunday-market.ogg"
+      },
+      {
+        "id": "amber-window",
+        "title": "Amber Window",
+        "duration": 139,
+        "file": "audio/amber-window.ogg"
+      },
+      {
+        "id": "slow-auction",
+        "title": "Slow Auction",
+        "duration": 137,
+        "file": "audio/slow-auction.ogg"
+      },
+      {
+        "id": "riverstone",
+        "title": "Riverstone",
+        "duration": 155,
+        "file": "audio/riverstone.ogg"
+      },
+      {
+        "id": "paper-skies",
+        "title": "Paper Skies",
+        "duration": 138,
+        "file": "audio/paper-skies.ogg"
+      },
+      {
+        "id": "late-harvest",
+        "title": "Late Harvest",
+        "duration": 131,
+        "file": "audio/late-harvest.ogg"
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "beforeUpgrade": {
+    "label": "Upgrade $150",
+    "enabled": true,
+    "title": ""
+  },
+  "afterUpgrade": {
+    "label": "Upgrade $450",
+    "enabled": true
+  },
+  "disabled": {
+    "label": "Upgrade $450",
+    "title": "Need $450"
+  }
+}

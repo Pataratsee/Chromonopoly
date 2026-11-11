@@ -1,28 +1,39 @@
-import opentype from 'opentype.js';
-import type { Font } from 'opentype.js';
 import { assetUrl } from '../assetUrl';
 
-let font: Font | null = null;
-let fontPromise: Promise<Font> | null = null;
+export interface TileFont {
+  family: string;
+  /** Injected for deterministic unit tests; the browser path uses Canvas 2D. */
+  advanceWidth?: (text: string, size: number) => number;
+}
+
+let font: TileFont | null = null;
+let fontPromise: Promise<TileFont> | null = null;
+let context: CanvasRenderingContext2D | null = null;
+const FAMILY = 'ChromonopolyTile';
 
 export const FONT_URL = assetUrl('fonts/Inter-Medium.ttf');
 
-export function loadFont(url = FONT_URL): Promise<Font> {
+export async function loadFont(url = FONT_URL): Promise<TileFont> {
   if (font) return Promise.resolve(font);
-  fontPromise ??= fetch(url)
-    .then((r) => {
-      if (!r.ok) throw new Error(`font ${url} failed: ${r.status}`);
-      return r.arrayBuffer();
-    })
-    .then((buf) => {
-      font = opentype.parse(buf);
-      return font;
-    });
+  fontPromise ??= (async () => {
+    if (typeof FontFace === 'undefined' || typeof document === 'undefined') {
+      throw new Error('Tile text needs a browser font context.');
+    }
+    const face = new FontFace(FAMILY, `url("${url}")`);
+    await face.load();
+    document.fonts.add(face);
+    font = { family: FAMILY };
+    return font;
+  })();
   return fontPromise;
 }
 
-export function measure(f: Font, text: string, size: number): number {
-  return f.getAdvanceWidth(text, size, { kerning: true });
+export function measure(f: TileFont, text: string, size: number): number {
+  if (f.advanceWidth) return f.advanceWidth(text, size);
+  context ??= document.createElement('canvas').getContext('2d');
+  if (!context) throw new Error('Canvas 2D text measurement is unavailable.');
+  context.font = `500 100px "${f.family}"`;
+  return context.measureText(text).width / 100 * size;
 }
 
 export interface FitResult {
@@ -43,7 +54,7 @@ const STEP = 0.0005;
  * shrink a single unbreakable word instead of splitting it, and never let
  * the resulting box exceed the content box.
  */
-export function fitText(f: Font, text: string, box: { w: number; h: number }, maxSize = MAX_SIZE): FitResult {
+export function fitText(f: TileFont, text: string, box: { w: number; h: number }, maxSize = MAX_SIZE): FitResult {
   const words = text.split(/\s+/).filter(Boolean);
   const measureLines = (candidate: string[], size: number) => ({
     width: Math.max(...candidate.map((l) => measure(f, l, size))),

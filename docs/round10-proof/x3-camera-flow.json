@@ -1,0 +1,50 @@
+[
+  {
+    "at": 36609,
+    "elapsed": 1,
+    "state": "IDLE",
+    "detail": "ready"
+  },
+  {
+    "at": 36611,
+    "elapsed": 3,
+    "state": "DICE_ROLLING",
+    "detail": ""
+  },
+  {
+    "at": 37674,
+    "elapsed": 1066,
+    "state": "DICE_SETTLED",
+    "detail": ""
+  },
+  {
+    "at": 38327,
+    "elapsed": 1719,
+    "state": "CAMERA_ZOOM_IN",
+    "detail": "tile 7"
+  },
+  {
+    "at": 38344,
+    "elapsed": 1736,
+    "state": "PIECE_MOVING",
+    "detail": "tile 7"
+  },
+  {
+    "at": 41740,
+    "elapsed": 5132,
+    "state": "PIECE_LANDED",
+    "detail": ""
+  },
+  {
+    "at": 42905,
+    "elapsed": 6297,
+    "state": "CAMERA_ZOOM_OUT",
+    "detail": ""
+  },
+  {
+    "at": 43134,
+    "elapsed": 6526,
+    "state": "TILE_PROMPT",
+    "detail": "prompts released"
+  }
+]

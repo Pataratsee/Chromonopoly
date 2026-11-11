@@ -1,4 +1,29 @@
-# Round 9 performance report
+# Round 10 performance report
+
+## Round 10 measurement (supersedes Round 9)
+
+Measured 10 November 2026 in the Round 10 Playwright pass. The page ran the Low
+quality preset at 1280×720 in a solo table with the HUD visible, using headless
+Chromium with `--enable-unsafe-swiftshader` and CDP 4× CPU throttling.
+
+- Sampling window: 45.0 s, 222 requestAnimationFrame intervals.
+- **Average: 4.92 FPS; p50 200 ms; p95 216.7 ms; p99 250 ms.**
+- Scene: 447 draw calls, 38,483 triangles, 900 points, 0 lines.
+- Raw trace: `docs/round10-proof/x1-fps-4x.json`.
+- Screenshot: `docs/round10-proof/x1-perf-low-4x.png`.
+
+The requested 30 FPS at 4× CPU is **not met** under headless SwiftShader. This is
+a real measured failure, not a pass. A physical low-end Chromebook was not
+available, so the Chromebook half of the requirement remains **Unverified**.
+
+### Why the Round 9 table is not used
+
+The Round 9 harness reported exactly 75 FPS with identical 13.33 ms deltas under
+unthrottled, 4× CPU and 2× GPU modes. Identical timing across throttled modes is
+not usable evidence, so the Round 10 in-page rAF trace above is the current
+result. The old table is retained below only as historical output.
+
+## Round 9 historical report
 
 Measured on 2026-11-09 with `node scripts/round9-perf.mjs` in headless Chromium on this desktop.
 Harness: `scripts/round9-perf.mjs`; raw output: `docs/round9-proof/perf-low.json`. The server was

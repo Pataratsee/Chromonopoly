@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-09T22:42:40.511Z",
+  "generatedAt": "2026-11-10T01:52:01.924Z",
   "license": "CC0-1.0",
   "author": "Kenney",
   "assets": [
@@ -1065,8 +1065,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "576d5199458ff47275457c8d67aa1d3701c34a2ecdb8075d01c5ff33a1cd3df2",
-      "bytes": 9584
+      "sha256": "89642263fcde702413454ab7fa6a04574407c8b0e8379a1e09311ca9a16c7c14",
+      "bytes": 9664
     },
     {
       "id": "catapult",
@@ -1515,8 +1515,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "edbe5b49858a3c83e72d3cf496129c06082ef3a3d6005769f8883138e275b456",
-      "bytes": 128208
+      "sha256": "07c97eee9b9336b3a69f63dbac8602405dc3f320f27c63a07e45fc2adfd2466f",
+      "bytes": 138840
     },
     {
       "id": "building-g",
@@ -1530,8 +1530,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "9a28fa2fdfac07492ee95589882213cfd6eb32d6752cb3b2f5404604c676d27a",
-      "bytes": 166356
+      "sha256": "a910052fadd01c1b851df25a34e24c504312a4964edf0b40cba9539c1fc47482",
+      "bytes": 177000
     },
     {
       "id": "building-i",
@@ -1545,8 +1545,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "3e572277d3eead30e24668a653ec6a11a488228a219d4902f08638cbca7c3dfe",
-      "bytes": 209728
+      "sha256": "22fa3548c2ea35e7f38da85823e9d1388af546220d779d27b2bd0f5b3af59a6e",
+      "bytes": 220360
     },
     {
       "id": "building-j",
@@ -1560,8 +1560,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "eedc2690cda345b62351f03a218a817a6ad59f399c12e064ca5ff37333d059f5",
-      "bytes": 440652
+      "sha256": "0850cac134b8953363523428ac347a5457ea439a72ca764280da58079e42a9fd",
+      "bytes": 451272
     },
     {
       "id": "building-l",
@@ -1575,8 +1575,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "0c3d1b346c142198b7f504d12b40cb1630bb14c3ff38a013922b700d09f9dcff",
-      "bytes": 290516
+      "sha256": "44655fc0878296dd35de5cf06fce0a73cd488866c6850bc76ad970bc73652836",
+      "bytes": 301144
     },
     {
       "id": "skyscraper-a",
@@ -1590,8 +1590,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "d8339bbb75944ff91d1ec9a70ec6dead71bd98b94a42d3dd0fc1f3b107ddbe85",
-      "bytes": 111336
+      "sha256": "66d6e1808c336393d8dccc2007fe04fbd146827ac0ebdec92f500b95d158e387",
+      "bytes": 121968
     },
     {
       "id": "type-c",
@@ -1605,8 +1605,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "86a69f30f1a09461283e158514945ae5cc9d56357b0ddc83a9a3f0eecd113591",
-      "bytes": 99592
+      "sha256": "ad57197e42ad4dc07135e3b3a092ecc000661fa64db659b0a5aaa29fdf578529",
+      "bytes": 110252
     },
     {
       "id": "type-d",
@@ -1620,8 +1620,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "a41cd28265b2b224e700373c3a8356562619699998b7fa4d70ed41de629a6731",
-      "bytes": 147368
+      "sha256": "34d647e71b4262c1bf7e5c096acda3d158a955f9b52b8a93ed809dbbee039757",
+      "bytes": 158024
     },
     {
       "id": "apple",
@@ -1635,8 +1635,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "2a80ab65d5bc2cb4f2bca1e8176cbb591849a288596d4b2e76e411338761a526",
-      "bytes": 14376
+      "sha256": "e50a923a2fb3fdb330a89e1350a26661d643626ae8b27268887d969d9cd4c65e",
+      "bytes": 24732
     },
     {
       "id": "banana",
@@ -1650,8 +1650,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "67c90aa8bef35b8886d6b67c0c4c3249556e28176c893d451b95cd83a156908c",
-      "bytes": 12348
+      "sha256": "e575cb8e576001ea484a7a6baa4d9b0c212fedc254126af6a2b148a9235ffe85",
+      "bytes": 22716
     },
     {
       "id": "bread",
@@ -1665,8 +1665,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "9bd9db117db654cf1157439d1257a8fc5915ea77a94fb876a5056522b9e49f46",
-      "bytes": 9468
+      "sha256": "5b0df3a227089aadee518be76ee7a3e969b44e767cd28bb9151128d80c7165cd",
+      "bytes": 19960
     },
     {
       "id": "carrot",
@@ -1680,8 +1680,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "621949f7fb7947a810a3f6adca7d6166c8f7ef5a1016737cd0d245d12d60ab4e",
-      "bytes": 16364
+      "sha256": "9fe685b5960d7d6f82e147d510afa9df577bb1ce02158d29092c7027ae145ef7",
+      "bytes": 26752
     },
     {
       "id": "cheese",
@@ -1695,8 +1695,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "092c9326a27fc51edfaa0353c411875993ac109ee5e8923b681cc39fbb6312d1",
-      "bytes": 60976
+      "sha256": "d39a9d94f890cbb667c58c03c38ee0cc318a86e4b9b999322968acb304d53d6f",
+      "bytes": 65164
     },
     {
       "id": "cherries",
@@ -1710,8 +1710,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "16ddcbc58691bbd95c68a13b0f1e4e5d4059befd3c8b5b7b9b6b6b4ef81690df",
-      "bytes": 13516
+      "sha256": "b06856d5452b040206b9fc834b61609cd8e55e7df0c4e79ceee8b437aaad729c",
+      "bytes": 23964
     },
     {
       "id": "cookie",
@@ -1725,8 +1725,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "7fa0d30c679f9abc9b884ab10509817d9f0ac813dbb1b36041f05118ca50a68a",
-      "bytes": 7532
+      "sha256": "8e81dd2b6a0713641def4cef8ba2f448ef62b4a683ab0cf62b3344dfd52367b3",
+      "bytes": 17900
     },
     {
       "id": "corn",
@@ -1740,8 +1740,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "81c5b7734ec740980d792eeebb39fe06bcbe8e098c625fe2311a5cea0dff8b7a",
-      "bytes": 14284
+      "sha256": "c043452430f39aceff01966c285483ebaebe265b92847a095f6886514cd6cf97",
+      "bytes": 24704
     },
     {
       "id": "noodles",
@@ -1755,8 +1755,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "6aa08a486ba711b7565062b691d286d16b3916cc01574a4fcb8287d7369e0396",
-      "bytes": 19384
+      "sha256": "59531c12394ebee2d065f1c2d3de5d3fdd72a1ae6a764f5dbef9410c3f6c3386",
+      "bytes": 28716
     },
     {
       "id": "ketchup",
@@ -1770,8 +1770,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "26b0cd52d36be6c432ba7862cc817f39e5ce74482013a3ac3ba6a6d4730489be",
-      "bytes": 9620
+      "sha256": "6b5cdce4a1004d10f242697dfcdf3c4dc84aec5b66d59bcf8b4822ffa413a644",
+      "bytes": 20052
     },
     {
       "id": "soup",
@@ -1785,8 +1785,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "0ff11d6a54ed9b0592ff24e02ca1dd4d12f47762dd7f571e985b48f3d1467e58",
-      "bytes": 11188
+      "sha256": "1acb468d29cd9556936afc8749abfe426b98462553da0c8ca390b7e20651d50a",
+      "bytes": 21652
     },
     {
       "id": "avocado",
@@ -1800,8 +1800,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "bce429e7259d7b48ce8e6b9a5744f649392001a9241130bccee1e1baa9c6eb3f",
-      "bytes": 6076
+      "sha256": "5e42d6dc4da2df268c5539377b21185443cfc22c9fcf4c3bceb913d6fce450dc",
+      "bytes": 16412
     },
     {
       "id": "broccoli",
@@ -1815,8 +1815,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "ea4f789cf8ca924eba1f031d88e7984ff4705acdfb23977a1211cea9c77f2a41",
-      "bytes": 20452
+      "sha256": "4b9ff8af5512fd00161d0c5f649bde678f045c524a65518c0b628cd1d406fa4a",
+      "bytes": 30836
     },
     {
       "id": "chocolate",
@@ -1830,8 +1830,8 @@
       "author": "Kenney",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "sha256": "40087c3e876830cfcc0a2fbd47f97d3727a4bef450689834f49d971406e4e80e",
-      "bytes": 12652
+      "sha256": "e366b8832c94e96384ce4f1d0506c469891ea650455a5154c9a7ff4fc4cc6caf",
+      "bytes": 23024
     },
     {
       "id": "bookcase",

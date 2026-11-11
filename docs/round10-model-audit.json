@@ -1,0 +1,4995 @@
+{
+  "generatedAt": "2026-11-11T01:08:48.456Z",
+  "checked": 136,
+  "passed": 136,
+  "failed": 0,
+  "flatMaterialFailures": 0,
+  "models": [
+    {
+      "id": "sedan",
+      "file": "tokens/sedan.glb",
+      "kind": "token",
+      "bytes": 42256,
+      "sha256": "94267fe2f138eb69f289e602bf5b72b5de054bcb24e56dea255f1e6f32c632f5",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "hatchback",
+      "file": "tokens/hatchback.glb",
+      "kind": "token",
+      "bytes": 43180,
+      "sha256": "a193b1cdf96498838226f57c4d6f5dc23876549c15a10fb6767e8be39198d40c",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "racecar",
+      "file": "tokens/racecar.glb",
+      "kind": "token",
+      "bytes": 39160,
+      "sha256": "83393a82321f0867034b8db8a8b4f8e6141f9a802f9caf00e24141666940e08f",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "futureracer",
+      "file": "tokens/futureracer.glb",
+      "kind": "token",
+      "bytes": 40948,
+      "sha256": "8be49d54c6cb3ab6dc9c6d96c4a6c55b1aa768bde50138f06da74ff93c52acba",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "taxi",
+      "file": "tokens/taxi.glb",
+      "kind": "token",
+      "bytes": 41412,
+      "sha256": "de941f9e6b95a72df5ad10b30eb7e11225b11940b85c70905c9eb2935cf071e0",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "police",
+      "file": "tokens/police.glb",
+      "kind": "token",
+      "bytes": 46444,
+      "sha256": "3404e3cd400a2ae885478af112e78aab55abbb84c25b2b738630bbb89ad18adf",
+      "meshes": 4,
+      "primitives": 4,
+      "texturedPrimitives": 4,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "ambulance",
+      "file": "tokens/ambulance.glb",
+      "kind": "token",
+      "bytes": 49048,
+      "sha256": "be1e0bbe349d2a5b124b6e4a5d0ca56d44cc336e14bf8b18c9992a5e5a9f550c",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "firetruck",
+      "file": "tokens/firetruck.glb",
+      "kind": "token",
+      "bytes": 49472,
+      "sha256": "e4e73c5eb7ae105dedb5f448f22df207ba7abd2efab4e7b2ae2b516f55bface7",
+      "meshes": 4,
+      "primitives": 4,
+      "texturedPrimitives": 4,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "delivery",
+      "file": "tokens/delivery.glb",
+      "kind": "token",
+      "bytes": 44404,
+      "sha256": "28d991a65d3759d3df138132de4bdeb95fa1cfec7d56a103a7edfa5f9e2296ab",
+      "meshes": 4,
+      "primitives": 4,
+      "texturedPrimitives": 4,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "garbage",
+      "file": "tokens/garbage.glb",
+      "kind": "token",
+      "bytes": 57916,
+      "sha256": "94e419ba28608ea463c0e5069715058255fdadb0028094adaf35fcdafb3bbe24",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "tractor",
+      "file": "tokens/tractor.glb",
+      "kind": "token",
+      "bytes": 59300,
+      "sha256": "207654893c5ee6759bfb88b0bf94657b39678be024e3f3ce6285ab3ae192468e",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "boxtruck",
+      "file": "tokens/boxtruck.glb",
+      "kind": "token",
+      "bytes": 43056,
+      "sha256": "5f74835a27d01b4995514e2ff0f6f876859e99ff2fb3e7d72d5bda96fc8c5f1e",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "van",
+      "file": "tokens/van.glb",
+      "kind": "token",
+      "bytes": 42836,
+      "sha256": "571117f0dbe64103d0b4773bf85ad29244dac89e6d080985c9ccbec931cd1f57",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "luxurysuv",
+      "file": "tokens/luxurysuv.glb",
+      "kind": "token",
+      "bytes": 42744,
+      "sha256": "0f5f545d677dc9910b6ab15a0d703e8ea0aa886bb5e93e4835a4854870d14dbf",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "kart",
+      "file": "tokens/kart.glb",
+      "kind": "token",
+      "bytes": 65088,
+      "sha256": "7292811750b5caa402b1cfed3547d40b4d5c5bc5de753c9fdf78fc33ddb5bbbd",
+      "meshes": 4,
+      "primitives": 4,
+      "texturedPrimitives": 4,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "speedster",
+      "file": "tokens/speedster.glb",
+      "kind": "token",
+      "bytes": 41660,
+      "sha256": "ea280d766f92e8fe122ff207bed94ebe86c0e6a6f566fbf5d6c76e821196d54e",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cat",
+      "file": "tokens/cat.glb",
+      "kind": "token",
+      "bytes": 67012,
+      "sha256": "efcf1b6ec496aedf2da1dc079b7b923d2fb62c7763bfe599095b6231900eed3e",
+      "meshes": 7,
+      "primitives": 7,
+      "texturedPrimitives": 7,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "dog",
+      "file": "tokens/dog.glb",
+      "kind": "token",
+      "bytes": 51436,
+      "sha256": "ae4b1c3c87fe60f7e9b2b1410eb030eef0c9190bccacd531bf2c6f4fe668d2a8",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "fox",
+      "file": "tokens/fox.glb",
+      "kind": "token",
+      "bytes": 59908,
+      "sha256": "32a3d30dfe842c5cc33076948a31fbeecfaa249b91744d46643bff9143da875f",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "panda",
+      "file": "tokens/panda.glb",
+      "kind": "token",
+      "bytes": 54856,
+      "sha256": "3af047254a8edc13546fb2fcb4f3aafee760d5df1ca4891575bbae17733d9b84",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "penguin",
+      "file": "tokens/penguin.glb",
+      "kind": "token",
+      "bytes": 54824,
+      "sha256": "c485489d25eff7f4eadf7d3b1ee4815f0a827eb53c311c24a811adf72af78f48",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "elephant",
+      "file": "tokens/elephant.glb",
+      "kind": "token",
+      "bytes": 61984,
+      "sha256": "3e40375251a3f1a665e5926fa420616da89725e3f03c1b80952cc84234d3dc45",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "giraffe",
+      "file": "tokens/giraffe.glb",
+      "kind": "token",
+      "bytes": 55172,
+      "sha256": "2bd39a1a1d7592498a24319559e2fe6af30e2c088f928421aa3059efde90d2b0",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "lion",
+      "file": "tokens/lion.glb",
+      "kind": "token",
+      "bytes": 68520,
+      "sha256": "23e2397adf3e044256907a042f96d0d88074a2e95eadf0432b56b9c26474b8fe",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "monkey",
+      "file": "tokens/monkey.glb",
+      "kind": "token",
+      "bytes": 68936,
+      "sha256": "ab9c7ca824daecd85dfe97b0d9d122e1a46ae02c66bc52a4ffc2c91183c03283",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "koala",
+      "file": "tokens/koala.glb",
+      "kind": "token",
+      "bytes": 55048,
+      "sha256": "04540aea674f2ca6f6c78c304e88875aca019da3b51655c96fe221c19afcb890",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "parrot",
+      "file": "tokens/parrot.glb",
+      "kind": "token",
+      "bytes": 64692,
+      "sha256": "1430c7ba6192cae13dfb936c48874480071e7191adbd5e3cd7875369b7aa4277",
+      "meshes": 7,
+      "primitives": 7,
+      "texturedPrimitives": 7,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "polar",
+      "file": "tokens/polar.glb",
+      "kind": "token",
+      "bytes": 45628,
+      "sha256": "985767b332cdb23b1da00c5557f01004290f3a6b2eb7796cc737aa5aef7f8d59",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "tiger",
+      "file": "tokens/tiger.glb",
+      "kind": "token",
+      "bytes": 68224,
+      "sha256": "fcc764de2327686c4565f8a4cd26c5db495c10129c0a8b7c1ba5cab9ffe6786d",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "deer",
+      "file": "tokens/deer.glb",
+      "kind": "token",
+      "bytes": 60620,
+      "sha256": "2a0720a4dac45cd6fcc44d52bdbdf9dd774d1d0a5aeb838dcb5fe22b9c369e2d",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "bunny",
+      "file": "tokens/bunny.glb",
+      "kind": "token",
+      "bytes": 54900,
+      "sha256": "eae79593c28aa8c620b5a85f1b450aa65565a89dd2c1e17d56858cd5aa4d8057",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "pig",
+      "file": "tokens/pig.glb",
+      "kind": "token",
+      "bytes": 54456,
+      "sha256": "6cd8d51043ad82115cf69ad3e55e2134b031b76d0b7173a5e3bae73b797a149e",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "bee",
+      "file": "tokens/bee.glb",
+      "kind": "token",
+      "bytes": 66436,
+      "sha256": "9fd096ee0d40fcf97ea49502283402533c6861cb1d10d0ad794beab4f4e4489e",
+      "meshes": 7,
+      "primitives": 7,
+      "texturedPrimitives": 7,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "fish",
+      "file": "tokens/fish.glb",
+      "kind": "token",
+      "bytes": 43340,
+      "sha256": "e3373da623550685e9fc7fd15c436cd4253fde7ddd37cb312ad9467e392a5feb",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "chick",
+      "file": "tokens/chick.glb",
+      "kind": "token",
+      "bytes": 54244,
+      "sha256": "47ffb2e97e4ffcf9aee98bd66ebdad166afe55635c253b939a013aa31d900760",
+      "meshes": 5,
+      "primitives": 5,
+      "texturedPrimitives": 5,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "crab",
+      "file": "tokens/crab.glb",
+      "kind": "token",
+      "bytes": 60952,
+      "sha256": "edf9973b75d375cf8682ffe0ddcf37199b450ea521f340d5737a354dea2d5b9a",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "burger",
+      "file": "tokens/burger.glb",
+      "kind": "token",
+      "bytes": 27056,
+      "sha256": "d173c04f7607067fbe1d5ff3e20e80161066274dc911d31a249d36a360f6af19",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "donut",
+      "file": "tokens/donut.glb",
+      "kind": "token",
+      "bytes": 18272,
+      "sha256": "a9bbabd3b338c01305dce4a236953c55bf666fa450961194c331719e44ef58fe",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "coffee",
+      "file": "tokens/coffee.glb",
+      "kind": "token",
+      "bytes": 14616,
+      "sha256": "be444ad356482ef8f74def2ca1d6d3993dbb5a7f47d82d866466e924d13d6262",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cupcake",
+      "file": "tokens/cupcake.glb",
+      "kind": "token",
+      "bytes": 20740,
+      "sha256": "63f1b68decc90ece319ca0176cf2bfd0e578c219a58bb5fab385ea244d17b71e",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cake",
+      "file": "tokens/cake.glb",
+      "kind": "token",
+      "bytes": 43032,
+      "sha256": "2720ecb9d49ee2ac6f38c98b14443e3c7e1004585849218c675ca906d1acfb61",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "pineapple",
+      "file": "tokens/pineapple.glb",
+      "kind": "token",
+      "bytes": 17792,
+      "sha256": "1bdfbec57d6a7e2a035de6dbf48103ac0f54a69b2390e182cce94db85e6905c1",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "mushroom",
+      "file": "tokens/mushroom.glb",
+      "kind": "token",
+      "bytes": 14936,
+      "sha256": "e4784fee784dd83230e0657ce0eb0fb0318291acc215648cd086749e1bbfefd1",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "taco",
+      "file": "tokens/taco.glb",
+      "kind": "token",
+      "bytes": 16840,
+      "sha256": "8c21564a4490e8785413f7d3622bfc10ef5dcc94c7539061ab4046078d89f44a",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "icecream",
+      "file": "tokens/icecream.glb",
+      "kind": "token",
+      "bytes": 16712,
+      "sha256": "9809df7f9ab70519af34bcc38536de00a82ced2f80c9b68a4cd2bd77a543abb1",
+      "meshes": 2,
+      "primitives": 2,
+      "texturedPrimitives": 2,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "sushi",
+      "file": "tokens/sushi.glb",
+      "kind": "token",
+      "bytes": 14916,
+      "sha256": "71aa464b57721eba1888f71f33b57973866198c0623f58113c2e70172569c0fc",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "croissant",
+      "file": "tokens/croissant.glb",
+      "kind": "token",
+      "bytes": 16816,
+      "sha256": "33fe63e4c9868830a3f8b92a8957c5221439cad4c36489f6471239cceaea10f4",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "watermelon",
+      "file": "tokens/watermelon.glb",
+      "kind": "token",
+      "bytes": 40884,
+      "sha256": "07afe22646e8148a013091eeac9609ac13080b471e41129656da9b43094c1091",
+      "meshes": 8,
+      "primitives": 8,
+      "texturedPrimitives": 8,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "chest",
+      "file": "tokens/chest.glb",
+      "kind": "token",
+      "bytes": 20476,
+      "sha256": "4626a4e0a8dbc9f184410ca356f3aeccf330245e80867e39e0afa9aed64fba78",
+      "meshes": 2,
+      "primitives": 2,
+      "texturedPrimitives": 2,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cannon",
+      "file": "tokens/cannon.glb",
+      "kind": "token",
+      "bytes": 20276,
+      "sha256": "cf860bf42098d13d453f599732dcb32c7ab4067fdf2140cc576109a12e0ece7b",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "barrel",
+      "file": "tokens/barrel.glb",
+      "kind": "token",
+      "bytes": 15728,
+      "sha256": "3d287a46479e965e259cfc2bbfb5309df7b0ee218f7a10871f04f13f0bf59bee",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "crate",
+      "file": "tokens/crate.glb",
+      "kind": "token",
+      "bytes": 13980,
+      "sha256": "ffe98306a32a19918ba8f8e9ad9188f72be870469714d54eb0665d6832bd73f4",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "flag",
+      "file": "tokens/flag.glb",
+      "kind": "token",
+      "bytes": 15484,
+      "sha256": "66f42c5a2f56e92ad50c5aa71df777785dc792607800523697d235a0f9ea21c3",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "candycane",
+      "file": "tokens/candycane.glb",
+      "kind": "token",
+      "bytes": 17028,
+      "sha256": "d6d2086e903548712a5c453c111fd6994e1425a053b4c691eedda60f463b0290",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "present",
+      "file": "tokens/present.glb",
+      "kind": "token",
+      "bytes": 19912,
+      "sha256": "779674f5cbd8a035dd143277336f6644a14a6dee2c470f439eb9a7fa33677e55",
+      "meshes": 2,
+      "primitives": 2,
+      "texturedPrimitives": 2,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "dreidel",
+      "file": "tokens/dreidel.glb",
+      "kind": "token",
+      "bytes": 16268,
+      "sha256": "a985c45a28f8ab294961a2565d0d0121d015030422cf216cba61cfe70c1a891d",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "lantern",
+      "file": "tokens/lantern.glb",
+      "kind": "token",
+      "bytes": 19024,
+      "sha256": "e0cdce77fa6991bb014a1d403803bbf22331aed42bdde7669ee3d453ef888caf",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "snowman",
+      "file": "tokens/snowman.glb",
+      "kind": "token",
+      "bytes": 27440,
+      "sha256": "9caa5184ebb8158cbdeed1a27e05632b1cd7670c97feb2f19f2d53a8e2703d9b",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "nutcracker",
+      "file": "tokens/nutcracker.glb",
+      "kind": "token",
+      "bytes": 33248,
+      "sha256": "f5e0796fe6820982b3db5c066d5b12c1a15637532ce277974c4689d288a746ad",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "radio",
+      "file": "tokens/radio.glb",
+      "kind": "token",
+      "bytes": 8520,
+      "sha256": "f1fad4d260a36a2bea5e7fcd050f893a54f352a2421fb80b46c88ddd2441a267",
+      "meshes": 1,
+      "primitives": 3,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalMedium",
+          "baseColor": [
+            0.368627459,
+            0.466666669,
+            0.466666669,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "wood",
+          "baseColor": [
+            0.8962264,
+            0.6015712,
+            0.3931559,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.74061054,
+            0.822866738,
+            0.8396226,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "laptop",
+      "file": "tokens/laptop.glb",
+      "kind": "token",
+      "bytes": 4776,
+      "sha256": "d1181ea8eb539153044ec79fe3c7d7025df5b19a00d6967ed62eab2af70a0613",
+      "meshes": 1,
+      "primitives": 3,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.305882365,
+            0.3882353,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.74061054,
+            0.822866738,
+            0.8396226,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalMedium",
+          "baseColor": [
+            0.368627459,
+            0.466666669,
+            0.466666669,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "speaker",
+      "file": "tokens/speaker.glb",
+      "kind": "token",
+      "bytes": 6032,
+      "sha256": "a0d47ee0087048a2efb8c07f1076b5407bd7fa5422702214ed5c37098c7638d2",
+      "meshes": 1,
+      "primitives": 2,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "wood",
+          "baseColor": [
+            0.8962264,
+            0.6015712,
+            0.3931559,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalMedium",
+          "baseColor": [
+            0.368627459,
+            0.466666669,
+            0.466666669,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "bench",
+      "file": "tokens/bench.glb",
+      "kind": "token",
+      "bytes": 3584,
+      "sha256": "96a15af1003f3005e4bfba0f6d40997d0795dc7265bcc9da1e98f882d87397f6",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "wood",
+          "baseColor": [
+            0.8962264,
+            0.6015712,
+            0.3931559,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cashregister",
+      "file": "tokens/cashregister.glb",
+      "kind": "token",
+      "bytes": 15708,
+      "sha256": "500fddfd06d641521b387e221c60d1e84222ae28dea9a4961cbf80cd31ef9b02",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "sailboat",
+      "file": "tokens/sailboat.glb",
+      "kind": "token",
+      "bytes": 19676,
+      "sha256": "efc99e485dfb942dc4c744742d0d0585b291e5a9cababd2f44fc73327447a5e7",
+      "meshes": 2,
+      "primitives": 2,
+      "texturedPrimitives": 2,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "locomotive",
+      "file": "tokens/locomotive.glb",
+      "kind": "token",
+      "bytes": 54860,
+      "sha256": "eea7bd23aa22249063be22d7ce427225247c35171e84292dc086b41adf3ba9ad",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "marble",
+      "file": "tokens/marble.glb",
+      "kind": "token",
+      "bytes": 8764,
+      "sha256": "6bcec204ee0f1fe2b13d1bdae673b09723298270c947be44efae67cc27705d7c",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "glass",
+          "baseColor": [
+            0.7524076,
+            0.852530241,
+            1,
+            0.5019608
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 0.5019608,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "tower",
+      "file": "tokens/tower.glb",
+      "kind": "token",
+      "bytes": 12628,
+      "sha256": "fc800098237ad13bd54b7cb426ef60dbdaef2ba4f7b82f0590c97c9d5b49021c",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "astronaut",
+      "file": "tokens/astronaut.glb",
+      "kind": "token",
+      "bytes": 22180,
+      "sha256": "6f13e9e2e51fd5d9c9bbc412ea01e3f349f48cae24c984f58148c42cdab1ea10",
+      "meshes": 6,
+      "primitives": 18,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "skin",
+          "baseColor": [
+            1,
+            0.7647059,
+            0.6117647,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "rock",
+          "baseColor": [
+            0.9098039,
+            0.5176471,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "rockDark",
+          "baseColor": [
+            0.698039234,
+            0.372549027,
+            0.2627451,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "rover",
+      "file": "tokens/rover.glb",
+      "kind": "token",
+      "bytes": 7372,
+      "sha256": "a9b863ef581305a932f846a34fa0570adedabf43cca22a745e33ca0a028e384d",
+      "meshes": 1,
+      "primitives": 4,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "satellite",
+      "file": "tokens/satellite.glb",
+      "kind": "token",
+      "bytes": 9664,
+      "sha256": "89642263fcde702413454ab7fa6a04574407c8b0e8379a1e09311ca9a16c7c14",
+      "meshes": 1,
+      "primitives": 5,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "_defaultMat",
+          "baseColor": [
+            0.42,
+            0.51,
+            0.56,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "catapult",
+      "file": "tokens/catapult.glb",
+      "kind": "token",
+      "bytes": 34348,
+      "sha256": "27461eb6fa266f4aeb9a85cc0784ff795f6d518e329483f330f8a2498496ca57",
+      "meshes": 6,
+      "primitives": 6,
+      "texturedPrimitives": 6,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "house",
+      "file": "buildings/house.glb",
+      "kind": "building",
+      "bytes": 34708,
+      "sha256": "e641ad4e6aa9f884aaefe6ebabb18b19c8a792d1957a635a7c8b9c37db6898e6",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "apartments",
+      "file": "buildings/apartments.glb",
+      "kind": "building",
+      "bytes": 34436,
+      "sha256": "572adddd8e8f8c65f1a75679d87e52adf158403bc1201961f17faba884245fa9",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "shop",
+      "file": "buildings/shop.glb",
+      "kind": "building",
+      "bytes": 15848,
+      "sha256": "37c63cf5d4bfd041676be9898e1ab76aff9a82ad5724b000af9de84b350aac25",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "restaurant",
+      "file": "buildings/restaurant.glb",
+      "kind": "building",
+      "bytes": 16108,
+      "sha256": "e2743bcd2faad8f9166105f2aa687f22efc61e7f7f77c1e2cf0db2d85106a593",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "office",
+      "file": "buildings/office.glb",
+      "kind": "building",
+      "bytes": 34128,
+      "sha256": "2604541310994502a4ab99a41dd243bfa658cbd2e5f15e6efca18a551a7dfb86",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "hotel",
+      "file": "buildings/hotel.glb",
+      "kind": "building",
+      "bytes": 33668,
+      "sha256": "daf5453d86708ab63f25d83291b9a844ef78957e5410da1b7a1b6782f6a1eabf",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "landmark",
+      "file": "buildings/landmark.glb",
+      "kind": "building",
+      "bytes": 31160,
+      "sha256": "9f4d576c31e18c7421cae1756a0a00b3ed6619e299f9a7096107a3d83e02d6bd",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "palm",
+      "file": "props/palm.glb",
+      "kind": "prop",
+      "bytes": 22232,
+      "sha256": "35de07f4efab86e843fffcb7f3a60f63bab8a84803bb84f08454e77fc050fe81",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "palmbend",
+      "file": "props/palmbend.glb",
+      "kind": "prop",
+      "bytes": 22168,
+      "sha256": "a5394b96fbd79c6c298b7a37f4795d593f2025f345eb719dc59ca164ef14bd7b",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "jailbars",
+      "file": "props/jailbars.glb",
+      "kind": "prop",
+      "bytes": 19540,
+      "sha256": "dcdd752b3f9ba2dc01c50cd85b04c07ab4db44fd9018ad22662c49e0f7da7bff",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "rock",
+      "file": "props/rock.glb",
+      "kind": "prop",
+      "bytes": 18816,
+      "sha256": "004a4187fac04f23571de4509ba94532f9b397ba4f3c783b1a516ef6242245b5",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-a",
+      "file": "city/building-a.glb",
+      "kind": "building",
+      "bytes": 119584,
+      "sha256": "190d7cfb70bb76e2a422d8f0ba3552fdd4dbb55d3de6d41afcfda92d797912a1",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-b",
+      "file": "city/building-b.glb",
+      "kind": "building",
+      "bytes": 117040,
+      "sha256": "516ea7f47a28d420abe41cad19830bfeaf3aaae44282e3999e8df7fee5f680d1",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-c",
+      "file": "city/building-d.glb",
+      "kind": "building",
+      "bytes": 105804,
+      "sha256": "515154f9cb219239eef4e6a4007389ba9e607e6f099b55b107cf11fa357b6823",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-d",
+      "file": "city/building-f.glb",
+      "kind": "building",
+      "bytes": 159696,
+      "sha256": "25aa0149f75c6032ad73baf4fa86d1d04971b8877696a23eb689dfe2ba339b02",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-e",
+      "file": "city/building-h.glb",
+      "kind": "building",
+      "bytes": 138136,
+      "sha256": "3b0ea9c9366022aa4e92433adc849a601b49798af2e3157baf32ff47bd93ce00",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-f",
+      "file": "city/building-k.glb",
+      "kind": "building",
+      "bytes": 257608,
+      "sha256": "014c0fe6a780a8cc3f1b5ba87fcfbfb8c36bde5fedfa14e929a61b32a3278e10",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-g",
+      "file": "city/building-skyscraper-b.glb",
+      "kind": "building",
+      "bytes": 149112,
+      "sha256": "222bca103c0f61c4809b39b03e838fe9bc9be76bd37854347cd81d0616554e36",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-h",
+      "file": "city/building-skyscraper-c.glb",
+      "kind": "building",
+      "bytes": 160152,
+      "sha256": "3ff4b9d5351afa4c8feacc2d95e996ba76d2dab6c941d417c0b26c4024c4e096",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-i",
+      "file": "city/building-skyscraper-d.glb",
+      "kind": "building",
+      "bytes": 177792,
+      "sha256": "2845e088ac0e36319e3568f31a09a97dc866b8a528b47a1dfc1b52116a1c76e6",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "suburb-a",
+      "file": "city/building-type-b.glb",
+      "kind": "building",
+      "bytes": 158120,
+      "sha256": "9162843c714fbe1ecf63e7b867089f6c4f90071cd3c3eabcf7574777c554349b",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "suburb-b",
+      "file": "city/building-type-f.glb",
+      "kind": "building",
+      "bytes": 149936,
+      "sha256": "10958e747749e0ff8d45da1f4c0d4fc0c917472ec4b0164b5a1fd24efb50286c",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "suburb-c",
+      "file": "city/building-type-h.glb",
+      "kind": "building",
+      "bytes": 76892,
+      "sha256": "a247eb3721aa7d47a6d099f96b49ebd21ebdc27281d6904df60f19247dceba77",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "suburb-d",
+      "file": "city/building-type-k.glb",
+      "kind": "building",
+      "bytes": 100588,
+      "sha256": "b6c4fa55d9434390514bbe74560effa627e9923836d00486b8a5c11186bd8f33",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-far-a",
+      "file": "city/low-detail-building-a.glb",
+      "kind": "building",
+      "bytes": 25124,
+      "sha256": "aa88c95deecaabb97d2597751824b911b3b611dea55206f6271bea9f69ce66dc",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-far-b",
+      "file": "city/low-detail-building-b.glb",
+      "kind": "building",
+      "bytes": 27128,
+      "sha256": "a372902883c3cdd46df9d3decef25ab4857b5e4dd55d84f80b7712613c148f96",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-far-c",
+      "file": "city/low-detail-building-c.glb",
+      "kind": "building",
+      "bytes": 23032,
+      "sha256": "69b1d7f4c21526e0bfe5fc32781d954ae9f6dcc73548ade5034ceef404791c24",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "city-far-d",
+      "file": "city/low-detail-building-d.glb",
+      "kind": "building",
+      "bytes": 19508,
+      "sha256": "4359599aff58a7d4aadcab561c4b0ae626809b2a688ef8720ce2bc0533f62cd5",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "building-e",
+      "file": "city/building-e.glb",
+      "kind": "building",
+      "bytes": 138840,
+      "sha256": "07c97eee9b9336b3a69f63dbac8602405dc3f320f27c63a07e45fc2adfd2466f",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "building-g",
+      "file": "city/building-g.glb",
+      "kind": "building",
+      "bytes": 177000,
+      "sha256": "a910052fadd01c1b851df25a34e24c504312a4964edf0b40cba9539c1fc47482",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "building-i",
+      "file": "city/building-i.glb",
+      "kind": "building",
+      "bytes": 220360,
+      "sha256": "22fa3548c2ea35e7f38da85823e9d1388af546220d779d27b2bd0f5b3af59a6e",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "building-j",
+      "file": "city/building-j.glb",
+      "kind": "building",
+      "bytes": 451272,
+      "sha256": "0850cac134b8953363523428ac347a5457ea439a72ca764280da58079e42a9fd",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "building-l",
+      "file": "city/building-l.glb",
+      "kind": "building",
+      "bytes": 301144,
+      "sha256": "44655fc0878296dd35de5cf06fce0a73cd488866c6850bc76ad970bc73652836",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "skyscraper-a",
+      "file": "city/building-skyscraper-a.glb",
+      "kind": "building",
+      "bytes": 121968,
+      "sha256": "66d6e1808c336393d8dccc2007fe04fbd146827ac0ebdec92f500b95d158e387",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "type-c",
+      "file": "city/building-type-c.glb",
+      "kind": "building",
+      "bytes": 110252,
+      "sha256": "ad57197e42ad4dc07135e3b3a092ecc000661fa64db659b0a5aaa29fdf578529",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "type-d",
+      "file": "city/building-type-d.glb",
+      "kind": "building",
+      "bytes": 158024,
+      "sha256": "34d647e71b4262c1bf7e5c096acda3d158a955f9b52b8a93ed809dbbee039757",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "apple",
+      "file": "tokens/apple.glb",
+      "kind": "token",
+      "bytes": 24732,
+      "sha256": "e50a923a2fb3fdb330a89e1350a26661d643626ae8b27268887d969d9cd4c65e",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "banana",
+      "file": "tokens/banana.glb",
+      "kind": "token",
+      "bytes": 22716,
+      "sha256": "e575cb8e576001ea484a7a6baa4d9b0c212fedc254126af6a2b148a9235ffe85",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "bread",
+      "file": "tokens/bread.glb",
+      "kind": "token",
+      "bytes": 19960,
+      "sha256": "5b0df3a227089aadee518be76ee7a3e969b44e767cd28bb9151128d80c7165cd",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "carrot",
+      "file": "tokens/carrot.glb",
+      "kind": "token",
+      "bytes": 26752,
+      "sha256": "9fe685b5960d7d6f82e147d510afa9df577bb1ce02158d29092c7027ae145ef7",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cheese",
+      "file": "tokens/cheese.glb",
+      "kind": "token",
+      "bytes": 65164,
+      "sha256": "d39a9d94f890cbb667c58c03c38ee0cc318a86e4b9b999322968acb304d53d6f",
+      "meshes": 12,
+      "primitives": 12,
+      "texturedPrimitives": 12,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cherries",
+      "file": "tokens/cherries.glb",
+      "kind": "token",
+      "bytes": 23964,
+      "sha256": "b06856d5452b040206b9fc834b61609cd8e55e7df0c4e79ceee8b437aaad729c",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "cookie",
+      "file": "tokens/cookie.glb",
+      "kind": "token",
+      "bytes": 17900,
+      "sha256": "8e81dd2b6a0713641def4cef8ba2f448ef62b4a683ab0cf62b3344dfd52367b3",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "corn",
+      "file": "tokens/corn.glb",
+      "kind": "token",
+      "bytes": 24704,
+      "sha256": "c043452430f39aceff01966c285483ebaebe265b92847a095f6886514cd6cf97",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "noodles",
+      "file": "tokens/noodles.glb",
+      "kind": "token",
+      "bytes": 28716,
+      "sha256": "59531c12394ebee2d065f1c2d3de5d3fdd72a1ae6a764f5dbef9410c3f6c3386",
+      "meshes": 3,
+      "primitives": 3,
+      "texturedPrimitives": 3,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "ketchup",
+      "file": "tokens/ketchup.glb",
+      "kind": "token",
+      "bytes": 20052,
+      "sha256": "6b5cdce4a1004d10f242697dfcdf3c4dc84aec5b66d59bcf8b4822ffa413a644",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "soup",
+      "file": "tokens/soup.glb",
+      "kind": "token",
+      "bytes": 21652,
+      "sha256": "1acb468d29cd9556936afc8749abfe426b98462553da0c8ca390b7e20651d50a",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "avocado",
+      "file": "tokens/avocado.glb",
+      "kind": "token",
+      "bytes": 16412,
+      "sha256": "5e42d6dc4da2df268c5539377b21185443cfc22c9fcf4c3bceb913d6fce450dc",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "broccoli",
+      "file": "tokens/broccoli.glb",
+      "kind": "token",
+      "bytes": 30836,
+      "sha256": "4b9ff8af5512fd00161d0c5f649bde678f045c524a65518c0b628cd1d406fa4a",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "chocolate",
+      "file": "tokens/chocolate.glb",
+      "kind": "token",
+      "bytes": 23024,
+      "sha256": "e366b8832c94e96384ce4f1d0506c469891ea650455a5154c9a7ff4fc4cc6caf",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 1,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "colormap",
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "texture": true,
+          "textureSize": [
+            512,
+            512
+          ],
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "bookcase",
+      "file": "tokens/bookcase.glb",
+      "kind": "token",
+      "bytes": 18020,
+      "sha256": "750702218d68c062b15dfef6ab06a4014d1cfa8bd05f02e57c53b7e13bec157c",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "wood",
+          "baseColor": [
+            0.8962264,
+            0.6015712,
+            0.3931559,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "deskchair",
+      "file": "tokens/deskchair.glb",
+      "kind": "token",
+      "bytes": 39016,
+      "sha256": "46406619186034cbe92b19b79a5f1a8e3f442a17a70a7524ef2c0ad0f35095c6",
+      "meshes": 2,
+      "primitives": 3,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalMedium",
+          "baseColor": [
+            0.368627459,
+            0.466666669,
+            0.466666669,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "carpet",
+          "baseColor": [
+            0.9433962,
+            0.367175967,
+            0.3426486,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "monitor",
+      "file": "tokens/monitor.glb",
+      "kind": "token",
+      "bytes": 6404,
+      "sha256": "5942cbad29a2d2b956619569926e81d50a4174403d592fece6556e57632dc643",
+      "meshes": 1,
+      "primitives": 2,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.305882365,
+            0.3882353,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.74061054,
+            0.822866738,
+            0.8396226,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "desk",
+      "file": "tokens/desk.glb",
+      "kind": "token",
+      "bytes": 15048,
+      "sha256": "0164fe828f028b321730fb8c74502e353583f751be74da1682d42fff7d3c5a42",
+      "meshes": 2,
+      "primitives": 3,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "wood",
+          "baseColor": [
+            0.8962264,
+            0.6015712,
+            0.3931559,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.74061054,
+            0.822866738,
+            0.8396226,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "fridge",
+      "file": "tokens/fridge.glb",
+      "kind": "token",
+      "bytes": 20116,
+      "sha256": "8af4f4bbb1b5525ad8226e97926a5af60fa8fb20a3cb74dbda5328a9d320dbab",
+      "meshes": 3,
+      "primitives": 7,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalLight",
+          "baseColor": [
+            0.9372549,
+            0.980392158,
+            0.956862748,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.305882365,
+            0.3882353,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.74061054,
+            0.822866738,
+            0.8396226,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "glass",
+          "baseColor": [
+            0.698039234,
+            0.827451,
+            0.768627465,
+            0.5
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 0.5,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "microwave",
+      "file": "tokens/microwave.glb",
+      "kind": "token",
+      "bytes": 11248,
+      "sha256": "dd6a6c919f4bebc6e2080fe419262cf97a0d6461ead3f3998aa3c9edf4d2bd27",
+      "meshes": 2,
+      "primitives": 6,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalMedium",
+          "baseColor": [
+            0.368627459,
+            0.466666669,
+            0.466666669,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "carpetWhite",
+          "baseColor": [
+            0.972549,
+            1,
+            1,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.305882365,
+            0.3882353,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "glass",
+          "baseColor": [
+            0.698039234,
+            0.827451,
+            0.768627465,
+            0.5
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 0.5,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "stove",
+      "file": "tokens/stove.glb",
+      "kind": "token",
+      "bytes": 54324,
+      "sha256": "3239edb36295dfca9530a9b9a6ad0aff98ce62e7cf8d13ca2a5a1a6b2a904656",
+      "meshes": 2,
+      "primitives": 6,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metal",
+          "baseColor": [
+            0.74061054,
+            0.822866738,
+            0.8396226,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "wood",
+          "baseColor": [
+            0.8962264,
+            0.6015712,
+            0.3931559,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.305882365,
+            0.3882353,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "carpetWhite",
+          "baseColor": [
+            0.972549,
+            1,
+            1,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "glass",
+          "baseColor": [
+            0.698039234,
+            0.827451,
+            0.768627465,
+            0.5
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 0.5,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "bathtub",
+      "file": "tokens/bathtub.glb",
+      "kind": "token",
+      "bytes": 35500,
+      "sha256": "54c405c7035aab63dc41e709dc3c50fc5bcfbc4cddc91ffc54188075a6d25d01",
+      "meshes": 1,
+      "primitives": 3,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "carpetWhite",
+          "baseColor": [
+            0.972549,
+            1,
+            1,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalLight",
+          "baseColor": [
+            0.9372549,
+            0.980392158,
+            0.956862748,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.305882365,
+            0.3882353,
+            0.3882353,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "alien",
+      "file": "tokens/alien.glb",
+      "kind": "token",
+      "bytes": 27784,
+      "sha256": "c041e8ed0eff82f0b25b944a8107f1268ddbec9c2c93afedc4ee0e8b047d983d",
+      "meshes": 6,
+      "primitives": 18,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "crystal",
+          "baseColor": [
+            0.186231777,
+            0.8773585,
+            0.593436241,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "astronautb",
+      "file": "tokens/astronautb.glb",
+      "kind": "token",
+      "bytes": 27824,
+      "sha256": "6fa5b3e11cb3d117b28a0794b261ad9107f16ca6ce886b288493e22493d74d2d",
+      "meshes": 6,
+      "primitives": 17,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "rockTrack",
+          "baseColor": [
+            0.9811321,
+            0.580968261,
+            0.44891423,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "spaceracer",
+      "file": "tokens/spaceracer.glb",
+      "kind": "token",
+      "bytes": 19228,
+      "sha256": "bce8cb3d037a67e151ea6b68bba5876f53f4c77dfd43892c1c72892d5ab1c5aa",
+      "meshes": 1,
+      "primitives": 4,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "speeder",
+      "file": "tokens/speeder.glb",
+      "kind": "token",
+      "bytes": 20496,
+      "sha256": "dc48652fa5c59088a5e3902abce7598199f32e0dcb8c91bac25e17bb8ce15876",
+      "meshes": 1,
+      "primitives": 4,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "meteor",
+      "file": "tokens/meteor.glb",
+      "kind": "token",
+      "bytes": 6496,
+      "sha256": "83c75071d3a48955ff3f719992f7d69dc13e915da988878bff441fd3dbb472f8",
+      "meshes": 1,
+      "primitives": 1,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "rockTrack",
+          "baseColor": [
+            0.9811321,
+            0.580968261,
+            0.44891423,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    },
+    {
+      "id": "monorail",
+      "file": "tokens/monorail.glb",
+      "kind": "token",
+      "bytes": 12464,
+      "sha256": "1d18442a9f11fb2af12acdc035743bbebc9abd77e458650f3ccdfff706e9a024",
+      "meshes": 1,
+      "primitives": 4,
+      "texturedPrimitives": 0,
+      "vertexColourPrimitives": 0,
+      "materials": [
+        {
+          "name": "metalRed",
+          "baseColor": [
+            1,
+            0.628524244,
+            0.2028302,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metal",
+          "baseColor": [
+            0.843137264,
+            0.870588243,
+            0.9098039,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "metalDark",
+          "baseColor": [
+            0.6750623,
+            0.7100219,
+            0.7735849,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        },
+        {
+          "name": "dark",
+          "baseColor": [
+            0.274509817,
+            0.298039228,
+            0.34117648,
+            1
+          ],
+          "texture": false,
+          "textureSize": null,
+          "vertexColors": false,
+          "alpha": 1,
+          "failures": []
+        }
+      ],
+      "failures": [],
+      "passed": true
+    }
+  ]
+}

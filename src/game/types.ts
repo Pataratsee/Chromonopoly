@@ -4,6 +4,7 @@ import type { BuildingType } from './buildings';
 export type { BuildingType } from './buildings';
 
 export type GameMode = 'solo' | 'multi';
+export type BotStyle = 'cautious' | 'balanced' | 'aggressive';
 
 export type SpaceType =
   | 'go'
@@ -91,6 +92,8 @@ export interface PlayerPublic {
   lastSeen: number;
   online: boolean;
   isBot: boolean;
+  /** Solo AI temperament; absent for human seats and legacy saves. */
+  botStyle?: BotStyle;
 }
 
 export interface DossierEntry {
@@ -229,8 +232,8 @@ export type Intent =
   | { t: 'buy'; tile: number; key: string }
   | { t: 'decline'; tile: number; key: string }
   | { t: 'build'; tile: number; type: BuildingType; key: string }
-  | { t: 'upgrade'; tile: number; type: BuildingType; key: string }
-  | { t: 'sellBuilding'; tile: number; type: BuildingType; key: string }
+  | { t: 'upgrade'; tile: number; type: BuildingType; slot?: number; key: string }
+  | { t: 'sellBuilding'; tile: number; type: BuildingType; slot?: number; key: string }
   | { t: 'mortgage'; tile: number; key: string }
   | { t: 'unmortgage'; tile: number; key: string }
   | { t: 'loan'; amount: number; key: string }
@@ -247,6 +250,7 @@ export type Intent =
   | { t: 'court'; suitId: string; key: string }
   | { t: 'withdrawSuit'; suitId: string; key: string }
   | { t: 'jailPay'; key: string }
+  | { t: 'botSpeed'; fast: boolean; key: string }
   | { t: 'selectToken'; tokenId: string; key: string }
   | { t: 'selectColor'; color: string; key: string }
   | { t: 'recordWipe'; key: string }
@@ -291,8 +295,12 @@ export interface GameEvent {
 }
 
 export interface ServerMessage {
-  type: 'state' | 'private' | 'welcome' | 'rejected' | 'event' | 'resync' | 'market';
+  type: 'state' | 'delta' | 'private' | 'welcome' | 'rejected' | 'event' | 'resync' | 'market' | 'pong';
   seq?: number;
+  baseSeq?: number;
+  patch?: Record<string, unknown>;
+  t?: number;
+  serverTime?: number;
   state?: PublicState;
   private?: PrivateState;
   playerId?: string;
@@ -325,5 +333,4 @@ export interface Settings {
   skyHour: number;
   fpsCounter: boolean;
   fastBots: boolean;
-  oneClickTrade: boolean;
 }

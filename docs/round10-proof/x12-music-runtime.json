@@ -1,0 +1,64 @@
+{
+  "id": "dawn-ledger",
+  "title": "Dawn Ledger",
+  "index": 0,
+  "bpm": 72,
+  "bars": 42,
+  "duration": 140,
+  "step": 0,
+  "playing": true,
+  "musicOn": true,
+  "context": "running",
+  "crossfades": 0,
+  "source": "http://127.0.0.1:8790/audio/dawn-ledger.ogg",
+  "songs": [
+    {
+      "id": "dawn-ledger",
+      "title": "Dawn Ledger",
+      "duration": 140,
+      "file": "audio/dawn-ledger.ogg"
+    },
+    {
+      "id": "quiet-harbor",
+      "title": "Quiet Harbor",
+      "duration": 144,
+      "file": "audio/quiet-harbor.ogg"
+    },
+    {
+      "id": "sunday-market",
+      "title": "Sunday Market",
+      "duration": 137,
+      "file": "audio/sunday-market.ogg"
+    },
+    {
+      "id": "amber-window",
+      "title": "Amber Window",
+      "duration": 139,
+      "file": "audio/amber-window.ogg"
+    },
+    {
+      "id": "slow-auction",
+      "title": "Slow Auction",
+      "duration": 137,
+      "file": "audio/slow-auction.ogg"
+    },
+    {
+      "id": "riverstone",
+      "title": "Riverstone",
+      "duration": 155,
+      "file": "audio/riverstone.ogg"
+    },
+    {
+      "id": "paper-skies",
+      "title": "Paper Skies",
+      "duration": 138,
+      "file": "audio/paper-skies.ogg"
+    },
+    {
+      "id": "late-harvest",
+      "title": "Late Harvest",
+      "duration": 131,
+      "file": "audio/late-harvest.ogg"
+    }
+  ]
+}

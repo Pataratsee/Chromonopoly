@@ -92,7 +92,7 @@ describe('jail cascade', () => {
     expect(world.tiles[3]!.mortgaged).toBe(true);
     expect(a.player.jailOutcome).toBe('none');
     expect(a.player.cash).toBe(cashBefore + 25 + 30 + 30);
-    expect(a.player.jailReleaseCost).toBe(Math.max(50, Math.round(a.player.cash * 0.05)));
+    expect(a.player.jailReleaseCost).toBe(Math.max(50, Math.round(a.player.cash * 0.1)));
   });
 
   it('releases on payment and restores every deed', () => {
@@ -292,6 +292,9 @@ describe('solo table', () => {
     expect(human.player.pending?.kind).toBe('buy');
     const price = human.player.pending?.amount ?? 0;
     expect(price).toBeGreaterThan(0);
+    // The seeded dice are doubles, which legitimately grant another roll.
+    // This test isolates the non-doubles handoff after a purchase.
+    human.player.extraRoll = false;
     expect(world.intent(human.player.id, { t: 'buy', tile: human.player.pending!.tile, key: 'b1' }).ok).toBe(true);
     expect(human.player.cash).toBe(1500 - price);
     expect(world.publicState().activePlayerId).toBe(bots[0]!.id);

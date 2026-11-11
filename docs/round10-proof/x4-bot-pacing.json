@@ -1,0 +1,125 @@
+{
+  "active": {
+    "id": "p_mwa47uqs_5",
+    "name": "Penny Sharp",
+    "tokenId": "penguin",
+    "color": "#37B36B",
+    "cash": 1300,
+    "position": 9,
+    "inJail": false,
+    "jailTurns": 0,
+    "jailReleaseCost": 65,
+    "jailCause": null,
+    "jailOutcome": null,
+    "jailSold": [],
+    "inHospital": false,
+    "hospitalTurns": 0,
+    "bankrupt": false,
+    "jailRecord": [],
+    "lastSeen": 1794280433417,
+    "online": true,
+    "isBot": true,
+    "botStyle": "balanced"
+  },
+  "thinking": "Penny Sharpis thinking",
+  "log": [
+    {
+      "at": 38596,
+      "player": "p_mwa47uqs_3",
+      "event": "roll",
+      "detail": "4+4=8"
+    },
+    {
+      "at": 41161,
+      "player": "p_mwa47uqs_3",
+      "event": "follow",
+      "detail": "tile 0→8"
+    },
+    {
+      "at": 46182,
+      "player": "p_mwa47uqs_3",
+      "event": "landed",
+      "detail": "Vermont Ave"
+    },
+    {
+      "at": 47468,
+      "player": "p_mwa47uqs_3",
+      "event": "pause",
+      "detail": 900
+    },
+    {
+      "at": 47473,
+      "player": "p_mwa47uqs_3",
+      "event": "zoom-out"
+    },
+    {
+      "at": 47473,
+      "player": "p_mwa47uqs_3",
+      "event": "move"
+    },
+    {
+      "at": 48096,
+      "player": "p_mwa47uqs_3",
+      "event": "purchase",
+      "detail": "offer"
+    },
+    {
+      "at": 48522,
+      "player": "p_mwa47uqs_3",
+      "event": "purchase",
+      "detail": 100
+    },
+    {
+      "at": 48986,
+      "player": "p_mwa47uqs_3",
+      "event": "turn",
+      "detail": "doubles — roll again"
+    },
+    {
+      "at": 49661,
+      "player": "p_mwa47uqs_3",
+      "event": "turn",
+      "detail": "Penny Sharp's turn"
+    },
+    {
+      "at": 50095,
+      "player": "p_mwa47uqs_3",
+      "event": "turn",
+      "detail": "Count Deed's turn"
+    },
+    {
+      "at": 50607,
+      "player": "p_mwa47uqs_3",
+      "event": "roll",
+      "detail": "2+5=7"
+    },
+    {
+      "at": 54364,
+      "player": "p_mwa47uqs_3",
+      "event": "follow",
+      "detail": "tile 15→15"
+    },
+    {
+      "at": 54364,
+      "player": "p_mwa47uqs_3",
+      "event": "landed",
+      "detail": "Pennsylvania RR"
+    },
+    {
+      "at": 55453,
+      "player": "p_mwa47uqs_3",
+      "event": "pause",
+      "detail": 900
+    },
+    {
+      "at": 55650,
+      "player": "p_mwa47uqs_3",
+      "event": "zoom-out"
+    },
+    {
+      "at": 55650,
+      "player": "p_mwa47uqs_3",
+      "event": "move"
+    }
+  ]
+}

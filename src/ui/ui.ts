@@ -118,6 +118,7 @@ export class UI {
   private stopPreview: (() => void) | null = null;
   private tableStage: HTMLElement | null = null;
   private chanceQueue: Promise<void> = Promise.resolve();
+  private lastBustedAt = 0;
   private logBody: HTMLElement | null = null;
   private tutorialStep = 0;
   private tutorialPending = false;
@@ -125,6 +126,7 @@ export class UI {
   private logTab: 'main' | 'players' | 'market' = 'main';
   private logPlayer: string | null = null;
   private marketLive: (() => void) | null = null;
+  private sheetTile: number | null = null;
   private menuPanel: HTMLElement | null = null;
   private menuError = '';
 
@@ -158,8 +160,13 @@ export class UI {
     this.deps.net.onStatus = (status, reason) => {
       const dot = document.getElementById('net-dot');
       dot?.classList.toggle('off', status !== 'online');
+      const offline = document.getElementById('offline-banner');
+      if (offline instanceof HTMLElement) offline.hidden = status === 'online';
       if (status === 'offline') this.ribbon('Connection lost — retrying', reason ?? 'Your seat is held while the browser reconnects.');
-      else if (status === 'online') this.ribbon(this.state?.mode === 'solo' ? 'Your table is ready' : 'Shared world');
+      else if (status === 'online') {
+        this.ribbon(this.state?.mode === 'solo' ? 'Your table is ready' : 'Shared world');
+        this.deps.net.resync();
+      }
     };
     this.root.append(this.buildHud());
     this.tableStage = h('div', { class: 'table-stage', id: 'table-stage' });
@@ -184,6 +191,7 @@ export class UI {
     document.documentElement.style.setProperty('--ui-scale', String(this.settings.uiScale));
     document.body.dataset.theme = this.settings.darkMode ? 'dark' : 'light';
     document.body.classList.toggle('reduced-motion', this.settings.reducedMotion);
+    this.updateThinking();
   }
 
   // --------------------------------------------------------------- shell
@@ -207,6 +215,14 @@ export class UI {
     const ribbon = h('div', { class: 'ribbon', id: 'ribbon' }, 'CHROMONOPOLY');
     const ribbonSub = h('div', { class: 'ribbon-sub', id: 'ribbon-sub' }, 'Choose a mode to enter');
     const ribbons = h('div', { class: 'ribbon-wrap' }, ribbon, ribbonSub);
+    const thinking = h('div', { class: 'thinking-dots glass', id: 'thinking-dots', hidden: true, 'aria-live': 'polite' },
+      h('span', { id: 'thinking-name' }, 'Rival'),
+      h('span', {}, 'is thinking'),
+      h('i', {}), h('i', {}), h('i', {}),
+    );
+    const offline = h('div', { class: 'offline-banner glass', id: 'offline-banner', role: 'status', hidden: true },
+      h('b', {}, 'Offline'), h('span', {}, 'Retrying with backoff — your seat and queued actions are held.'),
+    );
 
     const networth = h('div', { class: 'networth glass' }, h('b', { id: 'networth' }, '$0'), h('span', {}, 'net worth'));
     const modeBadge = h('div', { class: 'mode-badge glass', id: 'mode-badge' }, 'Shared world');
@@ -242,7 +258,7 @@ export class UI {
     );
     dock.append(tabs, h('div', { class: 'roll-wrap' }, rollBtn, hint), actions);
 
-    hud.append(topbar, rail, this.cameraControls(), dock);
+    hud.append(offline, thinking, topbar, rail, this.cameraControls(), dock);
     return hud;
   }
 
@@ -263,23 +279,25 @@ export class UI {
 
   // --------------------------------------------------------------- accounts
 
-  private showOutcome(outcome: CrimeOutcome): void {
+  private showOutcome(outcome: CrimeOutcome): Promise<void> {
     document.getElementById('crime-result')?.remove();
-    const layer = h(
-      'div',
-      { class: `crime-result ${outcome.success ? 'good' : 'bad'}`, id: 'crime-result', role: 'dialog', 'aria-live': 'assertive' },
-      h('div', { class: 'crime-result-card glass-strong' },
-        h('div', { class: 'crime-result-kicker' }, outcome.kind === 'robbery' ? 'Bank robbery' : outcome.kind === 'murder' ? 'Murder attempt' : outcome.kind === 'detective' ? 'Detective report' : outcome.kind === 'wipe' ? 'Record wipe' : 'Underworld job'),
-        h('h3', {}, outcome.success ? 'Success' : 'Failure'),
-        h('p', { class: 'crime-result-detail' }, outcome.detail),
-        outcome.amount !== 0 ? h('div', { class: 'stat-row' }, h('span', {}, outcome.amount > 0 ? 'Gained' : 'Lost'), h('b', {}, money(Math.abs(outcome.amount)))) : null,
-        outcome.targetName ? h('div', { class: 'stat-row' }, h('span', {}, 'Target'), h('b', {}, outcome.targetName)) : null,
-        outcome.taken?.length ? h('div', { class: 'stat-row' }, h('span', {}, 'Properties transferred'), h('b', {}, outcome.taken.join(', '))) : null,
-        outcome.reputationDelta ? h('div', { class: 'stat-row' }, h('span', {}, 'Reputation'), h('b', {}, `${outcome.reputationDelta > 0 ? '+' : ''}${outcome.reputationDelta}`)) : null,
-        h('button', { class: 'btn btn-gold btn-block', onclick: () => layer.remove() }, 'Continue'),
-      ),
-    );
-    document.body.append(layer);
+    return new Promise((resolve) => {
+      const layer = h(
+        'div',
+        { class: `crime-result ${outcome.success ? 'good' : 'bad'}`, id: 'crime-result', role: 'dialog', 'aria-live': 'assertive' },
+        h('div', { class: 'crime-result-card glass-strong' },
+          h('div', { class: 'crime-result-kicker' }, outcome.kind === 'robbery' ? 'Bank robbery' : outcome.kind === 'murder' ? 'Murder attempt' : outcome.kind === 'detective' ? 'Detective report' : outcome.kind === 'wipe' ? 'Record wipe' : 'Underworld job'),
+          h('h3', {}, outcome.success ? 'Success' : 'Failure'),
+          h('p', { class: 'crime-result-detail' }, outcome.detail),
+          outcome.amount !== 0 ? h('div', { class: 'stat-row' }, h('span', {}, outcome.amount > 0 ? 'Gained' : 'Lost'), h('b', {}, money(Math.abs(outcome.amount)))) : null,
+          outcome.targetName ? h('div', { class: 'stat-row' }, h('span', {}, 'Target'), h('b', {}, outcome.targetName)) : null,
+          outcome.taken?.length ? h('div', { class: 'stat-row' }, h('span', {}, 'Properties transferred'), h('b', {}, outcome.taken.join(', '))) : null,
+          outcome.reputationDelta ? h('div', { class: 'stat-row' }, h('span', {}, 'Reputation'), h('b', {}, `${outcome.reputationDelta > 0 ? '+' : ''}${outcome.reputationDelta}`)) : null,
+          h('button', { class: 'btn btn-gold btn-block', onclick: () => { layer.remove(); resolve(); } }, 'Continue'),
+        ),
+      );
+      document.body.append(layer);
+    });
   }
 
   private renderMenu(): void {
@@ -492,6 +510,8 @@ export class UI {
     }
     if (this.currentSheet === 'log') this.renderLog();
     if (this.currentSheet === 'market') this.marketLive?.();
+    this.refreshTileActions();
+    this.updateThinking();
   }
 
   private openEndgame(winnerId: string): void {
@@ -527,6 +547,35 @@ export class UI {
     if (this.currentSheet === 'court') this.refreshCourt();
     if (this.currentSheet === 'bank') this.refreshTransient();
     if (this.sheet) this.refreshTransient();
+    this.refreshTileActions();
+  }
+
+  /** Live upgrade price and disabled reason, without rebuilding the open deed. */
+  private refreshTileActions(): void {
+    if (this.currentSheet !== 'tile' || this.sheetTile === null || !this.state) return;
+    const tile = this.state.tiles[this.sheetTile];
+    const space = spaceAt(this.sheetTile);
+    if (!tile) return;
+    for (const button of this.sheet?.querySelectorAll<HTMLButtonElement>('[data-upgrade]') ?? []) {
+      const building = tile.buildings[Number(button.dataset.slot ?? -1)];
+      if (!building) continue;
+      const nextRank = (building.rank + 1) as 2 | 3 | 4;
+      const nextCost = upgradeCost(space, building.type, nextRank);
+      const blocked = tile.lockedBy ? 'Deeds are locked by a pending lawsuit' : (this.priv?.you.cash ?? 0) < nextCost ? `Need ${money(nextCost)}` : '';
+      button.disabled = Boolean(blocked);
+      button.title = blocked;
+      button.textContent = `Upgrade ${money(nextCost)}`;
+    }
+  }
+
+  private updateThinking(): void {
+    const element = document.getElementById('thinking-dots');
+    if (!element) return;
+    const active = this.state?.activePlayerId ? this.state.players[this.state.activePlayerId] : null;
+    const show = Boolean(this.state?.mode === 'solo' && active?.isBot && !this.settings.fastBots && !this.state.gameOver);
+    element.hidden = !show;
+    const name = document.getElementById('thinking-name');
+    if (name) name.textContent = active?.name ?? 'Rival';
   }
 
   private updateHud(me: { name: string; color: string; cash: number; isBot: boolean }): void {
@@ -612,7 +661,7 @@ export class UI {
       { class: 'jail-card glass', id: 'jail-card' },
       h('b', {}, 'In jail'),
       h('span', { class: 'small muted' }, `${this.priv.you.jailCause ?? 'Jailed'} · ${this.priv.you.jailOutcome === 'all' ? 'all deeds sold' : this.priv.you.jailOutcome === 'some' ? `${this.priv.you.jailSold.length} sold` : 'deeds mortgaged'} · release ${money(this.priv.you.jailReleaseCost)}`),
-      h('button', { class: 'btn btn-sm btn-gold', disabled: this.priv.you.cash < this.priv.you.jailReleaseCost, title: this.priv.you.cash < this.priv.you.jailReleaseCost ? `Need ${money(this.priv.you.jailReleaseCost - this.priv.you.cash)} more cash` : `5% of cash, minimum ${money(RULES.jailFeeMin)}`, onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, `Pay ${money(this.priv.you.jailReleaseCost)} to get out`),
+      h('button', { class: 'btn btn-sm btn-gold', disabled: this.priv.you.cash < this.priv.you.jailReleaseCost, title: this.priv.you.cash < this.priv.you.jailReleaseCost ? `Need ${money(this.priv.you.jailReleaseCost - this.priv.you.cash)} more cash` : `10% of cash, minimum ${money(RULES.jailFeeMin)}`, onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, `Pay ${money(this.priv.you.jailReleaseCost)} to get out`),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: () => this.openJailRecord(this.priv!.you.id) }, 'Public record'),
     );
     document.getElementById('hud')?.append(card);
@@ -714,8 +763,8 @@ export class UI {
 
   // ---------------------------------------------------------------- sheets
 
-  private openSheet(name: string, title: string, subtitle: string, body: HTMLElement, opts: { tall?: boolean; wide?: boolean } = {}): void {
-    if (this.currentSheet === name) {
+  private openSheet(name: string, title: string, subtitle: string, body: HTMLElement, opts: { tall?: boolean; wide?: boolean; replace?: boolean } = {}): void {
+    if (this.currentSheet === name && !opts.replace) {
       this.closeSheet();
       return;
     }
@@ -754,6 +803,7 @@ export class UI {
   // ------------------------------------------------------------- tile card
 
   openTile(index: number): void {
+    this.sheetTile = index;
     const space = spaceAt(index);
     const tile = this.state?.tiles[index];
     const owner = tile?.ownerId ? this.state?.players[tile.ownerId] : null;
@@ -765,7 +815,7 @@ export class UI {
       body.append(h('p', { class: 'note' }, `Buildings: ${tile.buildings.map((b) => `${BUILDING_META[b.type].name} rank ${b.rank}`).join(', ')}. Board cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
     }
     if (tile?.lockedBy) body.append(h('p', { class: 'note bad' }, 'These deeds are locked while a lawsuit is pending.'));
-    this.openSheet('tile', space.name, owner ? `Owned by ${owner.name}${tile?.mortgaged ? ' · mortgaged' : ''}` : 'Available to buy', body);
+    this.openSheet('tile', space.name, owner ? `Owned by ${owner.name}${tile?.mortgaged ? ' · mortgaged' : ''}` : 'Available to buy', body, { replace: true });
   }
 
   /** One title-deed card, shared by the buy prompt, tile sheet and Properties tab. */
@@ -842,11 +892,14 @@ export class UI {
       } else if (!tile.buildings.length) {
         actions.append(h('button', { class: 'btn btn-primary', onclick: () => this.openBuild(index) }, 'Build here'));
       }
-      for (const building of tile.buildings) {
+      for (const [slot, building] of tile.buildings.entries()) {
+        const nextRank = (building.rank + 1) as 2 | 3 | 4;
+        const nextCost = upgradeCost(space, building.type, nextRank);
+        const blocked = tile.lockedBy ? 'Deeds are locked by a pending lawsuit' : (this.priv?.you.cash ?? 0) < nextCost ? `Need ${money(nextCost)}` : '';
         const row = h('div', { class: 'inline' },
           h('span', { class: 'chip', title: `${BUILDING_META[building.type].perk} Trade-off: ${BUILDING_META[building.type].tradeoff}` }, `${BUILDING_META[building.type].name} · rank ${building.rank}`),
-          building.rank < 4 ? h('button', { class: 'btn btn-sm btn-ghost', onclick: () => this.send({ t: 'upgrade', tile: index, type: building.type, key: intentKey('upgrade') }) }, `Upgrade ${money(upgradeCost(space, building.type, (building.rank + 1) as 2 | 3 | 4))}`) : null,
-          h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.send({ t: 'sellBuilding', tile: index, type: building.type, key: intentKey('sell') }) }, `Sell ${money(Math.round(buildingInvested(space, building) * RULES.sellRefund))}`),
+          building.rank < 4 ? h('button', { class: 'btn btn-sm btn-ghost', 'data-upgrade': building.type, 'data-slot': String(slot), disabled: Boolean(blocked), title: blocked, onclick: () => this.send({ t: 'upgrade', tile: index, type: building.type, slot, key: intentKey('upgrade') }) }, `Upgrade ${money(nextCost)}`) : null,
+          h('button', { class: 'btn btn-sm btn-danger', onclick: () => this.send({ t: 'sellBuilding', tile: index, type: building.type, slot, key: intentKey('sell') }) }, `Sell ${money(Math.round(buildingInvested(space, building) * RULES.sellRefund))}`),
         );
         actions.append(row);
       }
@@ -876,7 +929,7 @@ export class UI {
     const mode = this.state?.mode ?? 'multi';
     const body = h('div', {});
     const check = this.state ? canBuild(index, this.state.tiles, this.deps.net.playerId ?? '', this.state.buildingCount, mode) : { ok: false as const, reason: '…' };
-    body.append(h('p', { class: 'note' }, `${mode === 'solo' ? 'Solo needs the full colour group and uses houses and hotels.' : `${buildSlots(space)} build slots, ${tile?.buildings.length ?? 0} used. Each type is built once and upgraded rank 1→4 (costs 1x, 3x, 9x, 27x). Selling refunds 50%.`} Board cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
+    body.append(h('p', { class: 'note' }, `${mode === 'solo' ? 'Solo needs the full colour group and uses standard houses and hotels.' : `${buildSlots(space)} build slots, ${tile?.buildings.length ?? 0} used. Duplicates are allowed; the 2nd copy earns 70% and the 3rd 50%. Each building upgrades rank 1→4 (costs 1x, 3x, 9x, 27x). Selling refunds 50%.`} Board cap ${RULES.maxBuildings} (${this.state?.buildingCount ?? 0} built).`));
     if (!check.ok) body.append(h('p', { class: 'note warn' }, check.reason));
     for (const category of BUILDING_CATEGORIES) {
       const types = buildingTypesForMode(mode).filter((type) => BUILDING_META[type].category === category.id);
@@ -909,7 +962,7 @@ export class UI {
                 this.closeSheet();
               },
             },
-            tile?.buildings.some((b) => b.type === type) ? 'Built' : affordable ? 'Build' : 'Too dear',
+            (tile?.buildings.length ?? 0) >= (mode === 'solo' ? 1 : buildSlots(space)) ? 'Slots full' : affordable ? 'Build' : 'Too dear',
           ),
         );
         grid.append(card);
@@ -1029,8 +1082,6 @@ export class UI {
     const stocks = SPACES.filter((space) => space.price > 0);
     let tile = stocks.some((space) => space.index === select) ? select : stocks[0]!.index;
     let history: Candle[] = [];
-    let pendingSide: 'buy' | 'sell' | null = null;
-    let pendingQty = 0;
     let lastLive = 0;
     const body = h('div', { class: 'market-terminal' });
     const selector = h('select', { class: 'field market-select', 'aria-label': 'Choose a stock' },
@@ -1043,7 +1094,6 @@ export class UI {
     const priceEl = h('b', { class: 'terminal-price' }, '—');
     const deltaEl = h('span', { class: 'small muted' }, 'live');
     const qty = h('input', { class: 'field', type: 'number', min: '1', step: '1', value: '1', 'aria-label': 'Share quantity' }) as HTMLInputElement;
-    const confirmEl = h('p', { class: 'note terminal-confirm', 'aria-live': 'polite' }, '');
     const buy = h('button', { class: 'btn btn-primary btn-block' }, 'Buy');
     const sell = h('button', { class: 'btn btn-ghost btn-block' }, 'Sell');
     const maxBuy = h('button', { class: 'btn btn-sm btn-ghost' }, 'Max Buy');
@@ -1055,8 +1105,9 @@ export class UI {
     const toast = h('p', { class: 'note', 'aria-live': 'polite' }, '');
     const head = h('div', { class: 'market-head' }, h('div', { class: 'market-title' }, h('b', {}, 'Market'), h('span', { class: 'market-live-dot' }, 'LIVE')), selector, search, liveBadge);
     const chartPanel = h('div', { class: 'market-chart-panel' }, chartCanvas, h('div', { class: 'chart-legend' }, priceEl, deltaEl));
-    const side = h('aside', { class: 'market-side' }, this.cashChip(), ownedBox, h('div', { class: 'trade-box' }, h('div', { class: 'stat-row' }, h('span', {}, 'Quantity'), qty), h('div', { class: 'inline' }, buy, sell), h('div', { class: 'inline' }, maxBuy, maxSell), confirmEl, toast), totals, otherBox);
+    const side = h('aside', { class: 'market-side' }, this.cashChip(), ownedBox, h('div', { class: 'trade-box' }, h('div', { class: 'stat-row' }, h('span', {}, 'Quantity'), qty), h('div', { class: 'inline' }, buy, sell), h('div', { class: 'inline' }, maxBuy, maxSell), toast), totals, otherBox);
     body.append(head, h('div', { class: 'market-body' }, chartPanel, side));
+    body.setAttribute('data-market', 'terminal');
 
     const priceNow = (): number => this.state?.prices[tile] ?? 0;
     const heldNow = (): number => this.priv?.you.holdings[String(tile)] ?? 0;
@@ -1069,9 +1120,6 @@ export class UI {
       const prev = this.state?.candles?.[tile]?.o ?? price;
       deltaEl.textContent = `${price >= prev ? '▲' : '▼'} ${Math.abs(price - prev).toFixed(2)} live`;
       deltaEl.className = price >= prev ? 'up' : 'down';
-      confirmEl.textContent = pendingSide && pendingQty > 0
-        ? `Confirm ${pendingSide} ${pendingQty} share${pendingQty === 1 ? '' : 's'} — one click to send.`
-        : '';
       buy.disabled = price <= 0 || (this.priv?.you.cash ?? 0) < price;
       sell.disabled = held <= 0;
       maxBuy.disabled = maxBuyShares(this.priv?.you.cash ?? 0, price) <= 0;
@@ -1113,8 +1161,6 @@ export class UI {
       tile = next;
       selector.value = String(next);
       history = [];
-      pendingSide = null;
-      pendingQty = 0;
       this.deps.net.requestMarket(next);
       draw();
     };
@@ -1127,15 +1173,8 @@ export class UI {
     });
     const submit = (side: 'buy' | 'sell', amount: number): void => {
       if (amount <= 0) return;
-      if (!this.settings.oneClickTrade && pendingSide === side && pendingQty === amount) {
-        this.send({ t: 'stock', tile, qty: side === 'buy' ? amount : -amount, key: intentKey('stock') });
-        pendingSide = null;
-        pendingQty = 0;
-      } else {
-        pendingSide = side;
-        pendingQty = amount;
-        qty.value = String(amount);
-      }
+      this.send({ t: 'stock', tile, qty: side === 'buy' ? amount : -amount, key: intentKey('stock') });
+      toast.textContent = `${side === 'buy' ? 'Bought' : 'Sold'} ${amount} share${amount === 1 ? '' : 's'} at the live price.`;
       draw();
     };
     buy.addEventListener('click', () => submit('buy', Math.max(1, Math.round(Number(qty.value) || 1))));
@@ -1143,14 +1182,12 @@ export class UI {
     maxBuy.addEventListener('click', () => {
       const max = maxBuyShares(this.priv?.you.cash ?? 0, priceNow());
       qty.value = String(Math.max(1, max));
-      if (this.settings.oneClickTrade && max > 0) submit('buy', max);
-      else { pendingSide = max > 0 ? 'buy' : null; pendingQty = max; draw(); }
+      if (max > 0) submit('buy', max);
     });
     maxSell.addEventListener('click', () => {
       const all = heldNow();
       qty.value = String(Math.max(1, all));
-      if (this.settings.oneClickTrade && all > 0) submit('sell', all);
-      else { pendingSide = all > 0 ? 'sell' : null; pendingQty = all; draw(); }
+      if (all > 0) submit('sell', all);
     });
     liveBadge.addEventListener('click', () => chart.reset());
     this.deps.net.onMarket = (next, candles) => {
@@ -1158,7 +1195,16 @@ export class UI {
       history = candles;
       draw();
     };
-    this.deps.net.requestMarket(tile);
+    let retries = 0;
+    const requestCandles = (): void => {
+      this.deps.net.requestMarket(tile);
+      window.setTimeout(() => {
+        if (this.currentSheet !== 'market' || history.length || retries >= 3) return;
+        retries += 1;
+        requestCandles();
+      }, 2000);
+    };
+    requestCandles();
     draw();
     this.openSheet('market', 'Market', 'Server candles · 30 seconds each · one-screen trading terminal', body, { tall: true, wide: true });
     this.marketLive = () => {
@@ -1862,7 +1908,7 @@ export class UI {
     }
     if (playerId === this.priv?.you.id && player.inJail) {
       const canPay = this.priv.you.cash >= player.jailReleaseCost;
-      body.append(h('button', { class: 'btn btn-gold btn-block', style: 'margin-top:14px', disabled: !canPay, title: canPay ? '5% of current cash, minimum $50' : `Need ${money(player.jailReleaseCost - this.priv.you.cash)} more cash`, onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, canPay ? `Pay ${money(player.jailReleaseCost)} to get out` : `Release costs ${money(player.jailReleaseCost)} — not enough cash`));
+      body.append(h('button', { class: 'btn btn-gold btn-block', style: 'margin-top:14px', disabled: !canPay, title: canPay ? '10% of current cash, minimum $50' : `Need ${money(player.jailReleaseCost - this.priv.you.cash)} more cash`, onclick: () => this.send({ t: 'jailPay', key: intentKey('jail') }) }, canPay ? `Pay ${money(player.jailReleaseCost)} to get out` : `Release costs ${money(player.jailReleaseCost)} — not enough cash`));
     }
     this.openSheet('jail', `${player.name}'s record`, 'Public jail ledger', body);
   }
@@ -1923,7 +1969,6 @@ export class UI {
       this.toggleRow('Show tile prices', s.showPrices, (v) => update({ showPrices: v })),
       this.toggleRow('FPS counter', s.fpsCounter, (v) => update({ fpsCounter: v })),
       this.toggleRow('Fast bot turns', s.fastBots, (v) => update({ fastBots: v })),
-      this.toggleRow('One-click trading', s.oneClickTrade, (v) => update({ oneClickTrade: v })),
     );
     body.append(gfx);
 
@@ -2111,8 +2156,8 @@ export class UI {
       { title: 'Welcome to Chromonopoly', text: 'This is a normal solo table. You and three bots each start with $1,500. Take your time — the tutorial will not time you out.', target: '#roll-btn' },
       { title: '1 · Roll the dice', text: 'Press the highlighted Roll button, Space, or click it. The camera frames the dice, then your piece moves around the board.', target: '#roll-btn', action: 'roll' },
       { title: '2 · Land and decide', text: 'When you land on an unowned street, a centred Offer panel appears. Buy it or pass. In solo, a full colour group unlocks building; multiplayer allows building on any owned street.', target: '#dock' },
-      { title: '3 · Manage property', text: 'Open Properties to see your deeds. Open a deed to build, upgrade, mortgage, unmortgage or sell. Mortgaged deeds show a 3D MORTGAGED sign above the tile.', target: '[data-dock="Properties"]' },
-      { title: '4 · Rent, jail and cards', text: 'Landing on another player rent opens a payment offer. Evading is a chance roll. Jail mortgages your deeds until you pay release or serve the sentence. Chance and Chest cards flip at the centre.', target: '.rail' },
+      { title: '3 · Manage property', text: 'Open Properties to see your deeds. Every property has three build slots; duplicate types are allowed and later copies return 70% then 50%. Open a deed to build, upgrade, mortgage, unmortgage or sell. Mortgaged deeds show a 3D MORTGAGED sign above the tile.', target: '[data-dock="Properties"]' },
+      { title: '4 · Rent, jail and cards', text: 'Landing on another player rent opens a payment offer. Evading is a chance roll. Release costs 10% of cash with a $50 minimum; the jail sale mortgages your deeds until you recover. Chance and Chest cards flip at the centre.', target: '.rail' },
       { title: '5 · Trade', text: 'In Properties → Trade, offer cash and properties. Both sides lock while the offer is open. The other side can accept, decline or counter; an accepted swap is atomic.', target: '[data-dock="Properties"]' },
       { title: '6 · Build the skyline', text: 'Buildings create rent, and matching types reward a full colour group. Watch cash, holdings and net worth as the skyline grows.', target: '#dock' },
       { title: 'You are ready', text: 'The table is yours. Roll, buy, build and outlast the bots. A full game ends when one player owns the board.', target: undefined },
@@ -2192,8 +2237,19 @@ export class UI {
     const local = Boolean(ev.playerId && ev.playerId === me) || Boolean(ev.targetId && ev.targetId === me) || ev.kind === 'win';
     // Solo tables show bot cards and purchases on the human's screen too.
     const bot = Boolean(actor?.isBot) && this.state?.mode === 'solo' && !local;
-    if (ev.chance && local) this.queueChance(ev.chance, ev.playerId === me ? ev.outcome : undefined);
-    else if (ev.outcome && ev.playerId === me) this.showOutcome(ev.outcome);
+    if (ev.chance && local) {
+      const caught = ev.kind !== 'jail' && ev.outcome && !ev.outcome.success;
+      // Jail can also carry a wheel. The generic queue owns every wheel so the
+      // jail case below must never enqueue a second one.
+      const busted = ev.kind === 'jail' || caught;
+      this.queueChance(
+        ev.chance,
+        ev.playerId === me ? ev.outcome : undefined,
+        busted ? () => this.showBusted(actor?.name.toUpperCase() ?? 'YOU', true) : undefined,
+      );
+    } else if (ev.outcome && ev.playerId === me) {
+      void this.showOutcome(ev.outcome);
+    }
     switch (ev.kind) {
       case 'roll':
         if (local) {
@@ -2261,9 +2317,9 @@ export class UI {
         const released = text === 'released' || text.includes('left') || text.startsWith('Rolling for doubles');
         if (local && !released) {
           audio.play('jail');
-          this.showBusted('YOU', Boolean(ev.chance));
+          if (!ev.chance) void this.showBusted('YOU', false);
         } else if (bot && !released) {
-          this.showBusted(actor!.name.toUpperCase(), Boolean(ev.chance));
+          if (!ev.chance) void this.showBusted(actor!.name.toUpperCase(), false);
         } else if (local) {
           this.ribbon('Released', 'Back on the board');
         } else if (!local && !bot && !released) {
@@ -2373,24 +2429,33 @@ export class UI {
     }
   }
 
-  private showBusted(name: string, afterWheel: boolean): void {
-    if (document.getElementById('busted-screen')) return;
+  private showBusted(name: string, afterWheel: boolean): Promise<void> {
+    if (document.getElementById('busted-screen')) return Promise.resolve();
+    if (performance.now() - this.lastBustedAt < 5000) return Promise.resolve();
+    this.lastBustedAt = performance.now();
     const reduced = this.settings.reducedMotion;
     const layer = h('div', { class: `busted-screen${reduced ? ' reduced' : ''}`, id: 'busted-screen', role: 'alertdialog', 'aria-label': `${name} busted` });
     layer.append(
       h('div', { class: 'busted-bars' }, ...Array.from({ length: 7 }, () => h('i', {}))),
       h('div', { class: 'busted-lights' }, h('i', { class: 'blue' }), h('i', { class: 'red' })),
-      h('div', { class: 'busted-cuffs' }, h('i', {}), h('i', {})),
       h('div', { class: 'busted-copy' }, h('span', {}, name), h('strong', {}, 'BUSTED'), h('small', {}, 'The table has been notified')),
     );
     document.body.append(layer);
-    const close = (): void => { layer.classList.add('out'); window.setTimeout(() => layer.remove(), 260); };
-    let armed = false;
-    window.setTimeout(() => { armed = true; }, 1000);
-    layer.addEventListener('click', () => { if (armed) close(); });
-    const key = (event: KeyboardEvent): void => { if (armed && (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ')) { window.removeEventListener('keydown', key); close(); } };
-    window.addEventListener('keydown', key);
-    window.setTimeout(() => { window.removeEventListener('keydown', key); close(); }, afterWheel ? 3000 : 2600);
+    return new Promise((resolve) => {
+      let done = false;
+      const close = (): void => {
+        if (done) return;
+        done = true;
+        layer.classList.add('out');
+        window.setTimeout(() => { layer.remove(); resolve(); }, 260);
+      };
+      let armed = false;
+      window.setTimeout(() => { armed = true; }, 1000);
+      layer.addEventListener('click', () => { if (armed) close(); });
+      const key = (event: KeyboardEvent): void => { if (armed && (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ')) { window.removeEventListener('keydown', key); close(); } };
+      window.addEventListener('keydown', key);
+      window.setTimeout(() => { window.removeEventListener('keydown', key); close(); }, afterWheel ? 3000 : 2600);
+    });
   }
 
   private showCard(text: string, deck: string): void {
@@ -2413,13 +2478,14 @@ export class UI {
     window.setTimeout(close, 3200);
   }
 
-  private queueChance(spec: ChanceRoll, outcome?: CrimeOutcome): void {
+  private queueChance(spec: ChanceRoll, outcome?: CrimeOutcome, after?: () => Promise<void> | void): void {
     // The outcome card is a consequence of the stopped wheel. Showing it at
     // event-arrival time covered the wheel and let a result appear before LANDED.
     this.chanceQueue = this.chanceQueue
       .then(async () => {
         await this.showChance(spec);
-        if (outcome) this.showOutcome(outcome);
+        if (outcome) await this.showOutcome(outcome);
+        await after?.();
       })
       .catch(() => undefined);
   }
@@ -2589,14 +2655,14 @@ function heap(space: ReturnType<typeof spaceAt>): string {
 
 function helpRows(): HTMLElement[] {
   const rows: Array<[string, string]> = [
-    ['Roll', 'Press Space, click ROLL. No turns — roll whenever the dice are ready.'],
+    ['Roll', 'Solo: only the active seat rolls, and doubles grant another roll. Multiplayer: roll whenever the dice are ready.'],
     ['Buy', 'Land on an unowned street and buy it, or pass. Multiplayer lets you build on any owned street; solo needs the full colour group.'],
-    ['Build', '32 building types across seven categories. One structure per street; a matching full group adds synergy.'],
+    ['Build', 'Three slots per property. Duplicate types are allowed at 100% / 70% / 50% return. Solo uses the standard House and Hotel; multiplayer exposes all 32 building types.'],
     ['Rent', 'Pay, or try to evade. Evading is risky: reputation and a penalty if caught.'],
     ['Mortgage', 'Half the price, no rent while mortgaged. Unmortgaging adds 10%.'],
     ['Loans', 'Borrow up to three times net worth. Interest is deducted every roll.'],
-    ['Stocks', 'Every street is a ticker. Shareholders receive part of the rent.'],
-    ['Jail', 'Entry mortgages every deed and sells buildings. Pay to restore them, or serve.'],
+    ['Stocks', 'Every street is a ticker. Buy, sell and max-trade in one click; candles retry if the socket is still opening.'],
+    ['Jail', 'Release costs 10% of your current cash, minimum $50. Entry also mortgages deeds and sells buildings; the jail sale can recover them.'],
     ['Court', 'Detectives build evidence. Sue with evidence, settle for 1.5x, or go to court.'],
   ];
   return rows.map(([title, text]) =>

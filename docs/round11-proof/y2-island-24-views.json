@@ -1,0 +1,434 @@
+[
+  {
+    "view": "angle-0",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 44,
+      "calls": 448,
+      "triangles": 34681,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-1",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 64,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-2",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 84,
+      "calls": 451,
+      "triangles": 34697,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-3",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 104,
+      "calls": 451,
+      "triangles": 34697,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-4",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 124,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-5",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 144,
+      "calls": 451,
+      "triangles": 34697,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-6",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 164,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-7",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 184,
+      "calls": 449,
+      "triangles": 34693,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-8",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 204,
+      "calls": 449,
+      "triangles": 34683,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-9",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 224,
+      "calls": 445,
+      "triangles": 34645,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-10",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 244,
+      "calls": 445,
+      "triangles": 34645,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-11",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 264,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-12",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 284,
+      "calls": 451,
+      "triangles": 34697,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-13",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 304,
+      "calls": 449,
+      "triangles": 34693,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-14",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 324,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-15",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 344,
+      "calls": 449,
+      "triangles": 34683,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-16",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 364,
+      "calls": 446,
+      "triangles": 34647,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-17",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 384,
+      "calls": 445,
+      "triangles": 34635,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-18",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 404,
+      "calls": 451,
+      "triangles": 34697,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-19",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 424,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-20",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 444,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-21",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 464,
+      "calls": 450,
+      "triangles": 34695,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-22",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 484,
+      "calls": 448,
+      "triangles": 34681,
+      "points": 918,
+      "lines": 0
+    }
+  },
+  {
+    "view": "angle-23",
+    "stats": {
+      "triangles": 3261,
+      "details": 88,
+      "petals": 48,
+      "solid": true,
+      "japaneseProps": 0,
+      "skyOnly": true
+    },
+    "render": {
+      "frame": 504,
+      "calls": 449,
+      "triangles": 34683,
+      "points": 918,
+      "lines": 0
+    }
+  }
+]

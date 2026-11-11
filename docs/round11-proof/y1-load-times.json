@@ -1,0 +1,8 @@
+{
+  "coldMs": 1351,
+  "warmMs": 1116,
+  "budget": {
+    "cold": 5000,
+    "warm": 2000
+  }
+}

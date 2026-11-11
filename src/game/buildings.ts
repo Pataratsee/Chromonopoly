@@ -477,14 +477,22 @@ export const BUILDING_CATALOG = {
 export type BuildingType = keyof typeof BUILDING_CATALOG;
 export type BuildingCategory = (typeof BUILDING_CATALOG)[BuildingType]['category'];
 
-export const BUILD_SLOT_TIERS = [
-  { maxPrice: 140, slots: 2 },
-  { maxPrice: 300, slots: 3 },
-  { maxPrice: Infinity, slots: 4 },
-] as const;
+/** Every multiplayer property has exactly three independent building slots. */
+export const BUILD_SLOTS = 3;
 
-export function buildSlots(space: { price: number }): number {
-  return BUILD_SLOT_TIERS.find((tier) => space.price <= tier.maxPrice)?.slots ?? 2;
+/** The nth copy of one type on a property earns this share of its perk/income. */
+export const DUPLICATE_RETURN_FACTORS = [1, 0.7, 0.5] as const;
+
+export function buildSlots(_space: { price: number }): number {
+  return BUILD_SLOTS;
+}
+
+/** Factor for the building at `index`; only earlier copies of the same type count. */
+export function duplicateFactor(buildings: ReadonlyArray<{ type: string }>, index: number): number {
+  const type = buildings[index]?.type;
+  if (!type) return 1;
+  const copy = buildings.slice(0, index).filter((b) => b.type === type).length;
+  return DUPLICATE_RETURN_FACTORS[Math.min(copy, DUPLICATE_RETURN_FACTORS.length - 1)]!;
 }
 
 export const BUILDING_META = BUILDING_CATALOG;

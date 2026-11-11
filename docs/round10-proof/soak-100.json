@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-11-10T03:12:19.036Z",
+  "durationMs": 601506,
+  "clientsRequested": 100,
+  "connected": 100,
+  "recoveredSeats": 100,
+  "serverRestarts": 1,
+  "restartWindow": {
+    "uptimeBefore": 300.327666594,
+    "uptimeAfter": 1.958590143,
+    "clientsOpen": 100,
+    "at": 300383
+  },
+  "flakyNetwork": {
+    "dropped": 5,
+    "recovered": 5
+  },
+  "pings": {
+    "count": 6205,
+    "p50": 8,
+    "p95": 270,
+    "max": 946
+  },
+  "outagePings": {
+    "count": 0,
+    "max": 0
+  },
+  "server": {
+    "ok": true,
+    "players": 0,
+    "online": 0,
+    "seq": 978,
+    "soloTables": 100,
+    "uptime": 299.480786986,
+    "startedAt": 1794280038800,
+    "version": "dev",
+    "protocol": 4,
+    "sockets": 100,
+    "p95ActionMs": 0.01,
+    "p95TickMs": 425.44,
+    "droppedUpdates": 0,
+    "deltaFrames": 61300,
+    "fullFrames": 100,
+    "bytesOut": 1855622415,
+    "lastSaveAt": 1794280338247
+  },
+  "health": {
+    "samples": 120,
+    "actionP95": 0.03,
+    "tickP95": 423.1,
+    "maxDroppedUpdates": 0,
+    "deltaFrames": 61143,
+    "fullFrames": 100
+  },
+  "actionsSent": 12000,
+  "clientTraffic": {
+    "messages": 288739,
+    "deltas": 115214,
+    "fullStates": 405,
+    "bytes": 2808450391,
+    "deltaRatio": 0.9964971155259948
+  },
+  "errors": [
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Wait for your turn.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Wait for your turn.",
+    "Wait for your turn.",
+    "Wait for your turn.",
+    "Wait for your turn.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Wait for your turn.",
+    "Wait for your turn.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Wait for your turn.",
+    "Wait for your turn.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first.",
+    "Resolve the open offer first."
+  ],
+  "assertions": {
+    "hundredClients": true,
+    "actionP95Under150": true,
+    "pingP95Under150": false,
+    "deltaTraffic": true,
+    "flakyRecovered": true,
+    "restartRecovered": true
+  }
+}

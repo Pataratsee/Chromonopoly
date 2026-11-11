@@ -1,8 +1,8 @@
 import { SPACES, spaceAt, groupMembers } from './board';
-import { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, buildSlots, type BuildingType } from './buildings';
+import { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, buildSlots, duplicateFactor, type BuildingType } from './buildings';
 import type { Building, GameMode, PlayerPrivate, Space, TileState } from './types';
 
-export { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, buildSlots };
+export { BUILDING_CATALOG, BUILDING_META, BUILDING_TYPES, BUILDING_CATEGORIES, buildingTypesForMode, buildSlots, duplicateFactor };
 
 /** Every economic number the brief fixes. Nothing else may hardcode these. */
 export const RULES = {
@@ -67,7 +67,7 @@ export const RULES = {
   settleMultiple: 1.5,
   maxBuildings: 60,
   jailTurns: 3,
-  jailFeeRate: 0.05,
+  jailFeeRate: 0.1,
   jailFeeMin: 50,
   jailRepOnEntry: 0,
   buildingRanks: 4,
@@ -172,7 +172,13 @@ export function multiplayerRent(
   const highestRank = Math.max(...state.buildings.map((b) => b.rank));
   const rank4 = state.buildings.filter((b) => b.rank === 4).length;
   const basePercent = RULES.rankRentPct[highestRank - 1] ?? 0;
-  const buildingFactor = 1 + RULES.extraBuildingPct * Math.max(0, state.buildings.length - 1);
+  // Extra copies of one type earn a diminishing share (Y6). Different types
+  // do not reduce each other, so a mixed deed keeps its full slot value.
+  const extraCopies = state.buildings.reduce(
+    (total, _building, index) => total + duplicateFactor(state.buildings, index),
+    0,
+  ) - 1;
+  const buildingFactor = 1 + RULES.extraBuildingPct * Math.max(0, extraCopies);
   const prestige = 1 + RULES.prestigePerRank4 * Math.max(0, rank4 - 1);
   const percent = basePercent * buildingFactor * prestige;
   const cash = Math.max(0, Math.floor(payerCash));
@@ -247,9 +253,6 @@ export function canBuild(
   } else {
     if (state.buildings.length >= buildSlots(space)) {
       return { ok: false, reason: `All ${buildSlots(space)} build slots on ${space.name} are used.` };
-    }
-    if (type && state.buildings.some((b) => b.type === type)) {
-      return { ok: false, reason: `${BUILDING_META[type].name} is already on this property.` };
     }
   }
   if (state.lockedBy) return { ok: false, reason: 'This property is locked by a pending deal.' };

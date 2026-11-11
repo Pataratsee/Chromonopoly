@@ -21,3 +21,6 @@ data/
 .env.*
 !.env.example
 .DS_Store
+
+# Recovered source checkout used to restore .git metadata
+.git-upload/
